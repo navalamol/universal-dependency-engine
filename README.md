@@ -1,116 +1,115 @@
-# Mend AutoFixer
+# mend-autofixer
 
-## What is Mend AutoFixer?
+Node.js CLI that reads Mend (WhiteSource) security vulnerability reports and automatically
+remediates ~90–95% of CVEs via npm `overrides` or Maven `pom.xml` patches. The remaining
+~5–10% (major-version bumps, reachability questions, false positives) are escalated to a
+structured `manual-review.md` with full context for rapid human decision-making.
 
-A Node.js CLI that reads Mend (WhiteSource) security vulnerability reports and automatically
-generates the minimal npm `overrides` needed to resolve them — with zero manual triage for
-the majority of findings.
+## The problem
 
-## What problem does it solve?
+Mend scans produce dozens of CVEs across transitive dependencies. Manual triage — read each
+advisory, determine fix version, check semver safety, write the override — takes 2–4 hours per
+release. Most of it is mechanical.
 
-Mend scans produce vulnerability reports listing dozens of CVEs across transitive dependencies.
-Resolving them manually — reading each advisory, determining the right fix version, deciding
-whether a semver bump is safe, and writing the override — is slow and error-prone.
+This tool automates the mechanical loop. Typical result: **~15 min of Phase A auto-apply +
+30–60 min of Phase C review**, down from 2–4 hours.
 
-This tool automates that entire triage loop: **~90-95% of CVEs are resolved automatically**.
-The remaining ~5-10% (major-version bumps, reachability questions, false positives) are flagged
-for human review with enough context to act quickly.
+## 3-Phase confidence model
 
-## Features
+| Phase | Confidence | What it means | Output |
+|-------|-----------|---------------|--------|
+| **A** | 95–100% | Same-major patch/minor, dep tree verified | `phase-a-overrides.json` — auto-applied |
+| **B** | 60–95% | Multiple same-major versions; forced override | `phase-b-overrides.json` — review first |
+| **C** | <60% | MAJOR_BUMP / NO_FIX / multi-major conflict | `manual-review.md` — human + Claude triage |
 
-- Parses Mend JSON and Excel (`.xlsx`) report formats
-- Groups multiple CVEs per library and determines the single minimum fix version
-- Prefers same-major upgrades (SAFE) — no unnecessary breaking changes
-- Detects when multiple major versions of the same package are vulnerable and emits
-  scoped overrides (e.g. `"brace-expansion@^1"`, `"brace-expansion@^2"`)
-- Falls back to cross-major recommendation (MAJOR_BUMP) when no same-major fix exists
-- Writes a ready-to-paste `overrides-patch.json`
-- Generates a full markdown remediation report with CVE-level detail
-- Optional `--apply` flag merges overrides directly into your `package.json`
+## Supported ecosystems
 
-## Workflow
+- **npm** — reads `package.json` + `package-lock.json`; writes `overrides`; runs `npm install --package-lock-only`
+- **Maven** — reads `pom.xml`; writes `<dependencyManagement>` patches; ecosystem auto-detected from report
 
+## Install
+
+```bash
+npm install
 ```
-Mend Report (JSON/Excel)
-        │
-        ▼
-   Parse report
-        │
-        ▼
- Group by library  ←── library.keyUuid deduplicates multiple CVEs per package
-        │
-        ▼
- SemVer Engine    ←── prefer same-major fix; fallback to cross-major
-        │
-        ├── SAFE       → overrides (automated)
-        ├── MAJOR_BUMP → overrides + review flag
-        └── NO_FIX     → reachability / false positive assessment (manual)
-        │
-        ▼
- Write overrides-patch.json + remediation-report.md
+
+Requires Node.js 18+ (uses native `fetch` for registry checks).
+
+## Usage
+
+```bash
+# Analyze only — no files changed
+node mendfix.js analyze --report vuln-report.json
+
+# Analyze with npm registry version verification
+node mendfix.js analyze --report vuln-report.json --verify-versions
+
+# Analyze with dep tree for accurate Phase classification
+node mendfix.js analyze --report vuln-report.json \
+  --lock-file ../project/package-lock.json
+
+# Apply Phase A fixes (npm install runs automatically)
+node mendfix.js apply --report vuln-report.json \
+  --package-json ../project/package.json \
+  --lock-file ../project/package-lock.json
+
+# Apply Maven Phase A fixes
+node mendfix.js apply --report vuln-report.json \
+  --pom-xml ../project/pom.xml
+
+# Clean up stale overrides after manual intervention
+node mendfix.js cleanup \
+  --package-json ../project/package.json \
+  --lock-file ../project/package-lock.json
 ```
+
+### Flags
+
+| Flag | Subcommands | Description |
+|------|-------------|-------------|
+| `--report <path>` | analyze, apply | Mend report file (`.json` or `.xlsx`) — required |
+| `--lock-file <path>` | analyze, apply, cleanup | `package-lock.json` for dep tree analysis |
+| `--package-json <path>` | apply, cleanup | Target `package.json`; triggers Phase A auto-apply |
+| `--pom-xml <path>` | apply | Target `pom.xml` for Maven projects |
+| `--verify-versions` | analyze, apply | Check npm/Maven registry before applying |
+| `--out-dir <path>` | analyze | Output directory (default: next to report file) |
+| `--ecosystem npm\|maven` | analyze, apply | Override ecosystem auto-detection |
+
+Legacy flag syntax (`mend-fix.js --dry-run`, `--apply`) still works via backward-compat shim.
+
+## Output files
+
+Generated in `<report-dir>/mend-output/` (or `--out-dir`):
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `phase-a-overrides.json` | A | Ready-to-apply overrides; also applied automatically when `--package-json` is given |
+| `phase-b-overrides.json` | B | Overrides needing review before apply |
+| `manual-review.md` | C | Structured checklist for human + Claude triage |
+| `remediation-report.md` | All | Full markdown report with CVE-level detail |
+
+## Safety guarantees
+
+- **Rollback** — snapshots `package.json` + `package-lock.json` before any write; restores both if `npm install` fails
+- **Idempotency** — running `mendfix apply` twice produces no additional changes (`.mend-manifest.json` tracks last state)
+- **Human change detection** — overrides you manually edited since the last run are skipped with a warning
+- **No MAJOR_BUMP auto-apply** — cross-major upgrades always land in `manual-review.md`
+
+## Phase C triage with Claude
+
+When `manual-review.md` contains items, paste it alongside `package-lock.json` into a Claude
+session with `CLAUDE_WORKFLOW.md` as the instruction set. Claude will trace full parent chains,
+check call sites for breaking changes, write false positive justifications, and recommend
+which nested overrides to add.
 
 ## Architecture
 
 ```
-mend-fix.js            CLI entry point — orchestrates all steps
-src/parser.js          Parse JSON and Excel reports → normalized LibraryEntry[]
-src/semver-engine.js   Determine minimum fix version per library (deterministic SemVer)
-src/overrides.js       Build npm overrides map; handle multi-version scoping
-src/report.js          Generate markdown remediation report
+src/providers/    one file per vulnerability source (mend.js; future: snyk, dependabot)
+src/core/         ecosystem-agnostic engine (semver, phases, report, confidence, git-commits)
+src/ecosystems/   npm/ and maven/ writers; lock/dep-tree parsers
+mendfix.js        CLI entry — subcommands: analyze / apply / cleanup
 ```
 
-## Folder structure
-
-```
-mend-autofixer/
-  mend-fix.js                        CLI entry point
-  package.json
-  src/
-    parser.js
-    semver-engine.js
-    overrides.js
-    report.js
-  docs/
-    01_PRODUCT.md … 07_FUTURE.md     Design docs and decisions
-  mend-output/                       Generated on each run (gitignored)
-    overrides-patch.json
-    remediation-report.md
-```
-
-## How to run
-
-```bash
-# Install dependencies (one-time)
-npm install
-
-# Dry run — print plan without writing files
-node mend-fix.js --report vuln-report.json --dry-run
-
-# Generate overrides-patch.json + remediation-report.md in ./mend-output/
-node mend-fix.js --report vuln-report.json
-
-# Generate AND apply overrides directly into a package.json
-node mend-fix.js --report vuln-report.json \
-  --apply \
-  --package-json ../ui-platform/package.json
-
-# Then in the target project:
-npm install
-```
-
-### Options
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--report <path>` | Mend report file (`.json` or `.xlsx`) | required |
-| `--package-json <path>` | Target `package.json` for `--apply` | `./package.json` |
-| `--out-dir <path>` | Output directory | `./mend-output` |
-| `--apply` | Merge overrides directly into `package.json` | off |
-| `--dry-run` | Print plan to stdout, write nothing | off |
-
-## Future roadmap
-
-Parse `package-lock.json` to build the full dependency graph, enabling accurate parent-package
-upgrade paths, reachability analysis (is the vulnerable code path actually exercised?), and
-automatic false-positive classification — moving the automation coverage closer to 100%.
+See `CLAUDE.md` for the full file map, coding standards, and development guide.
+See `Master_Roadmap.md` for the 9-phase product vision.

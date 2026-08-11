@@ -148,6 +148,24 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-11 — Documentation overhaul: CLAUDE.md, NEXT_MISSION.md, README.md, doc audit
+
+**Before:** CLAUDE.md was accurate but lacked Phase 1 completion status and navigation pointers. README.md reflected pre-restructure architecture (flat `src/`, old flags). Seven docs in `docs/01_PRODUCT.md`–`07_FUTURE.md` were empty stubs written at project inception. `docs/decisions.md` had 3 decisions already captured in CLAUDE.md.
+
+**Changes:**
+- Rewrote `CLAUDE.md` as the definitive bootstrap doc: added Phase 1 completion status per scenario, explicit "remaining gaps" list, stable interface definitions, navigation table pointing to other docs. Removed stale "Build incrementally (phases from docs/04)" section.
+- Created `NEXT_MISSION.md` — single source of truth for "what to build next." CTO-level view: 4 prioritized Phase 1 gaps, Phase 2 entry criteria, what NOT to do. Replaces the need to diff ROADMAP.md to find next work.
+- Rewrote `README.md` to reflect current state: subcommand CLI, Maven support, 3-phase model table, safety guarantees, all current flags. Removed pre-restructure architecture that referenced `src/parser.js` etc.
+- Updated `docs/ROADMAP.md`: moved Scenarios 14, 19/20, 21, 24, folder restructure, Maven, git-commits.js (partial) from Todo → Done.
+- Updated `docs/Phase_1_Goal.md`: added completion status table (20 done, 4 partial, 1 not started, 1 blocked) at top; kept scenario definitions intact.
+- Deleted 9 files: `docs/01_PRODUCT.md`–`07_FUTURE.md` (empty stubs), `docs/decisions.md` (redundant with CLAUDE.md), `docs/Phase_2_Path.md` (superseded by NEXT_MISSION.md + Master_Roadmap.md), `docs/Manual_Automation_Next_Phase.md` (historical; key points already in SESSION_LOG), `Plans_Prompst/` both files (plans for completed work).
+
+**Key decision:** `NEXT_MISSION.md` at root level (not `docs/`) — it's the first thing a fresh session needs, same priority as `CLAUDE.md`.
+
+**Next:** Wire `git-commits.js` into `mendfix.js apply` (Scenario 15/16). Then `pr-description.js` (Scenario 18). Then close Phase 1.
+
+
+
 ## 2026-08-11 — Renovate PR workflow (renovate-workflow.js)
 
 **Before:** No GitHub integration. mendfix only processed a single repo/report locally; no awareness of Renovate Bot PRs.

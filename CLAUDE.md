@@ -1,146 +1,175 @@
-# Claude Operating Manual — Mend AutoFixer
+# Claude Operating Manual — mend-autofixer
 
-This is where all future sessions continue. Read this before touching any code.
+Read this before every session. This is the complete bootstrap.
 
-## Coding standards
+## What this is
 
-- Plain Node.js (CommonJS `require`). No TypeScript. No build step.
-- No frameworks, no DI, no ORM. Deps: `semver`, `xlsx` only.
-- One file, one responsibility. No mixing parsing with output.
-- No comments that explain *what* — only *why* when non-obvious.
-- No error handling for internal code paths; validate only at CLI boundaries.
+Node.js CLI that reads Mend vulnerability reports and automatically remediates ~90–95% of CVEs via
+npm `overrides` or Maven `pom.xml` patches. The remaining ~5–10% (Phase C) is handled by Claude
+via `CLAUDE_WORKFLOW.md`. Phase 1 (Mend/npm/Maven) is at ~97%. See `NEXT_MISSION.md` for remaining
+gaps and Phase 2 entry criteria.
 
 ## Architecture
 
 ```
-Provider (parser) → SemVer Engine → Phase Classifier → Registry Verify (optional) → Ecosystem Writer + Report
+Provider → Core (SemVer + Phase Classifier) → Ecosystem Writer + Report
 ```
-
-Folder layout — one concern per directory:
 
 ```
 src/
-  core/           — ecosystem-agnostic engine (stable across all phases)
-  providers/      — one file per vulnerability report source (Mend, future: Snyk, Dependabot)
+  providers/
+    index.js            auto-detect provider from report format
+    mend.js             parse Mend JSON + Excel → LibraryEntry[]
+  core/                 ecosystem-agnostic — zero imports from providers/ or ecosystems/
+    semver-engine.js    deterministic fix resolution → ResolutionItem[]
+    phases.js           Phase A/B/C classification → PhasedItem[]
+    report.js           generate markdown report (display only, no logic)
+    confidence.js       evidence + alternative fields per item (Scenario 14)
+    git-commits.js      auto-commit by confidence tier (Scenarios 15/16 — NOT YET WIRED)
   ecosystems/
-    npm/          — lock-parser, overrides, registry, installer
-    maven/        — pom-writer, registry
+    index.js            auto-detect npm vs maven from library types
+    npm/
+      lock-parser.js    package-lock.json v2/v3 → DepTree
+      overrides.js      build phase-specific overrides; apply to package.json
+      registry.js       npm registry version check (Node 18+ fetch)
+      installer.js      npm install, rollback, lock verify, manifest
+    maven/
+      pom-writer.js     write + apply pom.xml dependencyManagement patches
+      registry.js       Maven Central version check
+mendfix.js              CLI — subcommands: analyze / apply / cleanup
+mend-fix.js             backward-compat shim → requires mendfix.js
 ```
 
-| File | Owns |
-|------|------|
-| `src/providers/mend.js` | Parse Mend JSON + Excel reports → `LibraryEntry[]` |
-| `src/providers/index.js` | Auto-detect provider from report format |
-| `src/core/semver-engine.js` | Deterministic fix-version resolution per library |
-| `src/core/phases.js` | Phase A/B/C classification + justification text |
-| `src/core/report.js` | Generate markdown report (display only, no logic) |
-| `src/core/confidence.js` | evidence + alternative fields (Scenario 14) |
-| `src/core/git-commits.js` | Auto-commit by confidence tier (Scenarios 15/16) |
-| `src/ecosystems/index.js` | Auto-detect ecosystem from library type |
-| `src/ecosystems/npm/registry.js` | Async npm registry version check (Node 18+ fetch) |
-| `src/ecosystems/npm/overrides.js` | Build phase-specific overrides maps; apply to package.json |
-| `src/ecosystems/npm/lock-parser.js` | package-lock.json v2/v3 dep tree parser |
-| `src/ecosystems/npm/installer.js` | npm install, rollback, lock verify, manifest |
-| `src/ecosystems/maven/registry.js` | Maven Central version check |
-| `src/ecosystems/maven/pom-writer.js` | Write + apply pom.xml dependencyManagement patches |
-| `mendfix.js` | CLI — subcommands: analyze / apply / cleanup |
-| `mend-fix.js` | Backward-compat shim → requires mendfix.js |
+**Stable interfaces (never change signatures):**
+- `LibraryEntry[]` — output of any provider; input to core
+- `ResolutionItem[]` — output of semver-engine.js
+- `PhasedItem[]` — output of phases.js; input to ecosystem writers
+- `DepTree` — `Map<name, Entry[]>` output of any lock parser
 
-## 3-Phase model (MEND_AUTOMATION.md Step 7)
+Core (`src/core/`) has **zero imports** from providers or ecosystems. This is what keeps Phases 2–9
+cheap to add: drop a new provider file, register it in index.js — core is untouched.
+
+## Coding standards
+
+- Plain Node.js CommonJS `require`. No TypeScript. No build step.
+- Deps: `semver`, `xlsx` only.
+- One file, one responsibility. No mixing parsing with output.
+- Comments only for non-obvious "why," never "what."
+- No error handling in internal paths; validate only at CLI boundaries.
+
+## 3-Phase confidence model
 
 | Phase | Confidence | Criteria | Output |
 |-------|-----------|----------|--------|
-| A | 95-100% | Same-major patch/minor, single version in tree, verified on npm | `phase-a-overrides.json` — auto-apply |
-| B | 60-95% | Multiple same-major versions of same package; forced override | `phase-b-overrides.json` — review first |
+| A | 95–100% | Same-major patch/minor, single version in tree | `phase-a-overrides.json` — auto-applied |
+| B | 60–95% | Multiple same-major versions; forced override | `phase-b-overrides.json` — review first |
 | C | <60% | MAJOR_BUMP; NO_FIX; multi-major version conflict | `manual-review.md` — justification required |
 
-**Critical rules:**
-- **MAJOR_BUMP always goes to Phase C** — never auto-apply (nanoid 3→5 example).
-- **Multi-major version conflict always goes to Phase C** — a single `overrides` key cannot safely cover two major lines without nested parent overrides (requires package-lock.json analysis, Phase 2/3).
-- **No `@^major` scoped selectors** in any overrides output — unreliable across npm versions.
-- **`--package-json <path>` applies Phase A only** — automatic, no extra flag needed.
+**Hard rules — never violate:**
+- MAJOR_BUMP → Phase C always. Never auto-apply (nanoid 3→5 is the canonical example).
+- Multi-major version conflict → Phase C. A single `overrides` key cannot safely cover two major lines
+  without nested parent overrides. Exception: disjoint parents → nested override → Phase B.
+- No `@^major` scoped selectors in any overrides output — unreliable across npm versions.
+- `--package-json <path>` applies Phase A only — automatic, no extra flag.
+- Phase C output is `manual-review.md` (renamed from `phase-c-review.md`).
 
-## Never break existing functionality
+## Phase 1 completion status
 
-- `resolveFixVersion` handles: same-major safe, cross-major bump, no-fix, multi-CVE grouping. Do not simplify.
-- Phase A overrides are clean `"pkg": "version"` — no selectors, no ranges.
-- `applyOverridesToPackageJson` merges, never replaces, existing overrides.
-- Registry check is always optional (`--verify-versions`); script must work without network.
+**Done (all verified against test baseline):**
+- Scenarios 1, 11: Parse Mend JSON + Excel; highest-safe-version selection
+- Scenario 2: package-lock.json dep tree (parents, ranges, dev flag)
+- Scenarios 3, 10: SemVer compatibility check; multiple dep chain analysis
+- Scenario 4: parent upgrade recommendations surfaced in Phase C output
+- Scenario 5: npm install + lock verification after apply
+- Scenarios 6, 7: stale override detection and cleanup (mendfix cleanup)
+- Scenario 8: dev classification (all-dev → probableFalsePositive); mixed chains deferred
+- Scenario 9: false positive flag + justification template via CLAUDE_WORKFLOW.md
+- Scenarios 12, 13: direct dep vs override detection; priority order enforced
+- Scenario 14: confidence.js — evidence + alternative fields (wired into enrichWithConfidence)
+- Scenario 17: markdown remediation report
+- Scenarios 19, 20: mendfix analyze / apply subcommands
+- Scenario 21: idempotency pre-flight (compares against .mend-manifest.json)
+- Scenario 22: rollback on npm install failure
+- Scenario 23: WHY-focused logging on every decision
+- Scenario 24: manual-review.md output
+- Scenario 26: human change detection via .mend-manifest.json
 
-## Build incrementally (phases from docs/04)
+**Remaining gaps (Phase 1 not yet complete):**
+- Scenarios 15/16: git-commits.js written but NOT called from mendfix.js apply — needs wiring
+- Scenario 18: PR description generation — `pr-description.md` not yet built
+- Scenario 25: Final PR-ready state blocked by 15/16 + 18
+- Maven dep-tree parser (`src/ecosystems/maven/dep-tree.js`) — unlocks Phase B for Java
+- Scenario 8 full: deep mixed dev/runtime chain classification
 
-Done: Phase 1 (parse), Phase 4 (semver), Phase 5 (overrides), Phase 7 (report).
-Next: Phase 2/3 — parse `package-lock.json`, build dependency tree.
-  → Will unlock: nested parent overrides for multi-major conflicts (current Phase C → Phase B)
-  → Will unlock: runtime vs build/dev classification (false positive detection)
-
-Never implement future phases unless explicitly asked.
-
-## Test after every change
+## Test baseline — run after every logic change
 
 ```bash
 node mendfix.js analyze --report GH_ui-platform_dev-vulnerability-report.json
 ```
 
-Expected:
-- 8 libraries, 22 CVEs
-- Phase A: 5 (fast-uri, socket.io-parser, postcss, unzipper, axios)
-- Phase B: 0
-- Phase C: 3 (nanoid [MAJOR_BUMP], brace-expansion ×2 [multi-major conflict])
-- Exit code 0
+Report location: `D:\Automation\GH_ui-platform_dev-vulnerability-report.json` (one level up from project root)
 
-With registry check:
+Expected: 8 libraries, 22 CVEs. Phase A: 5 (fast-uri, socket.io-parser, postcss, unzipper, axios).
+Phase B: 0. Phase C: 3 (nanoid [MAJOR_BUMP], brace-expansion ×2 [multi-major conflict]). Exit 0.
+
 ```bash
-node mendfix.js analyze --report GH_ui-platform_dev-vulnerability-report.json --verify-versions
+# With registry verification
+node mendfix.js analyze --report ../GH_ui-platform_dev-vulnerability-report.json --verify-versions
+
+# Full apply (needs a real project's package.json)
+node mendfix.js apply --report ../GH_ui-platform_dev-vulnerability-report.json \
+  --package-json /path/to/package.json --verify-versions
+
+# Post-install cleanup
+node mendfix.js cleanup --package-json /path/to/package.json \
+  --lock-file /path/to/package-lock.json
 ```
 
-With auto-apply:
-```bash
-node mendfix.js apply --report GH_ui-platform_dev-vulnerability-report.json \
-  --package-json /path/to/ui-platform/package.json --verify-versions
-```
+## Never break existing functionality
 
-Post-install cleanup:
-```bash
-node mendfix.js cleanup \
-  --package-json /path/to/ui-platform/package.json \
-  --lock-file /path/to/ui-platform/package-lock.json
-```
+- `resolveFixVersion`: same-major safe, cross-major bump, no-fix, multi-CVE grouping. Do not simplify.
+- Phase A overrides: clean `"pkg": "version"` — no selectors, no ranges.
+- `applyOverridesToPackageJson`: merges, never replaces, existing overrides.
+- Registry check: always optional; script works without network; phase not downgraded if unreachable.
+- `mend-fix.js` shim: must stay for backward compat.
 
-Legacy flag syntax still works (mend-fix.js shims to mendfix.js):
-```bash
-node mend-fix.js --report GH_ui-platform_dev-vulnerability-report.json --dry-run
-```
+## Script vs Claude division
 
-## Script vs Claude division (SCRIPT_VS_CLAUDE_WORK_DIVISION.md)
+**Script owns (deterministic):** parse → SemVer → dep graph → overrides → npm install → verify lock → remove overrides → commits → report
 
-Script owns everything deterministic:
-- Parse, SemVer, dependency graph, overrides, npm install, verify lock, remove overrides, commits, report
-
-Claude owns the uncertain 5-10%:
-- Uncertain cases (Phase C justification review)
-- False positive assessment (no-fix + build-only classification)
-- Breaking change judgement (Phase C MAJOR_BUMP API compatibility)
-
-## Session Log Rule
-
-After every session that changes code, append one entry to `docs/SESSION_LOG.md`.
-
-Format per entry:
-```
-## YYYY-MM-DD — <title>
-**Before:** one line on the state before this session
-**Changes:**
-- bullet: what changed + why (why-focused, not what-focused)
-**Next:** what's blocked or what comes after
-```
-
-Only write what a future Claude session needs to avoid re-deriving. Skip: debugging steps, things obvious from reading the code, one-off experiments. Include: architectural decisions, reversed decisions, non-obvious constraints, user feedback that shaped a direction.
+**Claude owns (uncertain 5–10%, via `CLAUDE_WORKFLOW.md`):** Phase C justification review · false positive chain analysis · MAJOR_BUMP API compatibility judgement
 
 ## Key decisions
 
-- **No AI for SemVer** — use `semver` package, always deterministic.
-- **package-lock.json is source of truth** — when Phase 2/3 land, read from lock file, not `package.json` deps.
-- **Override removed after install if unnecessary** — after `npm install`, if `npm ls pkg` resolves the fix version without the override, remove it.
-- **No @^major selectors** — per user feedback, unreliable; multi-major conflict → Phase C.
-- **Registry check is optional** — pass-through without network; phase is not downgraded if registry is unreachable (exists: null).
+- **No AI for SemVer** — `semver` package, always deterministic.
+- **package-lock.json is source of truth** — read from lock, not package.json deps.
+- **Override removed after install if unnecessary** — if `npm ls pkg` resolves without it, remove it.
+- **No `@^major` selectors** — unreliable; multi-major conflict → Phase C.
+- **Registry check optional** — pass-through without network; exists: null = don't downgrade phase.
+- **Core isolated from providers/ecosystems** — never import providers or ecosystems from src/core/.
+
+## Session log rule
+
+After every session that changes code, append one entry to `docs/SESSION_LOG.md`.
+
+```
+## YYYY-MM-DD — <title>
+**Before:** one line on state before this session
+**Changes:**
+- bullet: what changed + why (why-focused)
+**Next:** what's blocked or what comes after
+```
+
+Skip: debugging steps, things obvious from reading the code. Include: architectural decisions,
+reversed decisions, non-obvious constraints, user feedback that shaped direction.
+
+## Where to read more
+
+| Goal | File |
+|------|------|
+| What to build next (priorities, Phase 2 entry) | `NEXT_MISSION.md` |
+| Phase C Claude triage instructions | `CLAUDE_WORKFLOW.md` |
+| 9-phase product vision | `Master_Roadmap.md` |
+| All 26 Phase 1 scenarios with completion status | `docs/Phase_1_Goal.md` |
+| Feature completion tracker | `docs/ROADMAP.md` |
+| Session history + architectural decisions | `docs/SESSION_LOG.md` |

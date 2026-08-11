@@ -1,463 +1,125 @@
-Phase 1 Goal
+# Phase 1 Goal — 26 Scenarios
+
+Goal: replicate the current manual Mend remediation process with minimal manual work.
+If the tool cannot do what was done manually, Phase 1 is incomplete.
 
-Not:
+## Completion status
 
-Build dependency intelligence.
+| Scenario | Description | Status |
+|----------|-------------|--------|
+| 1 | Read Mend Excel/JSON | ✅ Done |
+| 2 | Package-lock analysis (dep chain, parents, installed version) | ✅ Done |
+| 3 | SemVer compatibility (^/~/exact range check) | ✅ Done |
+| 4 | Parent upgrade check before overriding | ✅ Done (rootParents surfaced in Phase C) |
+| 5 | Temporary override + npm install + verify lock | ✅ Done |
+| 6 | Override cleanup after install resolves naturally | ✅ Done (mendfix cleanup) |
+| 7 | Unnecessary override detection and removal | ✅ Done (mendfix cleanup) |
+| 8 | Runtime vs build classification | ⚡ Partial (all-dev → false positive; mixed chains deferred) |
+| 9 | False positive justification generation | ⚡ Partial (flag set; justification template in CLAUDE_WORKFLOW.md) |
+| 10 | Multiple dependency chains for same package | ✅ Done |
+| 11 | Highest safe version (not highest overall) | ✅ Done |
+| 12 | Direct dependency → direct upgrade (not override) | ✅ Done |
+| 13 | Priority order: direct upgrade > parent upgrade > override | ✅ Done |
+| 14 | Confidence + reason + evidence + alternative per recommendation | ✅ Done (confidence.js) |
+| 15 | High-confidence auto-commit (Phase A) | ⚡ Partial (git-commits.js written; not wired) |
+| 16 | Medium-confidence separate commit (Phase B/C) | ⚡ Partial (same file; not wired) |
+| 17 | Markdown report with all fields | ✅ Done |
+| 18 | PR description auto-generated | ❌ Not started |
+| 19 | `mendfix analyze` dry-run subcommand | ✅ Done |
+| 20 | `mendfix apply` subcommand | ✅ Done |
+| 21 | Idempotency (apply twice = no change) | ✅ Done |
+| 22 | Rollback on install failure | ✅ Done |
+| 23 | Every decision explains WHY | ✅ Done |
+| 24 | Below-threshold items → manual-review.md | ✅ Done |
+| 25 | Final PR-ready state | ⚡ Blocked by 15/16 + 18 |
+| 26 | Preserve human changes (detect + skip manually-edited overrides) | ✅ Done |
 
-Not:
+**Phase 1 completion: 20/26 done, 4 partial, 1 not started, 1 blocked**
 
-Build AI.
+---
 
-Not:
+## Scenario definitions
 
-Build a framework.
+### Scenario 1 — Read Mend Excel/JSON
+Input: Mend Excel or JSON report. Extract: Package, Version, Severity, CVE, CVSS,
+Recommendation, Fixed Version(s), Advisory URL, Description. No manual parsing.
 
-Goal:
+### Scenario 2 — Package Lock Analysis
+Given `package-lock.json`, determine: installed version, every occurrence, parent packages,
+full dependency chain. Example: `root → webpack → ajv → fast-uri`. No manual searching.
 
-Replicate my current Mend remediation process with minimal manual work.
+### Scenario 3 — SemVer Compatibility
+`^6.4.2` with recommended `6.5.7` → SAFE. Exact `6.4.2` with `6.5.7` → Requires Review.
+Exactly how the manual process worked.
 
-If the tool cannot do what I currently do manually, Phase 1 is incomplete.
+### Scenario 4 — Parent Upgrade
+Before overriding, check if the parent can be upgraded to a version that ships the fixed child.
+If yes, prefer parent upgrade over override.
 
-Scenario 1
-Read Mend Excel
+### Scenario 5 — Temporary Override
+When safe: add override → run `npm install --package-lock-only --legacy-peer-deps` → verify package updated.
 
-Input
+### Scenario 6 — Override Cleanup
+After install, if the package naturally resolves to the required version, the override is removed automatically.
 
-Mend Excel Report
+### Scenario 7 — Unnecessary Overrides
+Detect existing overrides that are no longer needed → automatically remove.
 
-Should extract
+### Scenario 8 — Runtime vs Build
+Classify Runtime / Build / Test / Development using dependency ancestry. Not guesses.
 
-Package
-Version
-Severity
-CVE
-CVSS
-Recommendation
-Fixed Version(s)
-Advisory URL
-Description
+### Scenario 9 — False Positive
+When: no fix available + build only + not shipped → generate False Positive Justification automatically.
 
-No manual parsing.
+### Scenario 10 — Multiple Dependency Chains
+Package appears via `webpack → fast-uri` AND `eslint → fast-uri`. Tool analyzes BOTH chains.
 
-Scenario 2
+### Scenario 11 — Highest Safe Version
+Mend recommends 3.1.4, 4.1.1, 2.4.3. Tool should choose highest *compatible* version — not highest overall.
 
-Package Lock Analysis
+### Scenario 12 — Direct Dependency
+Package exists in `package.json` → recommend direct version bump instead of override.
 
-Given
+### Scenario 13 — Override vs Parent Upgrade Priority
+Priority: Direct upgrade > Parent upgrade > Override. Never reverse.
 
-package-lock.json
+### Scenario 14 — Confidence
+Every recommendation must include: Confidence, Reason, Evidence, Alternative.
 
-Tool should determine
+### Scenario 15 — High Confidence Commit
+Automatically generate commit for high-confidence (Phase A) fixes only. Safe updates only.
 
-Installed version
-Every occurrence
-Parent packages
-Full dependency chain
+### Scenario 16 — Medium Confidence Commit
+Separate commit for riskier (Phase B/C) overrides. Exact versions. Potentially breaking.
 
-Example
+### Scenario 17 — Markdown Report
+Should include: Package, Current, Recommended, Reason, Confidence, Action, Parent, Runtime, Commit.
 
-root
+### Scenario 18 — PR Description
+Automatically generated PR body: packages fixed, CVEs closed, confidence breakdown, manual items.
 
-↓
+### Scenario 19 — Dry Run
+Support `mendfix analyze`. No files changed. Only report.
 
-webpack
+### Scenario 20 — Apply
+Support `mendfix apply`. Actually modify the repository.
 
-↓
+### Scenario 21 — Idempotency
+Running `mendfix apply` twice should produce no additional changes.
 
-ajv
+### Scenario 22 — Rollback
+If install fails, restore original `package.json` and `package-lock.json`.
 
-↓
+### Scenario 23 — Logging
+Every decision should explain WHY. Never just "Updated."
 
-fast-uri
+### Scenario 24 — Manual Review
+Anything below confidence threshold must move into `manual-review.md`. Never silently apply.
 
-No manual searching.
+### Scenario 25 — Final PR Ready
+End result: `package.json`, `package-lock.json`, reports, commits, PR description,
+false positive report. Ready to push.
 
-Scenario 3
-
-SemVer Compatibility
-
-Current
-
-^6.4.2
-
-Recommended
-
-6.5.7
-
-Should classify
-
-SAFE
-
-Another
-
-6.4.2
-
-↓
-
-6.5.7
-
-Should classify
-
-Requires Review
-
-Exactly how you currently work.
-
-Scenario 4
-
-Parent Upgrade
-
-Instead of immediately overriding
-
-Child
-
-↓
-
-Parent
-
-↓
-
-Grandparent
-
-Tool should check
-
-Can parent be upgraded?
-
-If yes
-
-Prefer parent upgrade.
-
-Exactly matching your workflow.
-
-Scenario 5
-
-Temporary Override
-
-When safe
-
-Tool should
-
-Add override.
-
-Run
-
-npm install --package-lock-only --legacy-peer-deps
-
-Verify
-
-Package updated.
-
-Scenario 6
-
-Override Cleanup
-
-After install
-
-If package naturally resolves
-
-Override removed automatically.
-
-This is one of the biggest advantages of your process.
-
-Scenario 7
-
-Unnecessary Overrides
-
-Detect
-
-Override exists
-
-↓
-
-No longer needed
-
-Automatically remove.
-
-Scenario 8
-
-Runtime vs Build
-
-Tool should classify
-
-Runtime
-
-Build
-
-Test
-
-Development
-
-using dependency ancestry.
-
-Not guesses.
-
-Scenario 9
-
-False Positive
-
-When
-
-No fix available
-Build only
-Not shipped
-
-Generate
-
-False Positive Justification
-
-Automatically.
-
-Scenario 10
-
-Multiple Dependency Chains
-
-Package appears
-
-webpack
-
-↓
-
-fast-uri
-
-AND
-
-eslint
-
-↓
-
-fast-uri
-
-Tool should analyse BOTH.
-
-Scenario 11
-
-Highest Safe Version
-
-Suppose Mend recommends
-
-3.1.4
-
-4.1.1
-
-2.4.3
-
-Tool should choose
-
-Highest compatible version.
-
-Not highest version.
-
-Scenario 12
-
-Direct Dependency
-
-Package exists in
-
-package.json
-
-Tool should recommend
-
-Direct upgrade
-
-instead of override.
-
-Scenario 13
-
-Override vs Parent Upgrade
-
-Priority
-
-Direct upgrade
-
-↓
-
-Parent upgrade
-
-↓
-
-Override
-
-Never reverse.
-
-Scenario 14
-
-Confidence
-
-Every recommendation must include
-
-Confidence
-
-Reason
-
-Evidence
-
-Alternative
-Scenario 15
-
-High Confidence Commit
-
-Automatically generate
-
-High confidence fixes
-
-Only
-
-Safe updates.
-
-Scenario 16
-
-Medium Confidence Commit
-
-Separate
-
-Riskier
-
-Overrides
-
-Exact versions
-
-Potentially breaking.
-
-Scenario 17
-
-Markdown Report
-
-Should include
-
-Package
-
-Current
-
-Recommended
-
-Reason
-
-Confidence
-
-Action
-
-Parent
-
-Runtime
-
-Commit
-
-Scenario 18
-
-PR Description
-
-Automatically generated.
-
-Scenario 19
-
-Dry Run
-
-Most important.
-
-Support
-
-mendfix analyze
-
-No files changed.
-
-Only report.
-
-Scenario 20
-
-Apply
-
-Support
-
-mendfix apply
-
-Actually modify repository.
-
-Scenario 21
-
-Idempotency
-
-Running
-
-mendfix apply
-
-Twice
-
-Should produce
-
-No additional changes.
-
-Scenario 22
-
-Rollback
-
-If install fails
-
-Restore
-
-Original
-
-package.json
-
-package-lock
-
-Scenario 23
-
-Logging
-
-Every decision
-
-Should explain
-
-WHY.
-
-Never
-
-Just
-
-Updated.
-Scenario 24
-
-Manual Review
-
-Anything below confidence threshold
-
-Must move into
-
-manual-review.md
-
-Never silently apply.
-
-Scenario 25
-
-Final PR Ready
-
-End result
-
-package.json
-
-package-lock
-
-reports
-
-commits
-
-PR description
-
-false positive report
-
-Ready to push.
-
-One Important Missing Scenario
-
-I don't think we explicitly discussed this earlier, but it will make the tool much more practical:
-
-Scenario 26 – Preserve Human Changes
-
-Suppose you manually changed two overrides.
-
-Running the tool again should:
-
-Detect user-managed changes.
-Avoid overwriting them blindly.
-Clearly report any conflicts instead of silently replacing them.
-
-This prevents automation from undoing intentional engineering decisions.
+### Scenario 26 — Preserve Human Changes
+If overrides were manually edited since last run: detect the changes, avoid overwriting them
+blindly, clearly report conflicts. Prevents automation from undoing intentional engineering decisions.
