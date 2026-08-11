@@ -71,20 +71,46 @@ function renderPhaseCSection(phaseCItems) {
 }
 
 function renderNotFoundSection(notFound) {
-  if (notFound.length === 0) return '';
-  const rows = notFound.map(item =>
-    `| #${item.prNumber} | ${item.packageName} | ${item.proposedVersion} |`
-  );
-  return [
-    '## Not Found in This Repo',
-    '',
-    '_These packages from Renovate PRs were not found in package.json or package-lock.json._',
-    '',
-    '| PR | Package | Renovate Proposes |',
-    '|----|---------|------------------|',
-    ...rows,
-    '',
-  ].join('\n');
+  const groups   = notFound.filter(i => i.isMonorepoGroup || i.isPackageGroup);
+  const regular  = notFound.filter(i => !i.isMonorepoGroup && !i.isPackageGroup);
+
+  const sections = [];
+
+  if (groups.length > 0) {
+    const rows = groups.map(item => {
+      const kind    = item.isMonorepoGroup ? 'monorepo group' : 'packages group';
+      const version = item.proposedVersion || '—';
+      return `| #${item.prNumber} | ${item.packageName} (${kind}) | ${version} |`;
+    });
+    sections.push(
+      '## Group PRs — No Direct Package Match',
+      '',
+      '_Renovate bundled these as a monorepo or package-group update. No single package with this name exists in package.json / package-lock.json. Review each package in the group individually._',
+      '',
+      '| PR | Group | Renovate Proposes |',
+      '|----|-------|------------------|',
+      ...rows,
+      '',
+    );
+  }
+
+  if (regular.length > 0) {
+    const rows = regular.map(item =>
+      `| #${item.prNumber} | ${item.packageName} | ${item.proposedVersion} |`
+    );
+    sections.push(
+      '## Not Found in This Repo',
+      '',
+      '_These packages from Renovate PRs were not found in package.json or package-lock.json._',
+      '',
+      '| PR | Package | Renovate Proposes |',
+      '|----|---------|------------------|',
+      ...rows,
+      '',
+    );
+  }
+
+  return sections.join('\n');
 }
 
 /**
@@ -105,11 +131,15 @@ function generateApplyReport({ repoName, org, runDate, phasedItems, notFound, ap
   const phaseB = phasedItems.filter(i => i.phase === 'B');
   const phaseC = phasedItems.filter(i => i.phase === 'C');
 
+  const groupPRs   = notFound.filter(n => n.isMonorepoGroup || n.isPackageGroup);
+  const regularNF  = notFound.filter(n => !n.isMonorepoGroup && !n.isPackageGroup);
+
   const summaryRows = [
     `| Phase A — safe upgrade    | ${phaseA.length} | ${prNumbers(phaseA)} |`,
     `| Phase B — review first    | ${phaseB.length} | ${prNumbers(phaseB)} |`,
     `| Phase C — risky / manual  | ${phaseC.length} | ${prNumbers(phaseC)} |`,
-    `| Not found in repo         | ${notFound.length} | ${notFound.map(n => `#${n.prNumber}`).join(', ') || '-'} |`,
+    `| Group PRs (no pkg match)  | ${groupPRs.length} | ${groupPRs.map(n => `#${n.prNumber}`).join(', ') || '-'} |`,
+    `| Not found in repo         | ${regularNF.length} | ${regularNF.map(n => `#${n.prNumber}`).join(', ') || '-'} |`,
   ];
 
   const sections = [

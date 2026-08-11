@@ -47,33 +47,45 @@ function buildResolutionItems(prUpgrades, pkg, lockEntries) {
   const items    = [];
   const notFound = [];
 
-  for (const { prNumber, prTitle, packageName, proposedVersion } of prUpgrades) {
-    const currentVersion = getCurrentVersion(packageName, pkg, lockEntries);
-
-    if (!currentVersion) {
-      notFound.push({ prNumber, prTitle, packageName, proposedVersion });
+  for (const { prNumber, prTitle, packageName, proposedVersion, oldPackageName, isMonorepoGroup, isPackageGroup } of prUpgrades) {
+    // Monorepo group PRs have no target version — cannot phase-classify
+    if (isMonorepoGroup) {
+      notFound.push({ prNumber, prTitle, packageName, proposedVersion: null, isMonorepoGroup: true });
       continue;
     }
 
-    const upgradeType = semver.valid(currentVersion) && semver.valid(proposedVersion) &&
-      semver.major(proposedVersion) > semver.major(currentVersion)
+    // Replace PRs: the old package is currently installed; look it up for currentVersion
+    const lookupName = oldPackageName || packageName;
+    const currentVersion = getCurrentVersion(lookupName, pkg, lockEntries);
+
+    if (!currentVersion) {
+      notFound.push({ prNumber, prTitle, packageName, proposedVersion, ...(isPackageGroup ? { isPackageGroup: true } : {}) });
+      continue;
+    }
+
+    // Replace PRs always go to Phase C — they swap one package for a different one
+    const upgradeType = oldPackageName
       ? 'MAJOR_BUMP'
-      : 'SAFE';
+      : (semver.valid(currentVersion) && semver.valid(proposedVersion) &&
+          semver.major(proposedVersion) > semver.major(currentVersion)
+          ? 'MAJOR_BUMP'
+          : 'SAFE');
 
     items.push({
-      libraryName:       packageName,
-      libraryType:       'NODE_PACKAGED_MODULE',
+      libraryName:        packageName,
+      libraryType:        'NODE_PACKAGED_MODULE',
       currentVersion,
       recommendedVersion: proposedVersion,
       upgradeType,
-      cves:              [],
-      cveCount:          0,
-      highestSeverity:   'UNKNOWN',
-      highestCvssScore:  0,
-      filename:          'package.json',
-      dependencyFile:    'package.json',
+      cves:               [],
+      cveCount:           0,
+      highestSeverity:    'UNKNOWN',
+      highestCvssScore:   0,
+      filename:           'package.json',
+      dependencyFile:     'package.json',
       prNumber,
       prTitle,
+      ...(oldPackageName ? { replacesPkg: oldPackageName } : {}),
     });
   }
 

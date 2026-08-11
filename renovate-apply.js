@@ -26,7 +26,7 @@ const {
   detectManualChanges,
 } = require('./src/ecosystems/npm/installer');
 const { fetchRenovatePRs, postComment, closePR } = require('./src/providers/github');
-const { parsePRTitle }          = require('./src/core/renovate-classifier');
+const { parsePRTitleNew }          = require('./src/core/renovate-classifier');
 const { buildResolutionItems }  = require('./src/core/renovate-builder');
 const { writeApplyReport }      = require('./src/core/renovate-apply-report');
 
@@ -392,7 +392,7 @@ async function processRepo(repoConfig, org, args, runDate) {
   const prUpgrades = [];
   const unparseable = [];
   for (const pr of renovatePRs) {
-    const parsed = parsePRTitle(pr.title);
+    const parsed = parsePRTitleNew(pr.title);
     if (parsed) {
       prUpgrades.push({ prNumber: pr.number, prTitle: pr.title, prUrl: pr.html_url, ...parsed });
     } else {
@@ -461,9 +461,20 @@ async function processRepo(repoConfig, org, args, runDate) {
         if (item.alternative) console.log(`         Alternative: ${item.alternative}`);
       }
     }
-    if (notFound.length > 0) {
+    const groupPRs  = notFound.filter(n => n.isMonorepoGroup || n.isPackageGroup);
+    const regularNF = notFound.filter(n => !n.isMonorepoGroup && !n.isPackageGroup);
+
+    if (groupPRs.length > 0) {
+      console.log(`\n  Group PRs (no direct package match — manual review required):`);
+      for (const nf of groupPRs) {
+        const kind = nf.isMonorepoGroup ? 'monorepo group' : 'packages group';
+        const ver  = nf.proposedVersion ? ` → ${nf.proposedVersion}` : '';
+        console.log(`    PR #${nf.prNumber}: ${nf.packageName} ${kind}${ver}`);
+      }
+    }
+    if (regularNF.length > 0) {
       console.log(`\n  Not found in this repo:`);
-      for (const nf of notFound) {
+      for (const nf of regularNF) {
         console.log(`    PR #${nf.prNumber}: ${nf.packageName} → ${nf.proposedVersion}`);
       }
     }

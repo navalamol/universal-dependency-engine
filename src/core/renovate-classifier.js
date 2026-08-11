@@ -10,6 +10,7 @@ const CATEGORIES = {
   DISCARDED_NO_FIX:         'DISCARDED_NO_FIX',
   RENOVATE_INSUFFICIENT:    'RENOVATE_INSUFFICIENT',
   NOT_IN_MEND_REPORT:       'NOT_IN_MEND_REPORT',
+  MONOREPO_GROUP_UPDATE:    'MONOREPO_GROUP_UPDATE',
 };
 
 // Phase rank for picking the "best" item when a package has multiple entries (multi-version conflict).
@@ -23,16 +24,54 @@ const PHASE_RANK = { A: 3, B: 2, C: 1 };
  *   "chore(deps): update dependency socket.io-parser to v4.2.4"
  *   "Update @babel/core to v7.26.0"
  *   "fix(deps): Update @scope/pkg to 3.1.0"
+ *   "[NEUTRAL] Update dependency jsdoc-to-markdown to v6.0.1 (dev)"
+ *   "Replace dependency npm-run-all with npm-run-all2 ^5.0.0 (dev)"
+ *   "Update babel monorepo (dev)"
  */
-function parsePRTitle(title) {
-  // Scoped (@scope/pkg) or unscoped package name, then "to v{semver}"
-  const match = title.match(
-    /(?:update\s+(?:dependency\s+)?)((?:@[\w.-]+\/)?[\w.-]+)\s+to\s+v?(\d+\.\d+(?:\.\d+)*(?:-[\w.]+)?)/i
+function parsePRTitleNew(title) {
+  // Monorepo group update — no target version in the title
+  // e.g. "Update babel monorepo (dev)"
+  const monoMatch = title.match(
+    /update\s+((?:@[\w.-]+\/)?[\w.-]+)\s+monorepo/i
   );
-  if (!match) return null;
-  const version = semver.valid(semver.coerce(match[2]));
-  if (!version) return null;
-  return { packageName: match[1], proposedVersion: version };
+  if (monoMatch) {
+    return { packageName: monoMatch[1], isMonorepoGroup: true, proposedVersion: null };
+  }
+
+  // Package group update with a target version — Renovate batches related packages
+  // e.g. "Update socket.io packages to v4.8.3 (dev)"
+  const pkgGroupMatch = title.match(
+    /update\s+((?:@[\w.-]+\/)?[\w.-]+)\s+packages\s+to\s+[v^]?(\d+\.\d+(?:\.\d+)?(?:-[\w.]+)?)/i
+  );
+  if (pkgGroupMatch) {
+    const version = semver.valid(semver.coerce(pkgGroupMatch[2]));
+    if (!version) return null;
+    return { packageName: pkgGroupMatch[1], proposedVersion: version, isPackageGroup: true };
+  }
+
+  // "Update dependency <pkg> to v<ver>" — prefix tags like [NEUTRAL] are ignored (regex not anchored)
+  const updateMatch = title.match(
+    /update\s+(?:dependency\s+)?((?:@[\w.-]+\/)?[\w.-]+)\s+to\s+v?(\d+\.\d+(?:\.\d+)?(?:-[\w.]+)?)/i
+  );
+
+  // "Replace dependency <old> with <new> ^<ver>" — handles both v and ^ version prefixes
+  const replaceMatch = title.match(
+    /replace\s+dependency\s+((?:@[\w.-]+\/)?[\w.-]+)\s+with\s+((?:@[\w.-]+\/)?[\w.-]+)\s+[v^]?(\d+\.\d+(?:\.\d+)?(?:-[\w.]+)?)/i
+  );
+
+  if (updateMatch) {
+    const version = semver.valid(semver.coerce(updateMatch[2]));
+    if (!version) return null;
+    return { packageName: updateMatch[1], proposedVersion: version };
+  }
+
+  if (replaceMatch) {
+    const version = semver.valid(semver.coerce(replaceMatch[3]));
+    if (!version) return null;
+    return { oldPackageName: replaceMatch[1], packageName: replaceMatch[2], proposedVersion: version };
+  }
+
+  return null;
 }
 
 /**
@@ -81,6 +120,17 @@ function buildCloseComment(classified) {
     ].join('\n');
   }
 
+  if (category === CATEGORIES.MONOREPO_GROUP_UPDATE) {
+    const group = parsed ? parsed.packageName : '(unknown)';
+    return [
+      `This is a monorepo group update for "${group}".`,
+      ``,
+      `No specific target version was found in the PR title. mendfix cannot auto-classify or apply monorepo group updates — manual review is required.`,
+      ``,
+      `Check each package in the group individually and apply upgrades via mendfix analyze/apply once the group packages appear in a Mend vulnerability report.`,
+    ].join('\n');
+  }
+
   return '';
 }
 
@@ -100,7 +150,7 @@ function classifyPRs(renovatePRs, phasedItems) {
   }
 
   return renovatePRs.map(pr => {
-    const parsed = parsePRTitle(pr.title);
+    const parsed = parsePRTitleNew(pr.title);
 
     if (!parsed) {
       return {
@@ -111,8 +161,17 @@ function classifyPRs(renovatePRs, phasedItems) {
       };
     }
 
-    const { packageName, proposedVersion } = parsed;
-    const items = byName.get(packageName) || [];
+    if (parsed.isMonorepoGroup) {
+      return {
+        pr, parsed,
+        category: CATEGORIES.MONOREPO_GROUP_UPDATE,
+        reason: `Monorepo group update for "${parsed.packageName}" — no specific version in PR title; manual assessment required.`,
+      };
+    }
+
+    const { packageName, proposedVersion, oldPackageName } = parsed;
+    // Replace PRs: check new package name first, then old (it may be in the Mend report under the old name)
+    const items = byName.get(packageName) || (oldPackageName ? byName.get(oldPackageName) : null) || [];
 
     if (items.length === 0) {
       return {
@@ -195,17 +254,19 @@ function summarize(classifiedPRs) {
     noFix: 0,
     insufficient: 0,
     notInReport: 0,
+    monoRepoGroup: 0,
   };
   for (const c of classifiedPRs) {
-    if (c.category === CATEGORIES.COVERED_PHASE_A)           counts.coveredA++;
-    else if (c.category === CATEGORIES.COVERED_PHASE_B)      counts.coveredB++;
-    else if (c.category === CATEGORIES.DISCARDED_MAJOR_BUMP) counts.majorBump++;
+    if (c.category === CATEGORIES.COVERED_PHASE_A)            counts.coveredA++;
+    else if (c.category === CATEGORIES.COVERED_PHASE_B)       counts.coveredB++;
+    else if (c.category === CATEGORIES.DISCARDED_MAJOR_BUMP)  counts.majorBump++;
     else if (c.category === CATEGORIES.DISCARDED_MULTI_MAJOR) counts.multiMajor++;
     else if (c.category === CATEGORIES.DISCARDED_NO_FIX)      counts.noFix++;
     else if (c.category === CATEGORIES.RENOVATE_INSUFFICIENT) counts.insufficient++;
     else if (c.category === CATEGORIES.NOT_IN_MEND_REPORT)    counts.notInReport++;
+    else if (c.category === CATEGORIES.MONOREPO_GROUP_UPDATE) counts.monoRepoGroup++;
   }
   return counts;
 }
 
-module.exports = { CATEGORIES, parsePRTitle, classifyPRs, summarize, buildCloseComment };
+module.exports = { CATEGORIES, parsePRTitleNew, classifyPRs, summarize, buildCloseComment };
