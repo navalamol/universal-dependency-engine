@@ -78,7 +78,9 @@ function parseMavenDepTreeText(text) {
     while (depthStack.length > depth) depthStack.pop();
 
     const parentEntry = depthStack[depthStack.length - 1] || null;
-    const parents = parentEntry ? [{ name: parentEntry.name, range: parentEntry.version }] : [];
+    // Maven tree output shows resolved versions, not declared ranges.
+    // Use '*' so findRangeViolation never produces false Phase B downgrades for Maven entries.
+    const parents = parentEntry ? [{ name: parentEntry.name, range: '*' }] : [];
 
     const name = artifactId;
     if (!depMap.has(name)) depMap.set(name, []);

@@ -440,26 +440,30 @@ async function main() {
 
   fs.mkdirSync(outDir, { recursive: true });
 
+  let applyFailed;
   if (ecosystem === 'maven') {
-    await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, reportContent);
+    applyFailed = await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, reportContent);
   } else {
-    await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions);
+    applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions);
+  }
+
+  if (applyFailed) {
+    console.log('\nApply failed — see errors above. No changes were made.');
+    return;
   }
 
   // Scenario 18: write PR description
-  if (!dryRun) {
-    const prDescPath = path.join(outDir, 'pr-description.md');
-    const prDescMeta = {
-      project:     path.basename(reportFile, path.extname(reportFile)),
-      reportDate:  new Date().toISOString().split('T')[0],
-      ecosystem,
-    };
-    fs.writeFileSync(prDescPath, generatePRDescription(phasedPlan, prDescMeta));
-    console.log(`  Wrote: ${prDescPath}`);
-  }
+  const prDescPath = path.join(outDir, 'pr-description.md');
+  const prDescMeta = {
+    project:     path.basename(reportFile, path.extname(reportFile)),
+    reportDate:  new Date().toISOString().split('T')[0],
+    ecosystem,
+  };
+  fs.writeFileSync(prDescPath, generatePRDescription(phasedPlan, prDescMeta));
+  console.log(`  Wrote: ${prDescPath}`);
 
   // Scenarios 15/16: auto-commit after successful apply
-  if (autoCommit && !dryRun && phaseA.length > 0) {
+  if (autoCommit && phaseA.length > 0) {
     const { commitPhaseA, commitPhaseBC, commitFalsePositives } = require('./src/core/git-commits');
     const projectDir = packageJsonPath ? path.dirname(packageJsonPath) : process.cwd();
     console.log('\nCommitting...');
@@ -553,7 +557,10 @@ async function writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomX
   } catch (err) {
     console.error(`  ERROR during apply: ${err.message}`);
     console.log(`  No changes made.`);
+    process.exitCode = 1;
+    return true;
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -679,37 +686,42 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
       if (installResult.stderr) console.error(`  ${installResult.stderr.slice(0, 500)}`);
       restoreFiles(snapshots);
       console.log(`  Rolled back. No files changed.`);
-    } else {
-      console.log(`  OK`);
-
-      const verifyItems = [
-        ...directUpgrades,
-        ...phaseAForOverrides.filter(i => cleanOverrides[i.libraryName]),
-      ];
-      if (fs.existsSync(installLockPath) && verifyItems.length > 0) {
-        const failures = verifyFixVersions(installLockPath, verifyItems);
-        if (failures.length > 0) {
-          console.error(`\n  ✗  Post-install verification FAILED — rolling back:`);
-          for (const f of failures) {
-            console.error(`     ${f.libraryName}: expected >=${f.expected}, got [${f.resolved.join(', ') || 'not found'}]`);
-          }
-          restoreFiles(snapshots);
-          console.log(`  Rolled back. No files changed.`);
-          process.exitCode = 1;
-          return;
-        }
-        console.log(`  Verified: all ${verifyItems.length} package(s) at fix version in lock file.`);
-      }
-
-      const directMap = {};
-      for (const u of directUpgrades) directMap[u.libraryName] = u.recommendedVersion;
-      saveManifest(packageJsonPath, cleanOverrides, directMap);
+      process.exitCode = 1;
+      return true;
     }
+
+    console.log(`  OK`);
+
+    const verifyItems = [
+      ...directUpgrades,
+      ...phaseAForOverrides.filter(i => cleanOverrides[i.libraryName]),
+    ];
+    if (fs.existsSync(installLockPath) && verifyItems.length > 0) {
+      const failures = verifyFixVersions(installLockPath, verifyItems);
+      if (failures.length > 0) {
+        console.error(`\n  ✗  Post-install verification FAILED — rolling back:`);
+        for (const f of failures) {
+          console.error(`     ${f.libraryName}: expected >=${f.expected}, got [${f.resolved.join(', ') || 'not found'}]`);
+        }
+        restoreFiles(snapshots);
+        console.log(`  Rolled back. No files changed.`);
+        process.exitCode = 1;
+        return true;
+      }
+      console.log(`  Verified: all ${verifyItems.length} package(s) at fix version in lock file.`);
+    }
+
+    const directMap = {};
+    for (const u of directUpgrades) directMap[u.libraryName] = u.recommendedVersion;
+    saveManifest(packageJsonPath, cleanOverrides, directMap);
   } catch (err) {
     console.error(`  ERROR during apply: ${err.message}`);
     restoreFiles(snapshots);
     console.log(`  Rolled back. No files changed.`);
+    process.exitCode = 1;
+    return true;
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

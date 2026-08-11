@@ -282,3 +282,37 @@ Minimal change history for future Claude sessions. Only decisions and context th
 - CLAUDE.md navigation table unchanged (none of the 10 files were indexed there).
 
 **Next:** Wire `git-commits.js` into `mendfix apply --commit` (Scenarios 15/16), then `pr-description.js` (Scenario 18), then close Phase 1.
+
+---
+
+## 2026-08-12 — Final V1 verification: V1_COMPLETION_STATUS.md
+
+**Before:** No formal end-to-end verification had been run. Completion status tracked informally in CLAUDE.md / NEXT_MISSION.md. 32 tests passing.
+
+**Changes:**
+- Ran full test suite (32/32 PASS), smoke test, and live regression against real Mend report (8 libs, 22 CVEs, A:5 B:0 C:3 — exact baseline match).
+- Produced `V1_COMPLETION_STATUS.md` at project root covering 14 verification sections.
+
+**Key findings:**
+- 3 blockers preventing V1 READY:
+  1. Install failure exits 0 (`mendfix.js:677-682`) — rollback works but process.exitCode not set non-zero on npm install failure.
+  2. Verification failure control flow (`mendfix.js:447-484`) — "Done." printed, pr-description.md written, commit attempted even after rollback and exitCode=1.
+  3. Maven dep-tree range field bug (`dep-tree.js:81`) — parent.range set to resolved version string, not declared range; causes false Phase B downgrades for all Maven Phase A items when dep tree is enabled.
+- 1 non-blocking gap: `enrichWithConfidence` not called in `mendfix.js` main path (Scenario 14 fields absent from mendfix CLI outputs; only present in renovate-apply.js path).
+- All 13 VERIFIED / VERIFIED WITH LIMITATION items confirmed working.
+
+**Next:** Fix the 3 blockers (in order), then re-run verification to declare V1 READY.
+
+---
+
+## 2026-08-12 — Fix V1 blockers (Blockers 1/2/3)
+
+**Before:** 3 blockers preventing V1 READY: (1) install failure exits 0, (2) verification failure prints "Done." and writes PR description and attempts commit, (3) Maven dep-tree parent.range was resolved version string causing false Phase B downgrades.
+
+**Changes:**
+- **Blocker 1** `mendfix.js:677-682`: Added `process.exitCode = 1; return true;` to the install failure branch in `writeOutputNpm`. Install failure now exits non-zero and signals failure to `main()`.
+- **Blocker 2** `mendfix.js:443-484`: `writeOutputNpm` and `writeOutputMaven` now return a boolean (`true` = apply failed). `main()` checks the return value; if `applyFailed`, prints "Apply failed — see errors above. No changes were made." and returns immediately — no PR description written, no commit attempted. The `if (!dryRun)` guard on the PR description block was removed (now the applyFailed gate handles it). Also added `process.exitCode = 1` to the `catch` block in `writeOutputNpm` for consistency.
+- **Blocker 3** `src/ecosystems/maven/dep-tree.js:81`: Changed `range: parentEntry.version` → `range: '*'`. Maven tree output shows resolved versions, not declared ranges; `findRangeViolation` was treating resolved versions as exact pins, downgrading every Maven Phase A item to Phase B when a dep tree was available.
+- 32/32 tests pass. Regression baseline unchanged (A:5 B:0 C:3).
+
+**Next:** Re-run full V1 verification to confirm V1 READY, or address the remaining non-blocking gap (enrichWithConfidence not called in mendfix.js main path).
