@@ -8,3 +8,17 @@ node mend-fix.js --report D:\Automation\GH_ui-platform_dev-vulnerability-report.
 node mend-fix.js --report D:\Automation\GH_dataplatform_dev-vulnerability-report.json --package-json D:\Work\R6\dataplatform\dataplatform-solution\pom.xml --verify-versions
 
 node mend-fix.js --report D:\Automation\GH_dataplatform-auth-service_dev-vulnerability-report.json --package-json D:\Work\R6\dataplatform-auth-service\package.json --verify-versions
+
+
+
+
+node mend-fix.js --report D:\Demo\universal-dependency-engine\input\reports\GH_ui-platform_dev-vulnerability-report.json --package-json D:\Demo\universal-dependency-engine\input\repos\ui-platform\package.json --out-dir D:\Demo\universal-dependency-engine\output\ui-platform --verify-versions 
+
+node mend-fix.js --report D:\Demo\universal-dependency-engine\input\reports\GH_dataplatform_dev-vulnerability-report.json --package-json D:\Demo\universal-dependency-engine\input\repos\dataplatform\dataplatform-solution\pom.xml --out-dir  D:\Demo\universal-dependency-engine\output\dataplatform  --verify-versions
+
+node mend-fix.js --report D:\Demo\universal-dependency-engine\input\reports\GH_dataplatform-auth-service_dev-vulnerability-report.json --package-json D:\Demo\universal-dependency-engine\input\repos\dataplatform-auth-service\package.json --out-dir D:\Demo\universal-dependency-engine\output\auth-service --verify-versions
+
+
+
+
+node mend-fix.js --report D:\Demo\universal-dependency-engine\input\reports\GH_ui-platform_dev-vulnerability-report.json --package-json D:\Demo\universal-dependency-engine\input\repos\ui-platform\ui-platform\package.json --out-dir D:\Demo\universal-dependency-engine\output\ui-platform --verify-versions --package-json D:\Demo\universal-dependency-engine\input\repos\ui-platform\package.json

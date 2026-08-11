@@ -145,3 +145,21 @@ Minimal change history for future Claude sessions. Only decisions and context th
 **Key decision:** Provider interface = `parse(filePath) → LibraryEntry[]`. Ecosystem interface = modules in `ecosystems/<name>/`. Core (`src/core/`) has zero imports from providers or ecosystems — stays stable across all 9 roadmap phases.
 
 **Next:** Maven dep-tree parser (`src/ecosystems/maven/dep-tree.js`) to unlock Phase B promotions for Java. Then Scenarios 15/16 wiring in `mendfix.js apply` for auto git commits.
+
+---
+
+## 2026-08-11 — Renovate PR workflow (renovate-workflow.js)
+
+**Before:** No GitHub integration. mendfix only processed a single repo/report locally; no awareness of Renovate Bot PRs.
+
+**Changes:**
+- Added `renovate-workflow.js` — new standalone CLI. Takes a `repos.json` config (org + list of repos with per-repo Mend report paths), clones each repo, runs mendfix analysis inline (no spawn), fetches Renovate PRs via GitHub API, classifies each PR, and writes a cross-repo report.
+- Added `src/providers/github.js` — GitHub REST API wrapper (list PRs, post comment, close PR) using Node 18+ fetch, same pattern as npm/registry.js.
+- Added `src/core/renovate-classifier.js` — classifies Renovate PRs into 7 categories by comparing proposed version against mendfix PhasedItem[]. Handles scoped packages, semver comparison, and multi-major conflict as a distinct category (not conflated with NO_FIX).
+- Added `src/core/renovate-report.js` — generates markdown + JSON reports for all repos in one pass.
+
+**Key decision:** Multi-major SAFE conflict (`upgradeType === 'SAFE'`, `phase === 'C'`) gets its own category `DISCARDED_MULTI_MAJOR` — separate from `DISCARDED_NO_FIX`. Both are Phase C but the reason and user action differ (nested overrides vs. no fix exists).
+
+**Key constraint:** `--close-prs` closes only `COVERED_PHASE_A` and `COVERED_PHASE_B` PRs. `DISCARDED_MAJOR_BUMP` gets an informational comment but stays open. All other categories are report-only.
+
+**Next:** Integrate Renovate workflow into CI or scheduled job; wire maven ecosystem support once maven dep-tree parser lands.
