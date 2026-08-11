@@ -1,0 +1,10 @@
+
+
+
+
+
+node mend-fix.js --report D:\Automation\GH_ui-platform_dev-vulnerability-report.json --package-json D:\Work\R6\ui-platform\ui-platform\package.json --verify-versions
+
+node mend-fix.js --report D:\Automation\GH_dataplatform_dev-vulnerability-report.json --package-json D:\Work\R6\dataplatform\dataplatform-solution\pom.xml --verify-versions
+
+node mend-fix.js --report D:\Automation\GH_dataplatform-auth-service_dev-vulnerability-report.json --package-json D:\Work\R6\dataplatform-auth-service\package.json --verify-versions

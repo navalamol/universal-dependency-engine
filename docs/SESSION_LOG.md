@@ -1,0 +1,147 @@
+# Session Log
+
+Minimal change history for future Claude sessions. Only decisions and context that would take time to re-derive.
+
+---
+
+## 2026-08-04 — Initial build: parser + semver engine + overrides + report
+
+**Before:** Empty project. Doc stubs only (`01_PRODUCT.md`–`07_FUTURE.md`). One sample Mend report in JSON + Excel.
+
+**Changes:**
+- Built `src/parser.js` — parses Mend JSON and Excel into `LibraryEntry[]`. Groups by `library.keyUuid` (not by CVE) so multiple CVEs for the same library merge into one entry. Fix versions are parsed from `topFix.fixResolution` and `allFixes[]` using a regex that handles three string formats: `"pkg - X.Y.Z"`, `"https://...pkg.git - vX.Y.Z"`, and `"https://...repo.git - pkg@X.Y.Z"`.
+- Built `src/semver-engine.js` — deterministic fix selection. Per-CVE minimum same-major fix → take max to cover all CVEs. Falls back to cross-major when no same-major fix exists.
+- Built `src/overrides.js`, `src/report.js`, `mend-fix.js` — CLI with `--dry-run`, `--apply`, `--out-dir`.
+- Why: the 90-95% of triage that follows a fixed pattern (parse → semver check → override) was fully manual each release cycle.
+
+**Next:** package-lock.json parsing for actual semver range check per consumer (^/~/exact).
+
+---
+
+## 2026-08-04 — Phase model, registry check, @^major removal
+
+**Before:** Flat output. All fixable items (including MAJOR_BUMP) went into a single overrides file. `brace-expansion` used `"brace-expansion@^1": "1.1.18"` scoped selectors. `nanoid 3→5` was auto-applied as an override.
+
+**Changes:**
+- Added `src/phases.js` — Phase A/B/C classification matching MEND_AUTOMATION.md confidence scoring.
+  - Phase A (95-100%): same-major patch/minor, single version in tree.
+  - Phase B (60-95%): same package name, multiple instances, same major.
+  - Phase C (<60%): MAJOR_BUMP, NO_FIX, multi-major version conflict (e.g., `brace-expansion` 1.x and 2.x both present).
+- Added `src/npm-registry.js` — `--verify-versions` flag hits npm registry, adjusts to nearest published version ≥ minimum fix if the recommended version isn't published.
+- Removed `@^major` scoped selectors from overrides — user confirmed these don't reliably work. Multi-major conflicts go to Phase C instead.
+- Fixed: `nanoid 3→5` is now Phase C (never auto-applied). Justification + action checklist generated.
+- Changed: `--package-json <path>` now auto-applies Phase A only (no separate `--apply` flag needed).
+- Output split into `phase-a-overrides.json` (auto-apply), `phase-b-overrides.json` (review), `phase-c-review.md` (justification).
+- Why all of this: user feedback session. MAJOR_BUMP in overrides can break functionality. @^major syntax is unreliable. The 3-phase model was always the intent (matches MEND_AUTOMATION.md), just not implemented yet.
+
+**Key constraint learned:** Without `package-lock.json`, we cannot safely handle multi-major conflicts — a single override key covers all versions of a package, which would be a major bump for 1.x consumers if set to 2.x. These stay Phase C until Phase 2/3 adds package-lock traversal.
+
+**Next:** Phase 2/3 — parse `package-lock.json` to build dep tree. Unlocks: nested parent overrides, runtime/dev classification, auto-removal of unnecessary overrides after npm install.
+
+---
+
+## 2026-08-04 — package-lock.json dep tree: consumer validation, dev classification, parent upgrade recommendations, stale override cleanup
+
+**Before:** Pipeline had no visibility into the target project's dependency graph. Phase A confidence was overstated (no consumer range check). False positive detection was manual. Parent upgrade path for Phase C MAJOR_BUMP items required manual `npm ls` triage.
+
+**Changes:**
+- Added `src/lock-parser.js` — parses v2/v3 `packages` flat map into `Map<name, Entry[]>`. Second pass builds `parents: [{ name, range }]` for each entry — which packages require it and at what semver range.
+- `--lock-file <path>` flag in `mend-fix.js` — loads dep tree, passed through to `applyPhases()`.
+- Consumer range check in `src/phases.js` `applyPhases(plan, depTree?)`: for each Phase A candidate, checks if any consumer's declared range does NOT satisfy the fix version. If so, downgrades to Phase B with specific consumer + range in justification. Handles unknown range formats (dist-tags, URLs) by skipping rather than downgrading.
+- Dev classification in `src/phases.js`: for NO_FIX Phase C items, if all lock-file entries have `dev: true`, sets `probableFalsePositive: true` and prepends dev-chain notice to justification.
+- Root parent enrichment in `mend-fix.js` (post-phase step): for Phase C MAJOR_BUMP items, collects all parents from dep tree, filters to those present in root `dependencies`/`devDependencies`, attaches as `rootParents[]`. Surfaced in Phase C checklist and report.
+- `--verify-overrides <lock-file>` mode: standalone post-install step. For each flat override in `package.json`, checks resolved version ≥ override version (effective) and whether all consumer ranges cover the fix (removable). Removes flagged overrides from `package.json` when `--package-json` is provided.
+
+**Key constraint:** `probableFalsePositive` fires only when ALL lock-file entries for the package are `dev: true`. Mixed-chain classification (package has both dev and prod consumers) deferred — requires walking the full parent chain recursively, not just checking the immediate entry flag.
+
+**Next:** Nested parent-scoped overrides for multi-major conflicts (brace-expansion Phase C → Phase B). Requires grouping by major version line and matching parent packages to each line.
+
+---
+
+## 2026-08-04 — Nested overrides, dep chain display, Phase B→A promotion, --out-dir default
+
+**Before:** Multi-major conflicts always Phase C (no nested override generation). Phase B never auto-promoted to A. No dependency path display. `--out-dir` defaulted to `./mend-output` relative to CWD.
+
+**Changes:**
+- `src/phases.js` `promoteMultiMajorToPhaseB`: second pass in `applyPhases` after per-item classification. Groups Phase C SAFE items by library name, partitions dep tree entries by major version, checks for parent name overlap. If disjoint → generates `{ parent: { pkg: version } }` nested override map and promotes items to Phase B. If any parent name appears in both major chains → stays Phase C (can't safely key by plain package name). Safety fallback: if a major group has zero parents in dep tree, stays Phase C.
+- `src/phases.js` Phase B→A promotion: for same-major multi-instance Phase B items (not range-violation downgrades), calls `findRangeViolation`. If no violation → promotes to Phase A with "all consumer ranges verified" justification.
+- `src/lock-parser.js` `findDepChain`: BFS from vulnerable package up through parents until a root dep is found. Returns `[rootPkg, ..., vulnerablePkg]` root-first. 100-node visited limit prevents runaway on large trees.
+- `src/report.js` + `mend-fix.js`: surface `depChain` in Phase C sections (report + standalone review file).
+- `mend-fix.js` `--out-dir` default: changed from `./mend-output` to `path.join(dirname(reportFile), 'mend-output')`.
+- `src/overrides.js` `buildPhaseBOverrides`: handles both flat items and items with `nestedOverrides`. Nested overrides are deep-merged (idempotent — all items in a group carry the same map).
+
+**Key constraint:** No `@version` selectors in override keys (CLAUDE.md rule). A plain key like `"minimatch"` covers ALL instances of minimatch regardless of version. When minimatch@3 and minimatch@5 both appear as consumers of different major lines of the same dep, their name collides → parent name overlap detected → stays Phase C. This is the correct conservative behavior for the ui-platform `brace-expansion` case if minimatch appears in both chains.
+
+**Next:** Test with actual ui-platform package-lock.json to validate all dep-tree features on real data.
+
+---
+
+## 2026-08-04 — Phase 1 blocking scenarios: direct deps, lock update, rollback, manifest
+
+**Before:** Tool wrote `package.json` overrides but never ran npm install. No distinction between direct and transitive deps. No rollback if something failed. Running the tool twice could silently overwrite manually-edited overrides.
+
+**Changes:**
+- `src/install-runner.js` (new): owns all install-side operations. `snapshotFiles`/`restoreFiles` for rollback (Scenario 22). `runPackageLockUpdate` runs `npm install --legacy-peer-deps --package-lock-only` in the package.json directory (Scenario 5). `verifyFixVersions` re-parses the updated lock and confirms each Phase A package resolved to ≥ fix version (Scenario 5). `saveManifest`/`detectManualChanges` write `.mend-manifest.json` alongside `package.json` to track what the tool last applied; on the next run, any override whose current value differs from the manifest is skipped with a warning (Scenario 26).
+- `src/overrides.js` `detectDirectDeps`: given Phase A items and the parsed `package.json` object, splits them into `directUpgrades` (package found in `dependencies`/`devDependencies`) and `overrideItems` (transitive). Preserves `^`/`~` range prefix when constructing the new range. Priority: direct upgrade > parent upgrade > override (Scenarios 12/13).
+- `src/overrides.js` `applyDirectUpgrades`: mutates the pkg object in place, bumping versions in `dependencies`/`devDependencies`. Returns the modified object.
+- `mend-fix.js`: direct dep split happens before `buildPhaseAOverrides`, so the JSON output files only contain true overrides (not direct dep items). Apply block: conflict detection → direct bumps → overrides → single write → `npm install` → rollback on failure → verify → save manifest. Summary section simplified: when `--package-json` is provided and install ran, no manual install step is shown.
+
+**Key constraint:** Direct dep detection only runs when `--package-json` is provided (we need the target file to know which packages are direct). Without it, all Phase A items go to `phase-a-overrides.json` as before. `installLockPath` is always derived from `path.dirname(packageJsonPath)` — npm writes the lock file next to `package.json`, regardless of where `--lock-file` pointed for the read-side dep tree analysis.
+
+**Next:** Test with a real ui-platform project to exercise the full apply path including npm install and verify.
+
+---
+
+## 2026-08-04 — Fix Phase A classification: transitive consumer check + output format
+
+**Before:** `detectDirectDeps` classified packages by checking `package.json` `dependencies`. This was wrong: a package can be in `dependencies` AND have transitive consumers — it still needs an override for those consumers. Result: fast-uri and unzipper were stripped from overrides incorrectly; only 2 of 5 Phase A items appeared in `phase-a-overrides.json`.
+
+**Changes:**
+- `src/overrides.js` `detectDirectDeps` now takes a `depTree` third parameter. Classification logic: check `entries.some(e => e.parents.length > 0)` — if any dep-tree entry has a non-root parent, the package has transitive consumers → goes to `overrideItems`. Only when ALL entries have `parents.length === 0` (root-only dep) do we check `pkg.dependencies` and classify as `directUpgrade`. When dep tree confirms no transitive consumers but no `--package-json` was provided (`pkg` is `{}`), the item still goes to `directUpgrades` with `currentRange: null` so it appears in the JSON output's `dependencies` section.
+- `src/overrides.js` `_buildNewRange` — restored range prefix preservation (`^1.16.0 → ^1.18.0`). Exact version is used only in the JSON output file (`recommendedVersion` directly), not when mutating `package.json`.
+- `src/overrides.js` `writeOverridesPatch` — added optional `meta.dependencies` section written before `overrides` in the JSON file. Values are exact fix versions.
+- `mend-fix.js` — split now fires when `depTree || targetPkg` (not just `packageJsonPath`). With `--lock-file` alone, classification is accurate in the JSON output even without `--package-json`. `writeOverridesPatch` receives `phaseADependencies` built from `directUpgrades`.
+
+**Key constraint:** When neither `--lock-file` nor `--package-json` is provided, all Phase A items fall back to `overrides` (safe: we can't determine transitive consumers). The dep tree is required for accurate classification.
+
+**Next:** Test against actual ui-platform project with both `--lock-file` and `--package-json` to confirm axios → `dependencies`, fast-uri/postcss/etc. → `overrides`.
+
+---
+
+## 2026-08-10 — Multi-ecosystem support: Maven/Java extension
+
+**Before:** Tool was npm-only — registry check, overrides output, pom mutation, report commands, and install runner were all hardcoded to npm.
+
+**Changes:**
+- `src/parser.js`: Added `groupId` and `libraryType` fields to `LibraryEntry`; use `lib.artifactId` as `libraryName` for Maven artifacts; added Pattern 2 (GAV `groupId:artifactId:version`) to `parseFixVersions`; coerce Maven version strings (`"1.84"` → `"1.84.0"`) so `semver.valid` doesn't reject them.
+- `src/semver-engine.js`: Pass `groupId` and `libraryType` through `buildResolutionPlan` output so downstream modules can use them.
+- `src/report.js`: Accept `ecosystem` option; show `<dependencyManagement>` XML in Phase A section for Maven; say "Maven Central" vs "npm registry"; swap `mvn dependency:resolve` for `npm install` in follow-up instructions.
+- `src/maven-registry.js` (new): Mirror of `npm-registry.js`; uses Maven Central solr search API (`search.maven.org/solrsearch/select`); sequential with 300ms delay to avoid rate-limiting; same output shape (`registryExists`, `registryAdjusted`, `registryRequested`).
+- `src/pom-writer.js` (new): Builds `<dependencyManagement>` XML snippets; writes `phase-a-pom-patch.xml`/`phase-b-pom-patch.xml`; applies patches to real `pom.xml` via string/regex manipulation (no XML library — structure is predictable); snapshot/restore rollback; `.mend-manifest.json` idempotency tracking.
+- `mend-fix.js`: Auto-detects ecosystem from `library.type` in parsed entries (`MAVEN_ARTIFACT` → `maven`, else `npm`); `--ecosystem` flag overrides; `--pom-xml` flag for Maven auto-apply (parallel to `--package-json`); routes registry check and output writing to ecosystem-specific modules; `buildPhaseCDoc` now ecosystem-aware (`mvn dependency:tree` vs `npm ls`).
+
+**Key constraint:** Maven version coercion (`"1.84"` → `"1.84.0"`) happens in `parser.js` only for `MAVEN_ARTIFACT` entries. npm versions are left untouched to avoid regressions.
+
+**Key constraint:** `pom-writer.js` uses string/regex to manipulate XML. Works reliably for the standard Maven `<dependencyManagement>` structure. Edge cases (multiple `<dependencies>` tags, namespaced XML, `<![CDATA[` around versions) are not handled — will warn and skip rather than corrupt.
+
+**Next:** Maven dep-tree parser (equivalent of `lock-parser.js`) to enable Phase B promotions for multi-major conflicts and scope-based false positive detection.
+
+---
+
+## 2026-08-11 — Folder restructure + Phase 1 completion (Scenarios 19/20/21/24)
+
+**Before:** Flat `src/` with 10 files. Single CLI entry `mend-fix.js` with flag-based mode switching. Phase C output in `phase-c-review.md`. No subcommands.
+
+**Changes:**
+- Restructured `src/` into `core/`, `providers/`, `ecosystems/npm/`, `ecosystems/maven/` — file moves only, no logic changes. Extension point for Phase 2 (add `src/providers/snyk.js`) and Phase 3 (add `src/ecosystems/pip/`) is now zero-friction.
+- Added `mendfix.js` as the new CLI with subcommands: `analyze` (dry-run), `apply` (full apply), `cleanup` (was `--verify-overrides`). `mend-fix.js` kept as a thin shim for backward compat.
+- Renamed Phase C output `phase-c-review.md` → `manual-review.md` (Scenario 24).
+- Added idempotency pre-flight check (Scenario 21): compares current state against `.mend-manifest.json` before doing any work; exits cleanly with "nothing to apply" if matched.
+- Added `src/core/confidence.js` — `evidence` + `alternative` fields per resolution item (Scenario 14).
+- Added `src/core/git-commits.js` — auto-commit by confidence tier (Scenarios 15/16).
+- Added `src/providers/index.js` and `src/ecosystems/index.js` — provider/ecosystem auto-detection split out from CLI.
+- Moved `Phase_1_Goal.md`, `Phase_2_Path.md`, `Manual_Automation_Next_Phase.md` into `docs/`.
+
+**Key decision:** Provider interface = `parse(filePath) → LibraryEntry[]`. Ecosystem interface = modules in `ecosystems/<name>/`. Core (`src/core/`) has zero imports from providers or ecosystems — stays stable across all 9 roadmap phases.
+
+**Next:** Maven dep-tree parser (`src/ecosystems/maven/dep-tree.js`) to unlock Phase B promotions for Java. Then Scenarios 15/16 wiring in `mendfix.js apply` for auto git commits.

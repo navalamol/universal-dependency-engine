@@ -1,0 +1,20 @@
+{
+  "name": "mend-autofixer",
+  "version": "1.0.0",
+  "description": "Automate resolution of Mend security vulnerability reports for Node.js projects",
+  "main": "mend-fix.js",
+  "bin": {
+    "mend-fix": "./mend-fix.js"
+  },
+  "scripts": {
+    "start": "node mend-fix.js",
+    "test": "node mend-fix.js --report GH_ui-platform_dev-vulnerability-report.json --dry-run"
+  },
+  "dependencies": {
+    "semver": "^7.7.1",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
