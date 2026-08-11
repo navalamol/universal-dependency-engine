@@ -11,13 +11,21 @@
     "analyze": "node mendfix.js analyze",
     "apply": "node mendfix.js apply",
     "renovate": "node mendfix.js renovate",
-    "test": "node mendfix.js analyze --report ../GH_ui-platform_dev-vulnerability-report.json"
+    "test": "jest",
+    "test:smoke": "node mendfix.js analyze --report input/reports/GH_ui-platform_dev-vulnerability-report.json"
   },
   "dependencies": {
     "semver": "^7.7.1",
     "xlsx": "^0.18.5"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2"
+  },
+  "jest": {
+    "testMatch": ["<rootDir>/tests/**/*.test.js"],
+    "testPathIgnorePatterns": ["/node_modules/", "/repos/", "/input/", "/x/"]
   }
 }

@@ -233,3 +233,35 @@ Minimal change history for future Claude sessions. Only decisions and context th
 - Confirmed two separate undocumented Renovate entry points with different behaviors.
 
 **Next:** Implement P0 fixes in priority order (P0-1 through P0-7), then P1-9 (test suite) to establish a regression gate before proceeding with P1-1 through P1-3.
+
+---
+
+## 2026-08-12 — V1 audit plan implementation: P0 + P1 fixes, test suite
+
+**Before:** 7 P0 correctness/security defects, zero automated tests, git-commits.js unwired, providers/index.js dead, Maven dep-tree absent, mixed-ecosystem handling silent.
+
+**Changes:**
+- **P0-1** `confidence.js`: replaced `.rangeViolation.parent` → `.rangeViolation.consumer` at lines 26 and 67 — evidence and alternative strings now show real consumer name.
+- **P0-2** Verification failure now triggers rollback + non-zero exit in both `mendfix.js` and `renovate-apply.js` (was warning-only).
+- **P0-3** `installer.js:detectManualChanges`: condition changed to `(now === undefined || now !== lastTool)` — override removal is now detected as a conflict.
+- **P0-4** `pom-writer.js:applyPomPatch`: manifest write moved to last position in try block with explanatory comment — pom and manifest stay in sync on any exception.
+- **P0-5** `renovate-workflow.js:runMendfixAnalyze`: now accepts `repoDir`, parses `package-lock.json` from cloned repo, and passes `depTree` to `applyPhases` — phase accuracy matches `mendfix analyze`.
+- **P0-6** `renovate-workflow.js` + `renovate-apply.js`: GitHub token moved from clone URL to git environment variables (`GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`).
+- **P0-7** `mendfix.js`: Node version guard at startup (`< 18` → exit 1); `package.json` `engines.node` updated to `>=18`.
+- **P1-1** `git-commits.js` wired into `mendfix apply --commit` flag.
+- **P1-2** `src/core/pr-description.js` created; `pr-description.md` written to outDir on every non-dry-run.
+- **P1-3** `src/ecosystems/maven/dep-tree.js` created: parses `mvn dependency:tree` text output into `DepTree`; wired into `mendfix.js` Maven path.
+- **P1-4** `providers/index.js` wired into `mendfix.js` via `detectProvider/getParser`; dynamic require replaced with static whitelist.
+- **P1-5** `src/ecosystems/index.js:detectEcosystem`: now throws with a clear error on mixed npm+Maven reports.
+- **P1-6** `renovate-classifier.js:buildCloseComment`: added non-empty comment bodies for `DISCARDED_MULTI_MAJOR`, `DISCARDED_NO_FIX`, `RENOVATE_INSUFFICIENT`, `NOT_IN_MEND_REPORT`.
+- **P1-7** `renovate-apply.js`: detects Maven repos (pom.xml without package.json) and returns a clear unsupported error.
+- **P1-8** `semver-engine.js`: `Math.max(0, ...)` guard on empty CVE array.
+- **P1-9** Test suite: 32 unit + integration tests across semver-engine, phases, confidence, lock-parser, installer, and regression against the real ui-platform Mend report. `npm test` runs jest.
+- **P1-10** `package.json` test script now runs `jest`; smoke test preserved as `test:smoke`.
+- **P1-11** `repos.json` paths fixed (was "revovate" typo, paths pointed to nonexistent directory).
+- **P1-12** `CLAUDE_WORKFLOW.md` updated: all references to `phase-c-review.md` changed to `manual-review.md`.
+- **P1-13 BLOCKED** — docs stub files (01-07_*.md etc.) deletion requires explicit user confirmation; not deleted in this session.
+
+**Note:** P1-13 (delete docs stubs) requires user to confirm deletion of: `docs/01_PRODUCT.md`, `docs/02_WORKFLOW.md`, `docs/03_ARCHITECTURE.md`, `docs/04_IMPLEMENTATION_PLAN.md`, `docs/05_RULES_ENGINE.md`, `docs/06_TASKS.md`, `docs/07_FUTURE.md`, `docs/decisions.md`, `docs/Phase_2_Path.md`, `docs/Manual_Automation_Next_Phase.md`.
+
+**Next:** P1-13 (docs cleanup with user confirmation), then write `V1_COMPLETION_STATUS.md`.

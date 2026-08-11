@@ -23,7 +23,7 @@ function buildEvidence(item, depTree) {
   }
 
   if (item.rangeViolation) {
-    facts.push(`Consumer \`${item.rangeViolation.parent}\` pins range \`${item.rangeViolation.range}\` which does not satisfy ${item.recommendedVersion}`);
+    facts.push(`Consumer \`${item.rangeViolation.consumer}\` pins range \`${item.rangeViolation.range}\` which does not satisfy ${item.recommendedVersion}`);
   }
 
   if (item.probableFalsePositive) {
@@ -64,7 +64,7 @@ function buildAlternative(item) {
   }
 
   if (item.phase === 'B' && item.rangeViolation) {
-    return `Upgrade parent \`${item.rangeViolation.parent}\` to a version whose declared range for ${item.libraryName} satisfies ${item.recommendedVersion}`;
+    return `Upgrade parent \`${item.rangeViolation.consumer}\` to a version whose declared range for ${item.libraryName} satisfies ${item.recommendedVersion}`;
   }
 
   if (item.phase === 'B') {

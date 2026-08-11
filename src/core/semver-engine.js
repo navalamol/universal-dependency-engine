@@ -122,7 +122,7 @@ function buildResolutionPlan(entries) {
       cves:              entry.cves,
       cveCount:          entry.cves.length,
       highestSeverity:   highestSeverity(entry.cves),
-      highestCvssScore:  Math.max(...entry.cves.map(c => c.score || 0)),
+      highestCvssScore:  Math.max(0, ...entry.cves.map(c => c.score || 0)),
       recommendedVersion,
       upgradeType,
     };

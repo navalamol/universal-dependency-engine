@@ -1,0 +1,39 @@
+{
+  "name": "test-app",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "test-app",
+      "version": "1.0.0",
+      "dependencies": {
+        "parent-a": "^1.0.0"
+      }
+    },
+    "node_modules/parent-a": {
+      "version": "1.2.0",
+      "resolved": "https://registry.npmjs.org/parent-a/-/parent-a-1.2.0.tgz",
+      "dependencies": {
+        "child-b": "^2.0.0"
+      }
+    },
+    "node_modules/parent-a/node_modules/child-b": {
+      "version": "2.1.0",
+      "resolved": "https://registry.npmjs.org/child-b/-/child-b-2.1.0.tgz"
+    },
+    "node_modules/child-b": {
+      "version": "2.0.5",
+      "resolved": "https://registry.npmjs.org/child-b/-/child-b-2.0.5.tgz"
+    },
+    "node_modules/@scope/scoped-pkg": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@scope/scoped-pkg/-/scoped-pkg-3.0.1.tgz"
+    },
+    "node_modules/dev-only-pkg": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/dev-only-pkg/-/dev-only-pkg-1.0.0.tgz",
+      "dev": true
+    }
+  }
+}

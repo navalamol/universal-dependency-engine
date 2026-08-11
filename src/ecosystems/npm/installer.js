@@ -93,8 +93,8 @@ function detectManualChanges(packageJsonPath, overridesToApply) {
   for (const pkgName of Object.keys(overridesToApply)) {
     const lastTool = manifest.overrides[pkgName];
     const now      = current[pkgName];
-    // Only a conflict when the tool wrote a value before AND it changed since then
-    if (lastTool && now && now !== lastTool) {
+    // Conflict when the tool wrote a value before AND it was removed or changed since then
+    if (lastTool && (now === undefined || now !== lastTool)) {
       conflicts.push({ pkgName, lastToolVersion: lastTool, currentVersion: now });
     }
   }

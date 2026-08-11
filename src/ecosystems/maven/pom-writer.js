@@ -153,6 +153,7 @@ function applyPomPatch(phaseAItems, pomPath) {
 
     fs.writeFileSync(pomPath, pomContent, 'utf8');
 
+    // Manifest written only after all file operations succeed — keeps pom and manifest in sync
     const manifest = {
       _tool: 'mend-autofixer',
       _date: new Date().toISOString().split('T')[0],
@@ -161,9 +162,12 @@ function applyPomPatch(phaseAItems, pomPath) {
     for (const item of items) {
       manifest.dependencyManagement[`${item.groupId}:${item.libraryName}`] = item.recommendedVersion;
     }
+
+    // Any exception below will be caught and trigger pom restore; manifest is not yet written
+    const manifestContent = JSON.stringify(manifest, null, 2) + '\n';
     fs.writeFileSync(
       path.join(path.dirname(pomPath), MANIFEST_FILE),
-      JSON.stringify(manifest, null, 2) + '\n'
+      manifestContent
     );
   } catch (err) {
     fs.writeFileSync(pomPath, originalContent, 'utf8');

@@ -99,20 +99,27 @@ Output files written per repo (in --out-dir/<repo> or <clone-dir>/<repo>/output-
 // ---------------------------------------------------------------------------
 
 function cloneOrPull(org, repoName, cloneDir, token) {
-  const repoUrl = token
-    ? `https://x-access-token:${token}@github.com/${org}/${repoName}.git`
-    : `https://github.com/${org}/${repoName}.git`;
-
+  const repoUrl = `https://github.com/${org}/${repoName}.git`;
   const targetDir = path.resolve(cloneDir, repoName);
+
+  // Token passed via git credential helper environment variable, never embedded in URL
+  const gitEnv = token
+    ? {
+        ...process.env,
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com/.insteadOf`,
+        GIT_CONFIG_VALUE_0: 'https://github.com/',
+      }
+    : process.env;
 
   if (fs.existsSync(path.join(targetDir, 'package.json'))) {
     console.log(`  Pulling latest ${repoName}...`);
-    const r = spawnSync('git', ['-C', targetDir, 'pull', '--ff-only'], { encoding: 'utf8' });
+    const r = spawnSync('git', ['-C', targetDir, 'pull', '--ff-only'], { encoding: 'utf8', env: gitEnv });
     if (r.status !== 0) console.warn(`  Warning: git pull failed: ${r.stderr.trim()}`);
   } else {
     console.log(`  Cloning ${org}/${repoName}...`);
     if (!fs.existsSync(cloneDir)) fs.mkdirSync(cloneDir, { recursive: true });
-    const r = spawnSync('git', ['clone', '--depth=1', repoUrl, targetDir], { encoding: 'utf8' });
+    const r = spawnSync('git', ['clone', '--depth=1', repoUrl, targetDir], { encoding: 'utf8', env: gitEnv });
     if (r.status !== 0) throw new Error(`git clone failed: ${r.stderr.trim()}`);
   }
 
@@ -281,25 +288,28 @@ async function writeOutputRenovate({
         restoreFiles(snapshots);
         errors.push(`npm install failed — rolled back. Exit code: ${installResult.status}`);
       } else {
-        applied = true;
-
-        // Post-install verification
+        // Post-install verification — failure triggers rollback
         const allApplied = [...directUpgrades, ...phaseAOverrideItems];
         verifyFailures = verifyFixVersions(lockFilePath, allApplied);
         if (verifyFailures.length > 0) {
           for (const f of verifyFailures) {
-            console.warn(`  Verification warning: ${f.libraryName} expected >= ${f.expected}, got [${f.resolved.join(', ')}]`);
+            console.error(`  Verification FAILED: ${f.libraryName} expected >= ${f.expected}, got [${f.resolved.join(', ')}]`);
           }
+          restoreFiles(snapshots);
+          errors.push(`Post-install verification failed for ${verifyFailures.map(f => f.libraryName).join(', ')} — rolled back`);
+          console.log(`  Rolled back. No files changed.`);
+        } else {
+          applied = true;
+
+          // Save manifest for idempotency / manual-change detection on future runs
+          const directMap = {};
+          for (const item of directUpgrades) directMap[item.libraryName] = item.newRange || item.recommendedVersion;
+          saveManifest(packageJsonPath, cleanOverrides, directMap);
+
+          // Tag items as applied for report
+          for (const item of [...directUpgrades, ...phaseAOverrideItems]) item._applied = true;
+          console.log(`  Applied ${directUpgrades.length} direct dep bump(s) + ${Object.keys(cleanOverrides).length} override(s).`);
         }
-
-        // Save manifest for idempotency / manual-change detection on future runs
-        const directMap = {};
-        for (const item of directUpgrades) directMap[item.libraryName] = item.newRange || item.recommendedVersion;
-        saveManifest(packageJsonPath, cleanOverrides, directMap);
-
-        // Tag items as applied for report
-        for (const item of [...directUpgrades, ...phaseAOverrideItems]) item._applied = true;
-        console.log(`  Applied ${directUpgrades.length} direct dep bump(s) + ${Object.keys(cleanOverrides).length} override(s).`);
       }
     }
   } else if (dryRun && phaseA.length > 0) {
@@ -342,7 +352,11 @@ async function processRepo(repoConfig, org, args, runDate) {
   const lockFilePath    = path.join(repoDir, 'package-lock.json');
 
   if (!fs.existsSync(packageJsonPath)) {
-    const msg = `package.json not found in cloned repo: ${packageJsonPath}`;
+    const hasPom = fs.existsSync(path.join(repoDir, 'pom.xml'));
+    const msg = hasPom
+      ? `Repository ${repoName} appears to be a Maven project (pom.xml found, no package.json). ` +
+        `The Renovate apply workflow currently supports npm only. Maven support requires --pom-xml support (P1-7).`
+      : `package.json not found in cloned repo: ${packageJsonPath}`;
     console.error(`  ${msg}`);
     return { repoName, org, errors: [msg] };
   }

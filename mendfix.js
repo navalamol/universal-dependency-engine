@@ -1,11 +1,21 @@
 #!/usr/bin/env node
 'use strict';
 
+if (parseInt(process.versions.node, 10) < 18) {
+  console.error(`Error: Node.js 18 or higher is required (running ${process.versions.node})`);
+  process.exit(1);
+}
+
 const fs   = require('fs');
 const path = require('path');
 const semver = require('semver');
 
-const { parseReport }                                    = require('./src/providers/mend');
+const { detectProvider, getParser }                      = require('./src/providers/index');
+
+function parseReport(reportPath) {
+  const provider = detectProvider(reportPath);
+  return getParser(provider).parseReport(reportPath);
+}
 const { buildResolutionPlan }                            = require('./src/core/semver-engine');
 const { applyPhases, PHASE_META }                        = require('./src/core/phases');
 const { verifyPlanVersions: verifyNpm }                  = require('./src/ecosystems/npm/registry');
@@ -19,6 +29,7 @@ const { snapshotFiles, restoreFiles, runPackageLockUpdate, runMavenResolve,
 const { writePomPatch, applyPomPatch,
         detectManualChanges: detectMavenChanges }          = require('./src/ecosystems/maven/pom-writer');
 const { generateReport }                                 = require('./src/core/report');
+const { generatePRDescription }                          = require('./src/core/pr-description');
 const { parseLockFile, getRootDeps, findDepChain }       = require('./src/ecosystems/npm/lock-parser');
 const { detectEcosystem }                                = require('./src/ecosystems/index');
 
@@ -280,6 +291,7 @@ async function main() {
   const outDir          = args['out-dir'] || path.join(path.dirname(path.resolve(reportFile)), 'mend-output');
   const verifyVersions  = args['verify-versions'] === true;
   const dryRun          = args['dry-run'] === true;
+  const autoCommit      = args['commit'] === true;
 
   const mode = subcmd ? subcmd.toUpperCase() : (dryRun ? 'ANALYZE' : 'APPLY');
   console.log(`\nMend AutoFixer [${mode}]`);
@@ -326,7 +338,20 @@ async function main() {
       console.log('\n[1.5/5] Skipping lock file (pass --lock-file to enable dep-tree features)');
     }
   } else {
-    console.log('\n[1.5/5] Skipping lock file (Maven dep-tree analysis coming in a future phase)');
+    // Maven — run mvn dependency:tree if a project directory can be inferred
+    const mavenProjectDir = pomXmlPath ? path.dirname(pomXmlPath) : null;
+    if (mavenProjectDir) {
+      console.log('\n[1.5/5] Building Maven dependency tree...');
+      const { buildMavenDepTree } = require('./src/ecosystems/maven/dep-tree');
+      depTree = buildMavenDepTree(mavenProjectDir);
+      if (depTree) {
+        console.log(`  ${depTree.size} unique artifacts in Maven dependency tree`);
+      } else {
+        console.log('  Maven dep-tree unavailable — dep-tree enrichments disabled');
+      }
+    } else {
+      console.log('\n[1.5/5] Skipping Maven dep-tree (pass --pom-xml to enable)');
+    }
   }
 
   // ── Step 2: Resolve fix versions ─────────────────────────────────────────
@@ -419,6 +444,41 @@ async function main() {
     await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, reportContent);
   } else {
     await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions);
+  }
+
+  // Scenario 18: write PR description
+  if (!dryRun) {
+    const prDescPath = path.join(outDir, 'pr-description.md');
+    const prDescMeta = {
+      project:     path.basename(reportFile, path.extname(reportFile)),
+      reportDate:  new Date().toISOString().split('T')[0],
+      ecosystem,
+    };
+    fs.writeFileSync(prDescPath, generatePRDescription(phasedPlan, prDescMeta));
+    console.log(`  Wrote: ${prDescPath}`);
+  }
+
+  // Scenarios 15/16: auto-commit after successful apply
+  if (autoCommit && !dryRun && phaseA.length > 0) {
+    const { commitPhaseA, commitPhaseBC, commitFalsePositives } = require('./src/core/git-commits');
+    const projectDir = packageJsonPath ? path.dirname(packageJsonPath) : process.cwd();
+    console.log('\nCommitting...');
+    const commitResult = await commitPhaseA(projectDir, phaseA, ecosystem);
+    if (commitResult.success) {
+      console.log(`  Committed Phase A fixes: ${commitResult.message.split('\n')[0]}`);
+    } else {
+      console.warn(`  Warning: git commit failed: ${commitResult.message}`);
+    }
+    const phaseBC = [...phaseB, ...phaseC.filter(i => !i.probableFalsePositive)];
+    const falsePositives = phaseC.filter(i => i.probableFalsePositive);
+    if (phaseBC.length > 0) {
+      const bcResult = commitPhaseBC(projectDir, phaseB, phaseC.filter(i => !i.probableFalsePositive));
+      if (!bcResult.success) console.warn(`  Warning: Phase B/C commit failed: ${bcResult.message}`);
+    }
+    if (falsePositives.length > 0) {
+      const fpResult = commitFalsePositives(projectDir, falsePositives);
+      if (!fpResult.success) console.warn(`  Warning: false-positive commit failed: ${fpResult.message}`);
+    }
   }
 
   console.log('\nDone.');
@@ -629,13 +689,16 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
       if (fs.existsSync(installLockPath) && verifyItems.length > 0) {
         const failures = verifyFixVersions(installLockPath, verifyItems);
         if (failures.length > 0) {
-          console.log(`\n  ⚠  Post-install verification warnings:`);
+          console.error(`\n  ✗  Post-install verification FAILED — rolling back:`);
           for (const f of failures) {
-            console.log(`     ${f.libraryName}: expected >=${f.expected}, got [${f.resolved.join(', ') || 'not found'}]`);
+            console.error(`     ${f.libraryName}: expected >=${f.expected}, got [${f.resolved.join(', ') || 'not found'}]`);
           }
-        } else {
-          console.log(`  Verified: all ${verifyItems.length} package(s) at fix version in lock file.`);
+          restoreFiles(snapshots);
+          console.log(`  Rolled back. No files changed.`);
+          process.exitCode = 1;
+          return;
         }
+        console.log(`  Verified: all ${verifyItems.length} package(s) at fix version in lock file.`);
       }
 
       const directMap = {};

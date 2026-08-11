@@ -8,6 +8,7 @@ const { spawnSync } = require('child_process');
 const { parseReport }       = require('./src/providers/mend');
 const { buildResolutionPlan } = require('./src/core/semver-engine');
 const { applyPhases }       = require('./src/core/phases');
+const { parseLockFile }     = require('./src/ecosystems/npm/lock-parser');
 const { verifyPlanVersions } = require('./src/ecosystems/npm/registry');
 const { fetchRenovatePRs, postComment, closePR } = require('./src/providers/github');
 const { classifyPRs, summarize, buildCloseComment, CATEGORIES } = require('./src/core/renovate-classifier');
@@ -75,22 +76,29 @@ repos.json format:
 // ---------------------------------------------------------------------------
 
 function cloneOrPull(org, repoName, cloneDir, token) {
-  const repoUrl = token
-    ? `https://x-access-token:${token}@github.com/${org}/${repoName}.git`
-    : `https://github.com/${org}/${repoName}.git`;
-
+  const repoUrl = `https://github.com/${org}/${repoName}.git`;
   const targetDir = path.resolve(cloneDir, repoName);
+
+  // Token passed via git credential helper environment variable, never embedded in URL
+  const gitEnv = token
+    ? {
+        ...process.env,
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: `url.https://x-access-token:${token}@github.com/.insteadOf`,
+        GIT_CONFIG_VALUE_0: 'https://github.com/',
+      }
+    : process.env;
 
   if (fs.existsSync(targetDir)) {
     console.log(`  Pulling latest ${repoName}...`);
-    const result = spawnSync('git', ['-C', targetDir, 'pull', '--ff-only'], { encoding: 'utf8' });
+    const result = spawnSync('git', ['-C', targetDir, 'pull', '--ff-only'], { encoding: 'utf8', env: gitEnv });
     if (result.status !== 0) {
       console.warn(`  Warning: git pull failed for ${repoName}: ${result.stderr}`);
     }
   } else {
     console.log(`  Cloning ${org}/${repoName}...`);
     if (!fs.existsSync(cloneDir)) fs.mkdirSync(cloneDir, { recursive: true });
-    const result = spawnSync('git', ['clone', '--depth=1', repoUrl, targetDir], { encoding: 'utf8' });
+    const result = spawnSync('git', ['clone', '--depth=1', repoUrl, targetDir], { encoding: 'utf8', env: gitEnv });
     if (result.status !== 0) {
       throw new Error(`git clone failed for ${repoName}: ${result.stderr}`);
     }
@@ -103,7 +111,7 @@ function cloneOrPull(org, repoName, cloneDir, token) {
 // mendfix pipeline (inline, no spawn)
 // ---------------------------------------------------------------------------
 
-async function runMendfixAnalyze(reportPath, verifyVersions) {
+async function runMendfixAnalyze(reportPath, verifyVersions, repoDir) {
   const entries = parseReport(reportPath);
   let plan = buildResolutionPlan(entries);
 
@@ -111,7 +119,20 @@ async function runMendfixAnalyze(reportPath, verifyVersions) {
     plan = await verifyPlanVersions(plan);
   }
 
-  const phased = applyPhases(plan);
+  // Parse lock file for dep-tree enrichment if the cloned repo is available
+  let depTree = null;
+  if (repoDir) {
+    const lockPath = path.join(repoDir, 'package-lock.json');
+    if (fs.existsSync(lockPath)) {
+      try {
+        depTree = parseLockFile(lockPath);
+      } catch {
+        console.warn(`  Warning: could not parse lock file at ${lockPath} — running without dep-tree enrichment`);
+      }
+    }
+  }
+
+  const phased = applyPhases(plan, depTree);
   return phased;
 }
 
@@ -145,7 +166,7 @@ async function processRepo(repoConfig, org, args) {
   } else {
     try {
       console.log(`  Running mendfix analysis...`);
-      phasedItems = await runMendfixAnalyze(resolvedReport, args.verifyVersions);
+      phasedItems = await runMendfixAnalyze(resolvedReport, args.verifyVersions, clonedDir);
       console.log(`  Phase A: ${phasedItems.filter(i => i.phase === 'A').length}  B: ${phasedItems.filter(i => i.phase === 'B').length}  C: ${phasedItems.filter(i => i.phase === 'C').length}`);
     } catch (err) {
       errors.push(`mendfix analysis failed: ${err.message}`);

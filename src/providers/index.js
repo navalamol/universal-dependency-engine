@@ -20,8 +20,14 @@ function detectProvider(filePath) {
   return 'mend';
 }
 
+const PROVIDERS = {
+  mend: require('./mend'),
+};
+
 function getParser(provider) {
-  return require(`./${provider}`);
+  const parser = PROVIDERS[provider];
+  if (!parser) throw new Error(`Unknown provider: ${provider}`);
+  return parser;
 }
 
 module.exports = { detectProvider, getParser };
