@@ -403,6 +403,25 @@ async function main() {
           }));
       }
       item.depChain = findDepChain(item.libraryName, depTree, rootDeps);
+
+      // For indirect chains (root dep → intermediate(s) → vulnerable child),
+      // add the chain root to rootParents with chainVia so the explorer can
+      // walk the intermediate hops via the registry.
+      if (
+        item.upgradeType === 'MAJOR_BUMP' &&
+        item.depChain && item.depChain.length >= 3
+      ) {
+        const chainRoot = item.depChain[0];
+        if (allRootDeps[chainRoot] && !(item.rootParents || []).find(p => p.name === chainRoot)) {
+          if (!item.rootParents) item.rootParents = [];
+          item.rootParents.push({
+            name:     chainRoot,
+            range:    allRootDeps[chainRoot],
+            isDev:    !!rootDeps.devDependencies[chainRoot],
+            chainVia: item.depChain.slice(1, -1), // intermediate packages between root and vulnerable child
+          });
+        }
+      }
     }
 
     // Parent upgrade exploration — for MAJOR_BUMP Phase C items, check whether
