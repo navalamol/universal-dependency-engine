@@ -1,0 +1,323 @@
+# Mend Auto Fixer V1 — Implement Reviewed Audit Plan
+
+The V1 completion audit has now been completed and reviewed.
+
+Use `V1_COMPLETION_AUDIT.md` as the implementation source.
+
+Do NOT introduce new product capabilities outside this plan.
+
+## Objective
+
+Close the remaining V1 correctness, safety, testing, Maven, and Renovate gaps.
+
+The goal is not to make the system "feature complete" in every possible direction.
+
+The goal is:
+
+> A deterministic dependency remediation engine that can safely analyze, apply, verify, report, and optionally commit/close remediation changes for supported repositories.
+
+---
+
+# PRIORITY 0 — MUST COMPLETE FIRST
+
+Implement and test:
+
+1. `confidence.js`
+
+   * Replace incorrect `rangeViolation.parent` references with `rangeViolation.consumer`.
+   * Add regression tests.
+
+2. Post-install verification failure
+
+   * If the expected fixed version is not present after installation, treat the operation as FAILURE.
+   * Restore the pre-apply files.
+   * Return non-zero exit status.
+   * Do not report the remediation as successful.
+   * Do not commit changes after failed verification.
+   * Add integration tests.
+
+3. Manual override removal detection
+
+   * If the tool previously created an override and a user removed or changed it, detect that as a manual change.
+   * Do not silently assume it is unchanged.
+   * Add regression tests.
+
+4. Maven manifest/pom atomicity
+
+   * Do not leave `.mend-manifest.json` claiming a successful operation if the POM operation failed.
+   * Add failure-path test.
+
+5. Renovate dependency graph
+
+   * The Renovate workflow must use the same dependency graph analysis as the Mend path whenever the repository provides the required lock/dependency data.
+   * Do not classify Renovate changes using weaker logic than the normal remediation engine.
+
+6. GitHub token security
+
+   * Never embed the GitHub token in the clone URL.
+   * Verify the token does not appear in process arguments or `.git/config`.
+   * Test the implementation.
+
+7. Node runtime
+
+   * Since the implementation uses native `fetch`, enforce Node >=18 or provide an equivalent explicit runtime guard.
+   * Do not leave `package.json` claiming unsupported Node versions.
+
+8. Test foundation
+
+   * Add Jest or the chosen test framework.
+   * `npm test` must execute repository-local tests.
+   * Tests must run without depending on the developer's external filesystem.
+   * Add unit + integration coverage.
+
+---
+
+# PRIORITY 1 — V1 FUNCTIONAL COMPLETION
+
+## Maven
+
+Implement:
+
+* Maven dependency-tree extraction
+* parent/consumer relationships
+* multiple versions
+* dependency range/version validation where applicable
+* integration into the same `applyPhases` pipeline
+* tests using fixtures rather than requiring Maven to be installed for unit tests
+
+Maven must use the same conceptual remediation engine as npm.
+
+Do not create a second independent remediation engine.
+
+---
+
+## Provider abstraction
+
+Make the provider abstraction real.
+
+Current provider code should not require `mendfix.js` to directly hard-code Mend parsing if the provider abstraction is intended to be the extension point.
+
+Keep the implementation simple.
+
+Do not add Snyk/Dependabot/etc. yet.
+
+The goal is only to establish a clean extension boundary.
+
+---
+
+## Mixed ecosystems
+
+Define explicit behavior.
+
+If a report contains multiple ecosystems and the current CLI cannot safely process them together:
+
+* reject with a clear message, OR
+* route entries independently.
+
+Do not silently process the wrong ecosystem.
+
+---
+
+# RENOVATE V1 REQUIREMENTS
+
+The Renovate workflow is now an important part of the product.
+
+The same deterministic remediation engine must be used for Renovate PR analysis.
+
+Do not create a second remediation engine.
+
+The conceptual flow is:
+
+Repository
+→ discover Renovate PRs
+→ normalize PR
+→ build dependency graph
+→ run remediation engine
+→ classify
+→ optionally apply
+→ verify
+→ report
+→ optionally close PR
+
+## Important safety distinction
+
+Do not treat these as the same operation:
+
+Analysis decision
+Application decision
+PR closure decision
+
+A PR may be classified as safe but must only be closed after successful application/verification when the user explicitly enables PR closure.
+
+`--close-prs` must remain explicit.
+
+---
+
+## Renovate stale/already-applied detection
+
+Before applying a Renovate PR:
+
+Compare the PR's expected dependency change against the repository's CURRENT dependency state.
+
+If the repository has already moved beyond the PR's proposed version, classify the PR as stale/already-applied.
+
+Do not blindly apply an obsolete PR.
+
+Add tests.
+
+---
+
+## Renovate execution architecture
+
+There are currently two Renovate entry points with overlapping behavior.
+
+Do not allow them to become two independent remediation implementations.
+
+Refactor only enough to establish a canonical shared pipeline.
+
+Target conceptual architecture:
+
+Renovate discovery
+→ PR normalization
+→ common remediation engine
+→ analyze/apply mode
+→ verify
+→ report
+→ optional close
+
+Preserve existing behavior where possible.
+
+Do not perform a large unrelated refactor.
+
+---
+
+# PRIORITY 2
+
+Do NOT implement these unless required by a P0/P1 fix:
+
+* full automatic override cleanup
+* Maven post-install verification
+* full mixed runtime/dev chain traversal
+* XML parser replacement
+* registry pagination/concurrency improvements
+* advanced atomic rollback
+* monorepo support
+* Renovate parent/child conflict intelligence
+* advanced PR consolidation
+
+Document these as V1.x/future work.
+
+---
+
+# TEST REQUIREMENTS
+
+At minimum, create regression coverage for:
+
+## Core
+
+* same-major safe update
+* exact pin
+* tilde
+* cross-major
+* multiple ranges
+* multiple CVEs
+* no fix
+* consumer range violation
+* Phase A/B/C classification
+* multi-major
+* nested override
+* dev-only probable false positive
+
+## npm
+
+* lockfile v2
+* lockfile v3
+* scoped package
+* multiple versions
+* dependency chain
+* runtime/dev mixed chain
+* install failure
+* verification failure
+* rollback
+* manual override removal
+* idempotent second run
+
+## Maven
+
+* direct dependency
+* transitive dependency
+* dependency tree
+* multiple versions
+* parent relationship
+* POM write success
+* POM write failure
+* rollback
+
+## Renovate
+
+* one PR
+* multiple PRs
+* safe update
+* breaking update
+* already-applied/stale PR
+* failed application
+* optional close
+* no close without `--close-prs`
+
+## Regression
+
+The existing real Mend report must remain a named regression test.
+
+Expected baseline must be recorded and verified rather than assumed.
+
+---
+
+# IMPLEMENTATION PROCESS
+
+Work in this order:
+
+1. P0 fixes
+2. P0 tests
+3. Run complete test suite
+4. P1 Maven work
+5. P1 provider/architecture work
+6. P1 Renovate work
+7. Run complete test suite
+8. Run integration/regression scenarios
+9. Update V1 checklist
+10. Produce final `V1_COMPLETION_STATUS.md`
+
+Do not proceed to future roadmap work.
+
+---
+
+# FINAL ACCEPTANCE
+
+V1 is complete only when:
+
+* all P0 items are resolved
+* all required P1 items are resolved
+* automated tests pass
+* real Mend regression passes
+* npm analysis/apply/verify/rollback works
+* Maven uses the common remediation engine
+* Renovate uses the common remediation engine
+* failed verification cannot be reported as success
+* failed application cannot leave inconsistent state
+* secrets are not exposed
+* dry-run remains non-destructive
+* repeated execution is idempotent
+* optional PR closure happens only after successful remediation and explicit user request
+* documentation accurately reflects the final implementation
+
+When complete, STOP.
+
+Do not start Dependency Intelligence Engine implementation.
+
+Do not add LLM functionality.
+
+Do not add additional providers merely for demonstration.
+
+Do not add additional ecosystems merely for demonstration.
+
+The next phase will be planned separately after V1 is formally closed.

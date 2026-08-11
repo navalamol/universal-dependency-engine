@@ -139,6 +139,20 @@ node mendfix.js cleanup --package-json /path/to/package.json \
 
 **Claude owns (uncertain 5–10%, via `CLAUDE_WORKFLOW.md`):** Phase C justification review · false positive chain analysis · MAJOR_BUMP API compatibility judgement
 
+
+## Rules
+
+Don't read Plans_Prompst folder it is for just maintaining history
+
+# Context Budget
+
+
+**Soft limit: Warn at 80,000 tokens.**
+**Hard limit: Warn at 120,000 tokens.**
+
+If you estimate the conversation has consumed ~80k tokens, stop and alert the user before continuing:
+> ⚠ Context is approaching 80k tokens. To avoid autocompact (which caused context loss at ~200k in Mission 8–9), consider starting a fresh conversation and loading only the required context for the next task.
+
 ## Key decisions
 
 - **No AI for SemVer** — `semver` package, always deterministic.
