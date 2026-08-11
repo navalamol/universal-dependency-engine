@@ -1,0 +1,62 @@
+x: "1.2.0" is vulnerable & x: "2.2.0" is vulnerable free.
+
+y: "1.5.0" is using x:"^1.2.0". But y: "1.6.0" is using x:"^2.1.0".
+
+z: {
+"y": "^1.5.0"
+}
+
+
+Now I can't upgrade x 1.x to 2.x but if I look at parent y & z. If I upgrade y from 1.5.0 to 1.6.0 it is allowed range. It can fix x withing boundaries of semver. This can be exhaustive process. 
+
+But how you'll know y:"1.6.0" uses x:"^2.1.0".
+
+I usually do separate git init, check recent semver allowed dependency for y on npm registry. Apply same & run npm i --package-lock-only & then check x in package-lock only. If it resolved to upgraded desired version.
+
+That's the fix most ideal one.
+
+Now are we handling this scenario & this way genuine exploration.
+
+
+****************
+
+
+Clear answer: no, we don't handle this. We only emit a static checklist hint. Here's the full picture:
+
+---
+What exists today
+
+manual-review.md gets a checklist item like:
+- [ ] Check if upgrading `y` to a newer version ships `x` at a patched version
+
+That's it. No automation behind it. The registry is only ever queried for the child (x) — never for the parent (y).
+
+---
+What the scenario actually requires
+
+Your approach is a 3-step algorithm:
+
+Step 1 — find candidate parent versions
+Fetch all published versions of y from npm registry. Filter to those satisfying ^1.5.0 (the range declared in z's package.json). So 1.6.0 is a candidate; 2.0.0 is not.
+
+Step 2 — inspect each candidate's declared deps
+For each candidate y@1.6.0, fetch its package.json from the registry (registry.npmjs.org/y/1.6.0). Check what range it declares for x. If it declares x@^2.1.0, and 2.2.0 is the safe version, that range satisfies the fix.
+
+Step 3 — verify by simulation
+Your manual step: isolated workspace, npm i --package-lock-only, inspect lock for x's resolved version. This is the gold standard because npm's actual resolver handles transitive conflicts that step 2 alone can't predict.
+
+---
+What this would unlock
+
+A Phase C MAJOR_BUMP item like x: 1→2 that has a parent path resolving it becomes Phase B — "upgrade y from 1.5.0 to 1.6.0 (within ^1.5.0 range) instead of a major override." This is strictly better than an override because it's a legitimate dependency upgrade, not a forced lock.
+
+---
+The gap
+
+src/ecosystems/npm/registry.js has getPublishedVersions(pkg) already. What's missing:
+
+1. A function to fetch a specific version's package.json deps from the registry (registry.npmjs.org/<pkg>/<version>)
+2. Logic in phases.js or a new parent-upgrade-explorer.js to walk the parent chain, filter by allowed semver, and find the pivot version
+3. The simulation step (spawn npm i --package-lock-only in a temp dir) for verification before promoting from Phase C to Phase B
+
+Want to implement this? It's a meaningful Phase 1 completion item — it would convert a real slice of Phase C hints into actionable Phase B recommendations with verified resolution paths.

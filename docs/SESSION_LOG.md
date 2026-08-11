@@ -4,6 +4,23 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Parent Upgrade Explorer for MAJOR_BUMP Phase C items
+
+**Before:** MAJOR_BUMP Phase C items produced only a static hint in `manual-review.md` ("check if upgrading parent ships a patched version"). No automation backed it.
+
+**Changes:**
+- New `src/ecosystems/npm/parent-upgrade-explorer.js` — walks each root parent's published versions within the project's already-declared semver range, fetches each candidate version's `package.json` from the registry, and checks `semver.intersects(childRange, '>=' + fixVersion)`. Returns paths for the first (latest) parent version that covers the fix. Promoted MAJOR_BUMP Phase C → Phase B on success.
+- `src/ecosystems/npm/overrides.js` — `buildPhaseBOverrides` skips items with `parentUpgradePaths` (they don't need overrides); new `buildParentUpgradeMap` extracts parent upgrade entries for the new output file.
+- `mendfix.js` — inserts `[4b/5]` exploration step after rootParents annotation (only when `--verify-versions` + `--lock-file` + npm ecosystem); writes `phase-b-parent-upgrades.json`; console shows `[PARENT_UPGRADE]` tag; `printNextSteps` lists the new file; `buildManualReview` shows "no path found" note when exploration ran and came up empty, vs. "run with --verify-versions" when it wasn't run yet.
+- The `_parentExplorationRan` flag is stamped on each candidate so `buildManualReview` knows whether the silence means "not checked" or "checked and found nothing".
+- Baseline test (no `--verify-versions`, no `--lock-file`) is unaffected — exploration gate requires both.
+
+**Key decision:** Kept exploration behind `--verify-versions` (makes N registry calls per MAJOR_BUMP item — can be slow). No npm install simulation yet (that's a future enhancement); the verification note in `phase-b-parent-upgrades.json` tells the user to run `npm install --package-lock-only` to confirm.
+
+**Next:** npm install simulation (`npm install --package-lock-only` in a temp dir + lock check) would close the last gap and allow fully automated application of parent upgrades.
+
+---
+
 ## 2026-08-04 — Initial build: parser + semver engine + overrides + report
 
 **Before:** Empty project. Doc stubs only (`01_PRODUCT.md`–`07_FUTURE.md`). One sample Mend report in JSON + Excel.

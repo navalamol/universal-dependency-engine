@@ -20,9 +20,10 @@ const { buildResolutionPlan }                            = require('./src/core/s
 const { applyPhases, PHASE_META }                        = require('./src/core/phases');
 const { verifyPlanVersions: verifyNpm }                  = require('./src/ecosystems/npm/registry');
 const { verifyPlanVersions: verifyMaven }                = require('./src/ecosystems/maven/registry');
-const { buildPhaseAOverrides, buildPhaseBOverrides,
+const { buildPhaseAOverrides, buildPhaseBOverrides, buildParentUpgradeMap,
         applyOverridesToPackageJson, writeOverridesPatch,
         detectDirectDeps, applyDirectUpgrades }            = require('./src/ecosystems/npm/overrides');
+const { exploreParentUpgrades }                          = require('./src/ecosystems/npm/parent-upgrade-explorer');
 const { snapshotFiles, restoreFiles, runPackageLockUpdate, runMavenResolve,
         verifyFixVersions, saveManifest,
         detectManualChanges }                              = require('./src/ecosystems/npm/installer');
@@ -403,6 +404,15 @@ async function main() {
       }
       item.depChain = findDepChain(item.libraryName, depTree, rootDeps);
     }
+
+    // Parent upgrade exploration — for MAJOR_BUMP Phase C items, check whether
+    // upgrading a root parent within its already-allowed semver range would
+    // transitively pull in a safe version of the vulnerable child package.
+    // Only runs when --verify-versions is set (makes registry calls).
+    if (verifyVersions) {
+      console.log('\n[4b/5] Exploring parent upgrade paths...');
+      await exploreParentUpgrades(phasedPlan, ecosystem);
+    }
   }
 
   const phaseA = phasedPlan.filter(r => r.phase === 'A');
@@ -415,7 +425,14 @@ async function main() {
 
   console.log('');
   for (const r of phaseA) console.log(`  ✅ ${r.libraryName}: ${r.currentVersion} → ${r.recommendedVersion}`);
-  for (const r of phaseB) console.log(`  ⚠️  ${r.libraryName}: ${r.currentVersion} → ${r.recommendedVersion}`);
+  for (const r of phaseB) {
+    if (r.parentUpgradePaths) {
+      const parents = r.parentUpgradePaths.map(p => `${p.parent}@${p.parentUpgradeVersion}`).join(', ');
+      console.log(`  ⚠️  ${r.libraryName}: upgrade ${parents} → fixes transitively  [PARENT_UPGRADE]`);
+    } else {
+      console.log(`  ⚠️  ${r.libraryName}: ${r.currentVersion} → ${r.recommendedVersion}`);
+    }
+  }
   for (const r of phaseC) {
     const fix = r.recommendedVersion || 'NO FIX';
     const fp  = r.probableFalsePositive ? ' [PROBABLE FALSE POSITIVE]' : '';
@@ -608,6 +625,19 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
     console.log(`  Wrote: ${phaseBPath}`);
   }
 
+  const parentUpgradeMap = buildParentUpgradeMap(phasedPlan);
+  if (Object.keys(parentUpgradeMap).length > 0) {
+    const parentUpgradesPath = path.join(outDir, 'phase-b-parent-upgrades.json');
+    const out = {
+      _comment:      'Parent upgrades that transitively fix MAJOR_BUMP vulnerabilities (no override needed).',
+      _confidence:   '70-85%',
+      _verification: 'After updating each parent version: run `npm install --package-lock-only` and confirm the child resolves to the fix version in package-lock.json.',
+      parentUpgrades: parentUpgradeMap,
+    };
+    fs.writeFileSync(parentUpgradesPath, JSON.stringify(out, null, 2) + '\n');
+    console.log(`  Wrote: ${parentUpgradesPath}`);
+  }
+
   if (phaseC.length > 0) {
     const manualPath = path.join(outDir, 'manual-review.md');
     fs.writeFileSync(manualPath, buildManualReview(phaseC, 'npm'));
@@ -749,10 +779,17 @@ function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, 
   }
 
   if (phaseB.length > 0) {
-    const patchFile = ecosystem === 'maven'
-      ? path.join(outDir, 'phase-b-pom-patch.xml')
-      : path.join(outDir, 'phase-b-overrides.json');
-    console.log(`  ${step++}. Review ${patchFile} — test before applying`);
+    const hasParentUpgrades = phaseB.some(i => i.parentUpgradePaths);
+    const hasOverrides      = phaseB.some(i => !i.parentUpgradePaths);
+    if (hasOverrides) {
+      const patchFile = ecosystem === 'maven'
+        ? path.join(outDir, 'phase-b-pom-patch.xml')
+        : path.join(outDir, 'phase-b-overrides.json');
+      console.log(`  ${step++}. Review ${patchFile} — test before applying`);
+    }
+    if (hasParentUpgrades && ecosystem !== 'maven') {
+      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-b-parent-upgrades.json')} — upgrade parent versions, then run npm install --package-lock-only`);
+    }
   }
 
   if (phaseC.length > 0) {
@@ -808,7 +845,12 @@ function buildManualReview(phaseCItems, ecosystem) {
       const toMajor   = r.recommendedVersion ? semver.major(r.recommendedVersion) : '?';
       if (r.rootParents && r.rootParents.length > 0) {
         const parentNames = r.rootParents.map(p => `\`${p.name}\``).join(', ');
-        lines.push(`- [ ] Check if upgrading ${parentNames} to a newer major ships \`${r.libraryName}\` at a patched version (preferred over adding an override)`);
+        // If --verify-versions was run, exploration already checked and found nothing.
+        // Otherwise, recommend the manual check.
+        const explorationNote = r._parentExplorationRan
+          ? `No semver-compatible parent upgrade path was found automatically — a major bump of ${parentNames} may be required.`
+          : `Check if upgrading ${parentNames} to a newer version ships \`${r.libraryName}\` at a patched version (run with --verify-versions to automate this check).`;
+        lines.push(`- [ ] ${explorationNote}`);
       }
       lines.push(`- [ ] Review changelog from ${r.libraryName} v${fromMajor} → v${toMajor}`);
       lines.push(`- [ ] Check all call sites for API changes`);

@@ -35,6 +35,7 @@ function buildPhaseBOverrides(phasedPlan) {
 
   for (const item of phasedPlan) {
     if (item.phase !== 'B') continue;
+    if (item.parentUpgradePaths) continue; // handled by buildParentUpgradeMap — not an override
 
     if (item.nestedOverrides) {
       // Nested overrides for promoted multi-major conflicts.
@@ -178,9 +179,37 @@ function applyDirectUpgrades(pkg, directUpgrades) {
   return pkg;
 }
 
+/**
+ * Build a parent upgrade map from Phase B items that have parentUpgradePaths.
+ * These are MAJOR_BUMP items resolved by upgrading a root parent within its
+ * existing semver range — no override needed.
+ *
+ * Returns: { parentName: { allowedRange, upgradeTo, fixes: libraryName, fixVersion, childRange, isDev } }
+ */
+function buildParentUpgradeMap(phasedPlan) {
+  const result = {};
+
+  for (const item of phasedPlan) {
+    if (item.phase !== 'B' || !item.parentUpgradePaths) continue;
+    for (const p of item.parentUpgradePaths) {
+      result[p.parent] = {
+        allowedRange: p.parentAllowedRange,
+        upgradeTo:    p.parentUpgradeVersion,
+        fixes:        item.libraryName,
+        fixVersion:   p.childFixVersion,
+        childRange:   p.childDeclaredRange,
+        isDev:        p.isDev,
+      };
+    }
+  }
+
+  return result;
+}
+
 module.exports = {
   buildPhaseAOverrides,
   buildPhaseBOverrides,
+  buildParentUpgradeMap,
   applyOverridesToPackageJson,
   writeOverridesPatch,
   detectDirectDeps,
