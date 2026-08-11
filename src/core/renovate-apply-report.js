@@ -45,16 +45,28 @@ function renderPhaseBSection(phaseBItems) {
 
 function renderPhaseCSection(phaseCItems) {
   if (phaseCItems.length === 0) return '';
-  const rows = phaseCItems.map(item =>
-    `| #${item.prNumber} | ${item.libraryName} | ${item.currentVersion} | ${item.recommendedVersion || 'N/A'} | ${item.upgradeType} | ${item.justification} |`
-  );
+
+  const blocks = phaseCItems.map(item => {
+    const fix = item.recommendedVersion || 'N/A';
+    const lines = [
+      `### PR #${item.prNumber}: \`${item.libraryName}\` ${item.currentVersion} → ${fix}`,
+      ``,
+      `- **Type:** ${item.upgradeType}`,
+      `- **Justification:** ${item.justification}`,
+    ];
+    if (item.evidence)    lines.push(`- **Evidence:** ${item.evidence}`);
+    if (item.alternative) lines.push(`- **Alternative:** ${item.alternative}`);
+    lines.push(`- **Manual review file:** manual-review.md`);
+    lines.push(``);
+    return lines.join('\n');
+  });
+
   return [
     '## Phase C — Risky / Not Applied',
     '',
-    '| PR | Package | Current | Proposed | Type | Reason |',
-    '|----|---------|---------|---------|------|--------|',
-    ...rows,
+    '_These upgrades require manual review. See `manual-review.md` for action checklists._',
     '',
+    ...blocks,
   ].join('\n');
 }
 

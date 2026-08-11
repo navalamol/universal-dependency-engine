@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 'use strict';
 
-const fs   = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
+const semver = require('semver');
 const { spawnSync } = require('child_process');
 
-const { applyPhases }         = require('./src/core/phases');
-const { verifyPlanVersions }  = require('./src/ecosystems/npm/registry');
-const { parseLockFile }       = require('./src/ecosystems/npm/lock-parser');
+const { applyPhases }           = require('./src/core/phases');
+const { enrichWithConfidence }  = require('./src/core/confidence');
+const { verifyPlanVersions }    = require('./src/ecosystems/npm/registry');
+const { parseLockFile }         = require('./src/ecosystems/npm/lock-parser');
 const {
   detectDirectDeps,
   applyDirectUpgrades,
@@ -37,23 +39,27 @@ function parseArgs(argv) {
     config:         null,
     githubToken:    process.env.GITHUB_TOKEN || null,
     cloneDir:       './repos',
-    outDir:         null,     // null = default inside clone dir
+    outDir:         null,
     apply:          false,
     verifyVersions: false,
     closePRs:       false,
     dryRun:         false,
+    includePRs:     null,   // comma-separated PR numbers to include
+    excludePRs:     null,   // comma-separated PR numbers to exclude
   };
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if      (a === '--config')          args.config      = argv[++i];
-    else if (a === '--github-token')    args.githubToken = argv[++i];
-    else if (a === '--clone-dir')       args.cloneDir    = argv[++i];
-    else if (a === '--out-dir')         args.outDir      = argv[++i];
-    else if (a === '--apply')           args.apply       = true;
+    if      (a === '--config')          args.config         = argv[++i];
+    else if (a === '--github-token')    args.githubToken    = argv[++i];
+    else if (a === '--clone-dir')       args.cloneDir       = argv[++i];
+    else if (a === '--out-dir')         args.outDir         = argv[++i];
+    else if (a === '--apply')           args.apply          = true;
     else if (a === '--verify-versions') args.verifyVersions = true;
-    else if (a === '--close-prs')       args.closePRs    = true;
-    else if (a === '--dry-run')         args.dryRun      = true;
+    else if (a === '--close-prs')       args.closePRs       = true;
+    else if (a === '--dry-run')         args.dryRun         = true;
+    else if (a === '--include-prs')     args.includePRs     = argv[++i];
+    else if (a === '--exclude-prs')     args.excludePRs     = argv[++i];
     else if (a === '--help') { printUsage(); process.exit(0); }
   }
   return args;
@@ -61,7 +67,8 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log(`
-Usage: node renovate-apply.js --config <repos.json> [options]
+Usage: mendfix renovate --config <repos.json> [options]
+       node renovate-apply.js --config <repos.json> [options]
 
 Options:
   --config <path>         Repos config JSON (required)
@@ -71,11 +78,19 @@ Options:
   --apply                 Write package.json changes + run npm install --package-lock-only
   --verify-versions       Check npm registry to confirm proposed versions exist
   --close-prs             Close Phase A PRs with a comment after applying
-  --dry-run               Print plan only — no file changes, no PR closes
+  --dry-run               Analyze only — no file changes, no PR closes; prints analysis to stdout
+  --include-prs <nums>    Only process these PR numbers (comma-separated, e.g. 42,47,51)
+  --exclude-prs <nums>    Skip these PR numbers (comma-separated, e.g. 42,47)
   --help                  Print this message
 
 repos.json:
   { "org": "riversandtechnologies", "repos": [{ "name": "ui-platform" }, ...] }
+
+Output files written per repo (in --out-dir/<repo> or <clone-dir>/<repo>/output-renovate-<repo>):
+  phase-a-overrides.json   — safe same-major upgrades, auto-applicable
+  phase-b-overrides.json   — review-before-apply (if any)
+  manual-review.md         — Phase C items requiring manual action
+  renovate-report.md       — full analysis summary
 `);
 }
 
@@ -119,6 +134,53 @@ function writeJson(filePath, obj) {
 function resolveOutDir(args, repoName, repoDir) {
   if (args.outDir) return path.resolve(args.outDir, repoName);
   return path.join(repoDir, `output-renovate-${repoName}`);
+}
+
+// ---------------------------------------------------------------------------
+// Manual review document (Phase C items)
+// ---------------------------------------------------------------------------
+
+function buildManualReview(phaseCItems, repoName) {
+  const lines = [
+    `# Manual Review Required — Renovate PRs`,
+    ``,
+    `Repository: ${repoName}`,
+    ``,
+    `The following Renovate PRs were classified Phase C (<60% confidence). Do not auto-apply.`,
+    ``,
+  ];
+
+  for (const item of phaseCItems) {
+    const fixDisplay = item.recommendedVersion || 'UNKNOWN';
+    lines.push(`## PR #${item.prNumber}: \`${item.libraryName}\` ${item.currentVersion} → ${fixDisplay}`);
+    lines.push(``);
+    if (item.prTitle) lines.push(`- **PR title:** ${item.prTitle}`);
+    lines.push(`- **Upgrade type:** ${item.upgradeType}`);
+    lines.push(`- **Justification:** ${item.justification}`);
+    if (item.evidence)    lines.push(`- **Evidence:** ${item.evidence}`);
+    if (item.alternative) lines.push(`- **Alternative:** ${item.alternative}`);
+    lines.push(``);
+    lines.push(`### Required actions`);
+    lines.push(``);
+
+    if (item.upgradeType === 'MAJOR_BUMP') {
+      const fromMajor = semver.valid(item.currentVersion) ? semver.major(item.currentVersion) : '?';
+      const toMajor   = item.recommendedVersion && semver.valid(item.recommendedVersion)
+        ? semver.major(item.recommendedVersion) : '?';
+      lines.push(`- [ ] Review changelog from \`${item.libraryName}\` v${fromMajor} → v${toMajor}`);
+      lines.push(`- [ ] Check all call sites for breaking API changes`);
+      lines.push(`- [ ] Run full test suite after upgrade`);
+      lines.push(`- [ ] Check if a direct dependency can be upgraded instead of using an override`);
+    } else {
+      lines.push(`- [ ] Run \`npm ls ${item.libraryName}\` to trace the full dependency chain`);
+      lines.push(`- [ ] Use nested overrides keyed by parent package if a flat override is unsafe`);
+      lines.push(`- [ ] Test affected packages after applying any override`);
+    }
+
+    lines.push(``);
+  }
+
+  return lines.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -177,17 +239,7 @@ async function writeOutputRenovate({
   }
 
   if (phaseC.length > 0) {
-    const lines = [
-      '# Manual Review Required\n',
-      'The following Renovate upgrades were classified as Phase C (risky). Review each before applying.\n',
-    ];
-    for (const item of phaseC) {
-      lines.push(`## PR #${item.prNumber}: ${item.libraryName} ${item.currentVersion} -> ${item.recommendedVersion || 'unknown'}`);
-      lines.push(`**Type:** ${item.upgradeType}`);
-      lines.push(`**Justification:** ${item.justification}`);
-      lines.push('');
-    }
-    fs.writeFileSync(path.join(outDir, 'manual-review.md'), lines.join('\n'), 'utf8');
+    fs.writeFileSync(path.join(outDir, 'manual-review.md'), buildManualReview(phaseC, repoName), 'utf8');
   }
 
   // --- Apply phase (optional) ---
@@ -322,6 +374,20 @@ async function processRepo(repoConfig, org, args, runDate) {
     }
   }
 
+  // 3b. Selective PR filtering (--include-prs / --exclude-prs)
+  if (args.includePRs) {
+    const include = new Set(args.includePRs.split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean));
+    const before = renovatePRs.length;
+    renovatePRs = renovatePRs.filter(pr => include.has(pr.number));
+    console.log(`  --include-prs filter: kept ${renovatePRs.length}/${before} PR(s)`);
+  }
+  if (args.excludePRs) {
+    const exclude = new Set(args.excludePRs.split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean));
+    const before = renovatePRs.length;
+    renovatePRs = renovatePRs.filter(pr => !exclude.has(pr.number));
+    console.log(`  --exclude-prs filter: excluded ${before - renovatePRs.length} PR(s), ${renovatePRs.length} remaining`);
+  }
+
   // 4. Parse PR titles → upgrade intents
   const prUpgrades = [];
   const unparseable = [];
@@ -347,8 +413,9 @@ async function processRepo(repoConfig, org, args, runDate) {
     console.log('  No upgradeable packages found — nothing to do.');
   }
 
-  // 6. Phase classification
+  // 6. Phase classification + confidence enrichment
   let phasedItems = applyPhases(resolutionItems, depTree);
+  phasedItems = enrichWithConfidence(phasedItems, depTree);
 
   // 7. Optional registry verification
   if (args.verifyVersions && phasedItems.length > 0) {
@@ -367,6 +434,41 @@ async function processRepo(repoConfig, org, args, runDate) {
   const phaseB = phasedItems.filter(i => i.phase === 'B');
   const phaseC = phasedItems.filter(i => i.phase === 'C');
   console.log(`  Phase A: ${phaseA.length}  B: ${phaseB.length}  C: ${phaseC.length}  NotFound: ${notFound.length}`);
+
+  if (args.dryRun) {
+    const bar = '─'.repeat(60);
+    console.log(`\n  ${bar}`);
+    if (phaseA.length > 0) {
+      console.log(`\n  Phase A — safe upgrades (would be auto-applied):`);
+      for (const item of phaseA) {
+        const type = item._directUpgrade ? 'direct dep' : 'override';
+        console.log(`    ✅ PR #${item.prNumber}: ${item.libraryName} ${item.currentVersion} → ${item.recommendedVersion} [${type}]`);
+      }
+    }
+    if (phaseB.length > 0) {
+      console.log(`\n  Phase B — review before applying:`);
+      for (const item of phaseB) {
+        console.log(`    ⚠️  PR #${item.prNumber}: ${item.libraryName} ${item.currentVersion} → ${item.recommendedVersion}`);
+        console.log(`         ${item.justification}`);
+      }
+    }
+    if (phaseC.length > 0) {
+      console.log(`\n  Phase C — manual review required (NOT applied):`);
+      for (const item of phaseC) {
+        const fix = item.recommendedVersion || 'NO FIX';
+        console.log(`    ❌ PR #${item.prNumber}: ${item.libraryName} ${item.currentVersion} → ${fix} [${item.upgradeType}]`);
+        console.log(`         ${item.justification}`);
+        if (item.alternative) console.log(`         Alternative: ${item.alternative}`);
+      }
+    }
+    if (notFound.length > 0) {
+      console.log(`\n  Not found in this repo:`);
+      for (const nf of notFound) {
+        console.log(`    PR #${nf.prNumber}: ${nf.packageName} → ${nf.proposedVersion}`);
+      }
+    }
+    console.log(`\n  ${bar}`);
+  }
 
   // 8. Write output (and optionally apply)
   const outDir = resolveOutDir(args, repoName, repoDir);
@@ -415,8 +517,8 @@ async function processRepo(repoConfig, org, args, runDate) {
 // Main
 // ---------------------------------------------------------------------------
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+async function main(argv) {
+  const args = parseArgs(argv !== undefined ? argv : process.argv.slice(2));
 
   if (!args.config) {
     console.error('Error: --config <repos.json> is required');
@@ -442,13 +544,15 @@ async function main() {
 
   const runDate = new Date().toISOString().slice(0, 10);
   const flags = [
-    args.apply          ? '--apply'           : null,
-    args.verifyVersions ? '--verify-versions'  : null,
-    args.closePRs       ? '--close-prs'        : null,
-    args.dryRun         ? '--dry-run'           : null,
+    args.apply          ? '--apply'                          : null,
+    args.verifyVersions ? '--verify-versions'                : null,
+    args.closePRs       ? '--close-prs'                      : null,
+    args.dryRun         ? '--dry-run'                        : null,
+    args.includePRs     ? `--include-prs ${args.includePRs}` : null,
+    args.excludePRs     ? `--exclude-prs ${args.excludePRs}` : null,
   ].filter(Boolean).join(' ');
 
-  console.log(`Renovate apply workflow — ${repos.length} repo(s) under org: ${org}`);
+  console.log(`Renovate workflow — ${repos.length} repo(s) under org: ${org}`);
   if (flags) console.log(`Flags: ${flags}`);
 
   const results = [];
@@ -472,7 +576,11 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('Fatal:', err.message);
-  process.exit(1);
-});
+module.exports = { main };
+
+if (require.main === module) {
+  main().catch(err => {
+    console.error('Fatal:', err.message);
+    process.exit(1);
+  });
+}

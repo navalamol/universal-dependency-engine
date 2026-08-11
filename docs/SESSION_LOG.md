@@ -198,3 +198,21 @@ Minimal change history for future Claude sessions. Only decisions and context th
 **Key constraint:** Without a lock file, `detectDirectDeps` conservatively classifies all Phase A items as overrides (can't confirm root-only). With a lock file present (normal case for cloned repos), direct dep bumps are correctly split out.
 
 **Next (planned, not implemented):** git workflow — after `--apply`, checkout branch + commit + push + open PR + close individual Renovate PRs. This makes N Renovate PRs → 1 batch PR per repo.
+
+---
+
+## 2026-08-11 — Renovate flow unified under mendfix; confidence wiring; selective PR filters
+
+**Before:** `renovate-apply.js` was a standalone script with no connection to `mendfix.js`. `confidence.js` (`enrichWithConfidence`) was not called in the renovate flow. No selective PR filtering. Dry-run mode produced files silently with no stdout analysis.
+
+**Changes:**
+- Added `renovate` subcommand to `mendfix.js` — delegates to `renovate-apply.main(argv)`. `mendfix renovate --config repos.json` is now the canonical entry point.
+- `renovate-apply.js` now exports `main(argv)` and uses `require.main === module` guard so it can be required as a module without auto-running.
+- Wired `enrichWithConfidence` after `applyPhases` in the renovate flow — Phase C items now carry `evidence` and `alternative` fields in both stdout and report output.
+- Added `--include-prs <nums>` and `--exclude-prs <nums>` (comma-separated PR numbers) to selectively process or skip specific Renovate PRs per repo.
+- Dry-run mode now prints a structured per-phase analysis to stdout (✅ Phase A / ⚠️ Phase B / ❌ Phase C) matching the mendfix analyze experience.
+- `manual-review.md` now uses a proper action checklist format (matching mendfix Phase C output) with MAJOR_BUMP-specific and conflict-specific required actions, plus evidence/alternative from confidence enrichment.
+- `renovate-report.md` Phase C section upgraded from flat table to per-item blocks with evidence and alternative fields.
+- Added `npm run renovate`, `npm run analyze`, `npm run apply` scripts to `package.json`.
+
+**Next:** git workflow — checkout branch + commit + push + open batch PR + close individual Renovate PRs after `--apply`.

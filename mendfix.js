@@ -44,6 +44,7 @@ Usage:
   mendfix analyze  --report <path> [options]          (dry run — no files changed)
   mendfix apply    --report <path> [options]          (apply Phase A, write output)
   mendfix cleanup  --package-json <path> --lock-file <path>   (remove stale overrides)
+  mendfix renovate --config <repos.json> [options]    (analyze/apply Renovate PRs across repos)
 
   # Legacy flag-based syntax still works:
   node mendfix.js --report <path> [--dry-run] [--package-json <path>] ...
@@ -238,8 +239,15 @@ async function runCleanup(lockFilePath, packageJsonPath) {
 async function main() {
   // ── Subcommand routing ───────────────────────────────────────────────────
   const rawArgs = process.argv.slice(2);
-  const SUBCMDS = ['analyze', 'apply', 'cleanup'];
+  const SUBCMDS = ['analyze', 'apply', 'cleanup', 'renovate'];
   const subcmd  = SUBCMDS.includes(rawArgs[0]) ? rawArgs.shift() : null;
+
+  if (subcmd === 'renovate') {
+    const { main: renovateMain } = require('./renovate-apply');
+    await renovateMain(rawArgs);
+    return;
+  }
+
   const args    = parseArgs(rawArgs);
 
   if (subcmd === 'analyze') args['dry-run'] = true;

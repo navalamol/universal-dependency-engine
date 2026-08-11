@@ -7,8 +7,11 @@
     "mend-fix": "./mend-fix.js"
   },
   "scripts": {
-    "start": "node mend-fix.js",
-    "test": "node mend-fix.js --report GH_ui-platform_dev-vulnerability-report.json --dry-run"
+    "start": "node mendfix.js",
+    "analyze": "node mendfix.js analyze",
+    "apply": "node mendfix.js apply",
+    "renovate": "node mendfix.js renovate",
+    "test": "node mendfix.js analyze --report ../GH_ui-platform_dev-vulnerability-report.json"
   },
   "dependencies": {
     "semver": "^7.7.1",
