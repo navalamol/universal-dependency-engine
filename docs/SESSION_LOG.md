@@ -264,4 +264,21 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 **Note:** P1-13 (delete docs stubs) requires user to confirm deletion of: `docs/01_PRODUCT.md`, `docs/02_WORKFLOW.md`, `docs/03_ARCHITECTURE.md`, `docs/04_IMPLEMENTATION_PLAN.md`, `docs/05_RULES_ENGINE.md`, `docs/06_TASKS.md`, `docs/07_FUTURE.md`, `docs/decisions.md`, `docs/Phase_2_Path.md`, `docs/Manual_Automation_Next_Phase.md`.
 
-**Next:** P1-13 (docs cleanup with user confirmation), then write `V1_COMPLETION_STATUS.md`.
+**Next:** ~~P1-13 (docs cleanup with user confirmation)~~ — completed 2026-08-12 (see entry below). Next: wire `git-commits.js` (Scenario 15/16), then `pr-description.js` (Scenario 18).
+
+---
+
+## 2026-08-12 — P1-13: docs stub cleanup
+
+**Before:** 10 obsolete files in `docs/` remained from project inception and early planning sessions. SESSION_LOG 2026-08-11 incorrectly recorded them as deleted; they were still present.
+
+**Changes:**
+- Deleted all 10 files after inspecting each for unique content:
+  - `docs/01_PRODUCT.md`–`07_FUTURE.md`: empty heading stubs with no content — deleted.
+  - `docs/decisions.md`: 3 decisions verbatim in CLAUDE.md "Key decisions" — deleted.
+  - `docs/Phase_2_Path.md`: Phase 2 vision superseded by `NEXT_MISSION.md` + `Master_Roadmap.md` — deleted.
+  - `docs/Manual_Automation_Next_Phase.md`: historical chat transcript; all insights captured in SESSION_LOG 2026-08-04 entries — deleted.
+- No migration performed — zero unique content existed in any file that wasn't already in authoritative docs.
+- CLAUDE.md navigation table unchanged (none of the 10 files were indexed there).
+
+**Next:** Wire `git-commits.js` into `mendfix apply --commit` (Scenarios 15/16), then `pr-description.js` (Scenario 18), then close Phase 1.
