@@ -1,1 +1,13 @@
 Perfect. This is commited. Can you update the md file add new ones missing, remove unnecessary and redudant one, create/update claude.md with understanding of repo, ensuring what md to refer when. With minimal context you have to boostrap app and get work done everytime while working on roadmap. So ensure you create the best optimial, minimal, efficient & in-depth version of all .md files. May be with just next_mission you'll know what to do, keep track of it minimally, what's done what important, what's no strategically important. Think like product owner, architect, cto. This is one of the futurustic product can be widely adopted and can potentially be used by millions
+
+
+
+Hey, observered something, little change. See renovate is using or not using mend that is secondary. Important is renovate
+  suggestions are good to upgrade or not. The way we analyze mend fixes. If good, patch them to package.json or pom.xml the way we
+  do for mend.io. Engine can be same, are the safe to upgrade analyze using same engine & create separte report under
+  output-renovate-[repo_name] folder. Which will say the suggestions to apply override same way like mend workflow we did. And it
+  will actually change the package.json as well and run --package-lock-only.  So instead of input as mend reports it will be direct
+  renovate PR's changes. Eventually after this as separate thing we want to do is add this under workflow which will auto check
+  and close the PR's and create the report and one PR out of it which is safe & report which are safe to close with option for
+  closing all the PR's of renovate. So eventually result will be 10 RENOVATE PRs -> Analyzed -> All safe fix under one PR along
+  with report of risky changes can't handle -> Close all the PR's of renovate. Simplified workflow

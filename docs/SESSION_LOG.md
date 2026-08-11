@@ -181,3 +181,20 @@ Minimal change history for future Claude sessions. Only decisions and context th
 **Key constraint:** `--close-prs` closes only `COVERED_PHASE_A` and `COVERED_PHASE_B` PRs. `DISCARDED_MAJOR_BUMP` gets an informational comment but stays open. All other categories are report-only.
 
 **Next:** Integrate Renovate workflow into CI or scheduled job; wire maven ecosystem support once maven dep-tree parser lands.
+
+---
+
+## 2026-08-11 — renovate-apply.js: Renovate-first apply workflow
+
+**Before:** `renovate-workflow.js` compared Renovate PRs against Mend vulnerability reports. The real goal is to evaluate Renovate upgrade safety independently — Mend is secondary.
+
+**Changes:**
+- Added `renovate-apply.js` — new standalone CLI. Takes only a `repos.json` (org + repo names, no Mend report field). Clones each repo, fetches Renovate PRs, builds synthetic ResolutionItems from PR title + package.json/lockfile, runs the phase engine, writes output to `output-renovate-{repo}/`, optionally applies Phase A to package.json + runs npm install, optionally closes Phase A PRs.
+- Added `src/core/renovate-builder.js` — `buildResolutionItems(prUpgrades, pkg, lockEntries)` converts Renovate upgrade intents into the same ResolutionItem shape that `applyPhases` consumes. No CVEs — `cves: []`. upgradeType computed from semver major comparison. Falls back from direct-dep lookup to lock file resolved version for transitives.
+- Added `src/core/renovate-apply-report.js` — Renovate-specific report generator (no CVE IDs; PR numbers + apply status per item).
+
+**Key decision:** No new engine logic. All classification reuses `applyPhases` unchanged. The input data shape is synthetic but identical to what `buildResolutionPlan` produces — so MAJOR_BUMP, multi-version detection, consumer range checks, and Phase B→A promotion all apply automatically to Renovate upgrades.
+
+**Key constraint:** Without a lock file, `detectDirectDeps` conservatively classifies all Phase A items as overrides (can't confirm root-only). With a lock file present (normal case for cloned repos), direct dep bumps are correctly split out.
+
+**Next (planned, not implemented):** git workflow — after `--apply`, checkout branch + commit + push + open PR + close individual Renovate PRs. This makes N Renovate PRs → 1 batch PR per repo.
