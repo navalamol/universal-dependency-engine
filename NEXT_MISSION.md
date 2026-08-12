@@ -1,18 +1,18 @@
 # Next Mission
 
 Single source of truth for what to build next. Updated after each session.
-**Last updated:** 2026-08-11
+**Last updated:** 2026-08-12
 
 ---
 
 ## Phase 1 — Remaining gaps (ordered by priority)
 
-Phase 1 is at ~97%. These four gaps remain before Phase 1 is complete.
+Phase 1 is at ~99%. Two gaps remain before Phase 1 is complete.
 
 ### 1. Wire git-commits.js into mendfix.js apply (Scenarios 15/16)
 
 `src/core/git-commits.js` is fully written and exports `commitPhaseA`, `commitPhaseBC`,
-`commitFalsePositives`. It is **not called anywhere** — needs wiring into `mendfix.js apply`.
+`commitFalsePositives`. It is **not called from mendfix.js apply** — needs wiring.
 
 What to do:
 - Add `--commit` flag to `mendfix apply`
@@ -20,50 +20,63 @@ What to do:
 - Document that Phase B/C commit (`commitPhaseBC`) is opt-in after human review
 - Files: `mendfix.js` (apply block only), `src/core/git-commits.js` (already done)
 
-### 2. PR description generation (Scenario 18)
+### 2. Confidence enrichment in mendfix CLI path
 
-After apply completes, write `mend-output/pr-description.md`.
+`src/core/confidence.js` fields (evidence, alternative) are wired into the Renovate path
+but **not into the main mendfix analyze/apply output**. Phase C items should carry full evidence.
 
-Contents:
-- Summary line: "X CVEs resolved across Y packages"
-- Phase A table: package, current → fixed, CVE IDs
-- Phase B table: same + "reviewed manually"
-- Phase C section: link to manual-review.md for open items
-- False positive count and list (if any)
-
-Files: new `src/core/pr-description.js` + call from `mendfix.js apply` after all writes
-
-### 3. Maven dep-tree parser (unlocks Phase B for Java)
-
-`src/ecosystems/maven/dep-tree.js` — parse `mvn dependency:tree` text output into the same
-`DepTree` shape (`Map<name, Entry[]>` with parents, ranges, dev flag) that `lock-parser.js` produces.
-
-Unlocks:
-- Nested parent-scoped overrides in pom.xml for multi-major conflicts (same logic as npm)
-- Scope-based false positive detection (`test`/`provided` scope = build-only chain)
-
-Files: new `src/ecosystems/maven/dep-tree.js`; wire into `mendfix.js` via `--maven-dep-tree <path>` flag
-
-### 4. Deep mixed dev/runtime chain classification (Scenario 8 full)
-
-Currently `probableFalsePositive` fires only when ALL lock-file entries are `dev: true`.
-Mixed chains (package reachable via both dev and prod paths) are left unclassified.
-
-What's needed: recursive parent chain walk — if every prod path is through a `devDependencies` root,
-classify as dev-only. Complex, but unlocks more Phase C → false positive promotions.
-
-Defer unless a real project has mixed-chain flooding Phase C with false positives.
+- Wire `enrichWithConfidence` into `mendfix.js` analyze/apply output path
+- File: `mendfix.js` + `src/core/confidence.js`
 
 ---
 
-## Phase 1 → Phase 2 entry criteria
+## Completed since last NEXT_MISSION.md update (2026-08-12 SESSION_LOG)
+
+The following items were listed as gaps in the previous version but are now done:
+
+| Item | Scenario | Status |
+|------|----------|--------|
+| PR description generation | 18 | `src/core/pr-description.js` written |
+| Maven dep-tree parser | — | `src/ecosystems/maven/dep-tree.js` written |
+| V1 blockers (exit codes, control flow, Maven dep-tree range field) | — | All fixed; 32/32 tests passing |
+
+---
+
+## Phase 1 → Phase 1.x entry: Remediation Path Explorer
+
+**Phase 1 is complete when gaps 1 and 2 above are closed AND:**
+- Test baseline holds: `node mendfix.js analyze --report ...` → Phase A:5, B:0, C:3
+- `mendfix apply` with a real project completes end-to-end: apply → install → verify → commit → pr-description.md
+
+**Phase 1.x entry point (Remediation Path Explorer):**
+
+The core differentiator after V1. See `REMEDIATION_CAPABILITY_ROADMAP.md` for full detail.
+
+Build sequence (3 steps):
+1. **Manifest inspection per candidate parent version** — fetch `Y@candidate/package.json` from
+   npm registry, extract declared child range, verify fixed child version satisfies it.
+   Files: `src/ecosystems/npm/parent-upgrade-explorer.js`, `src/ecosystems/npm/registry.js`
+
+2. **Isolated package-manager simulation** — new `src/ecosystems/npm/simulator.js`.
+   For each viable candidate: write temp `package.json`, run `npm install --package-lock-only`,
+   parse resulting lockfile, confirm vulnerable dep resolves to fixed version.
+   This promotes INFERRED parent upgrade paths to VERIFIED.
+
+3. **Multi-path comparison + Change Budget ranking** — collect all explored paths, rank by
+   VERIFIED > INFERRED then by Change Budget tier (lockfile-only > parent minor > override).
+   Phase A/B/C + decision label assigned after ranking from evidence.
+   Files: new `src/core/remediation-paths.js`, extend `src/core/phases.js`
+
+---
+
+## Phase 2 entry criteria (Universal Finding Engine)
 
 **Do NOT start Phase 2 until all three are true:**
-1. Gaps 1 and 2 above are closed (git commits + PR description)
+1. Phase 1 gaps 1 and 2 above are closed
 2. Test baseline holds: `node mendfix.js analyze --report ...` → Phase A:5, B:0, C:3
 3. `mendfix apply` with a real project completes end-to-end: apply → install → verify → commit → pr-description.md
 
-**Phase 2 entry point (Universal Finding Engine):**
+**Phase 2 entry point:**
 - Create `src/providers/snyk.js` implementing `parse(filePath) → LibraryEntry[]`
 - Register in `src/providers/index.js` — no changes to core
 - Other providers: `dependabot.js`, `npm-audit.js`, `github-advisory.js`
@@ -86,4 +99,6 @@ This is Phase 1 of a 9-phase Dependency Intelligence OS (see `Master_Roadmap.md`
 provider/core/ecosystem separation built in Phase 1 is permanent infrastructure — it is what
 makes Phases 2 and 3 cheap. Every interface decision (`LibraryEntry[]`, `ResolutionItem[]`,
 `PhasedItem[]`) is load-bearing. Don't simplify what looks like over-engineering — it's the
-foundation for millions of users.
+foundation for millions of users. The Remediation Path Explorer (Phase 1.x) adds the
+Find → Explore → Simulate → Verify → Compare → Recommend → Apply pipeline that makes parent
+upgrade recommendations verified rather than inferred. See `REMEDIATION_CAPABILITY_ROADMAP.md`.

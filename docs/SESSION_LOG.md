@@ -333,3 +333,20 @@ Minimal change history for future Claude sessions. Only decisions and context th
 - 32/32 tests pass. Regression baseline unchanged (A:5 B:0 C:3).
 
 **Next:** Re-run full V1 verification to confirm V1 READY, or address the remaining non-blocking gap (enrichWithConfidence not called in mendfix.js main path).
+
+---
+
+## 2026-08-12 — Remediation Capability Roadmap: analysis + categorization
+
+**Before:** Two ideation documents existed in `NEXT_LEVEL_REMEDIATION_CAPABILITIES/` with no mapping to current implementation or prioritized roadmap.
+
+**Changes:**
+- Created `REMEDIATION_CAPABILITY_ROADMAP.md` at project root: comprehensive analysis of all 27 capabilities from the gap analysis doc + concepts from the Claude agent process doc. Covers current capability status (implemented/partial/not implemented), canonical z→y→x example, decision label taxonomy, Change Budget principle, Safety Gate pattern, 9 guardrails for recursive exploration, and a 23-step build sequence across V1.x through V5.
+- Updated `NEXT_MISSION.md`: corrected stale Phase 1 gap list (pr-description.js, dep-tree.js now exist), added Phase 1.x Remediation Path Explorer entry with 3-step build sequence.
+- Updated `Master_Roadmap.md`: added Phase 1.x, refined Phase 5 to reference Find→Explore→Simulate→Verify→Compare→Recommend→Apply pipeline.
+
+**Key decision:** The core differentiator is verified remediation path exploration, not output labeling. Decision labels (SAFE_ALIGNED, SAFE_PARENT_UPGRADE, CONTROLLED_OVERRIDE, NOT_FIXABLE, NON_RUNTIME_EXPOSURE, MANUAL_SECURITY_REVIEW) are assigned last, as output enrichment on an already-verified path. Classification never drives which path to explore.
+
+**Key constraint:** Static SemVer inference is INFERRED; only `npm install --package-lock-only` simulation in a temp directory produces VERIFIED confidence. The canonical example (z→y@1.5→x@^1.2, fixed x@2.2, y@1.6→x@^2.1) must be discovered and verified automatically via simulation.
+
+**Next:** Wire `git-commits.js` into `mendfix apply --commit` (V1 blocker 1), then wire enrichWithConfidence into CLI path (V1 blocker 2), then begin Phase 1.x with manifest inspection per candidate parent version.
