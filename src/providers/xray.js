@@ -58,8 +58,8 @@ function parseReport(filePath) {
       const { name, version, ecosystem, groupId } = parsed;
       if (!isSupportedEcosystem(ecosystem)) continue;
 
-      const isMaven  = ecosystem === 'maven';
       const fixVersions = extractFixVersions(comp.fixed_versions || []);
+      const libraryType = ecosystemToLibraryType(ecosystem);
 
       const key = `${name}@${version}`;
       if (!byKey.has(key)) {
@@ -67,10 +67,10 @@ function parseReport(filePath) {
           libraryKey:     key,
           libraryName:    name,
           groupId:        groupId || null,
-          libraryType:    isMaven ? 'MAVEN_ARTIFACT' : 'NODE_PACKAGED_MODULE',
+          libraryType,
           currentVersion: version,
-          filename:       `${name}-${version}${isMaven ? '.jar' : '.tgz'}`,
-          dependencyFile: isMaven ? 'pom.xml' : 'package.json',
+          filename:       inferFilename(name, version, ecosystem),
+          dependencyFile: inferDependencyFile(ecosystem),
           cves:           [],
         });
       }
@@ -159,6 +159,28 @@ function parseComponentId(compId) {
     return { name, version, ecosystem: 'go', groupId: null };
   }
 
+  if (scheme === 'nuget') {
+    // "PackageName:version"
+    const lastColon = rest.lastIndexOf(':');
+    if (lastColon < 0) return null;
+    const name    = rest.slice(0, lastColon);
+    const rawVer  = rest.slice(lastColon + 1);
+    const version = semver.valid(rawVer) || semver.valid(semver.coerce(rawVer));
+    if (!version || !name) return null;
+    return { name, version, ecosystem: 'dotnet', groupId: null };
+  }
+
+  if (scheme === 'cargo' || scheme === 'crates') {
+    // "crate-name:version"
+    const lastColon = rest.lastIndexOf(':');
+    if (lastColon < 0) return null;
+    const name    = rest.slice(0, lastColon);
+    const rawVer  = rest.slice(lastColon + 1);
+    const version = semver.valid(rawVer) || semver.valid(semver.coerce(rawVer));
+    if (!version || !name) return null;
+    return { name, version, ecosystem: 'rust', groupId: null };
+  }
+
   return null;
 }
 
@@ -187,9 +209,37 @@ function normalizeSeverity(raw) {
   return map[(raw || '').toLowerCase()] || 'UNKNOWN';
 }
 
-/** Only auto-apply for npm and maven; pass through but do not filter go/python. */
 function isSupportedEcosystem(eco) {
-  return ['npm', 'maven', 'python', 'go'].includes(eco);
+  return ['npm', 'maven', 'python', 'go', 'dotnet', 'rust'].includes(eco);
+}
+
+function ecosystemToLibraryType(eco) {
+  const map = {
+    npm:    'NODE_PACKAGED_MODULE',
+    maven:  'MAVEN_ARTIFACT',
+    python: 'PYTHON_PACKAGE',
+    go:     'GO_MODULE',
+    dotnet: 'DOTNET_PACKAGE',
+    rust:   'RUST_CRATE',
+  };
+  return map[eco] || 'NODE_PACKAGED_MODULE';
+}
+
+function inferFilename(name, version, ecosystem) {
+  if (ecosystem === 'maven')  return `${name}-${version}.jar`;
+  if (ecosystem === 'python') return `${name}-${version}.tar.gz`;
+  if (ecosystem === 'dotnet') return `${name}.${version}.nupkg`;
+  if (ecosystem === 'rust')   return `${name}-${version}.crate`;
+  return `${name}-${version}.tgz`;
+}
+
+function inferDependencyFile(ecosystem) {
+  if (ecosystem === 'maven')  return 'pom.xml';
+  if (ecosystem === 'python') return 'requirements.txt';
+  if (ecosystem === 'go')     return 'go.mod';
+  if (ecosystem === 'dotnet') return 'Directory.Packages.props';
+  if (ecosystem === 'rust')   return 'Cargo.toml';
+  return 'package.json';
 }
 
 // ---------------------------------------------------------------------------

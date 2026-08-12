@@ -203,7 +203,12 @@ function isSupportedEcosystem(eco) {
 }
 
 function ecosystemToLibraryType(eco) {
-  if (eco === 'maven' || eco.includes('maven')) return 'MAVEN_ARTIFACT';
+  const e = (eco || '').toLowerCase();
+  if (e === 'maven' || e.includes('maven')) return 'MAVEN_ARTIFACT';
+  if (e === 'pypi' || e.includes('python')) return 'PYTHON_PACKAGE';
+  if (e === 'go' || e.includes('golang')) return 'GO_MODULE';
+  if (e === 'nuget' || e.includes('dotnet') || e.includes('.net')) return 'DOTNET_PACKAGE';
+  if (e === 'crates.io' || e === 'cargo' || e.includes('rust')) return 'RUST_CRATE';
   return 'NODE_PACKAGED_MODULE';
 }
 

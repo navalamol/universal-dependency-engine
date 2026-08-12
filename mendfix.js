@@ -79,7 +79,9 @@ Options:
                              parent upgrade recommendations
   --requirements-txt <path>  (python) Apply Phase A pins directly to this requirements file
   --go-mod <path>            (go) Apply Phase A replace directives to this go.mod
-  --ecosystem <npm|maven|python|go>  Override auto-detected ecosystem
+  --packages-props <path>    (dotnet) Apply Phase A pins to Directory.Packages.props or .csproj
+  --cargo-toml <path>        (rust) Apply Phase A pins to Cargo.toml
+  --ecosystem <npm|maven|python|go|dotnet|rust>  Override auto-detected ecosystem
   --out-dir <path>           Output directory  [default: ./mend-output]
   --verify-versions          Check registry to confirm versions exist
   --dry-run                  Print plan to stdout; write nothing to disk
@@ -99,6 +101,8 @@ Phase output files written to --out-dir:
   maven:  phase-a-pom-patch.xml / phase-b-pom-patch.xml / manual-review.md
   python: phase-a-requirements.txt / phase-b-requirements.txt / manual-review.md
   go:     phase-a-go-mod.txt / phase-b-go-mod.txt / manual-review.md
+  dotnet: phase-a-packages-props.xml / phase-b-packages-props.xml / manual-review.md
+  rust:   phase-a-cargo-toml.txt / phase-b-cargo-toml.txt / manual-review.md
           remediation-report.md  (all ecosystems)
 
 Examples:
@@ -416,6 +420,8 @@ async function main() {
   const lockFilePath       = args['lock-file'] || null;
   const requirementsTxtPath = args['requirements-txt'] || null;
   const goModPath          = args['go-mod'] || null;
+  const packagesPropsPath  = args['packages-props'] || null;
+  const cargoTomlPath      = args['cargo-toml'] || null;
   const outDir          = args['out-dir'] || path.join(path.dirname(path.resolve(reportFile)), 'mend-output');
   const verifyVersions  = args['verify-versions'] === true;
   const dryRun          = args['dry-run'] === true;
@@ -442,6 +448,8 @@ async function main() {
   if (lockFilePath)        console.log(`Lock    : ${lockFilePath}`);
   if (requirementsTxtPath) console.log(`Reqs    : ${requirementsTxtPath}`);
   if (goModPath)           console.log(`go.mod  : ${goModPath}`);
+  if (packagesPropsPath)   console.log(`Props   : ${packagesPropsPath}`);
+  if (cargoTomlPath)       console.log(`Cargo   : ${cargoTomlPath}`);
   if (!dryRun)         console.log(`Out dir : ${outDir}`);
 
   // ── Step 1: Parse report ─────────────────────────────────────────────────
@@ -461,7 +469,7 @@ async function main() {
   const ecosystem = detectEcosystem(entries, args.ecosystem);
   console.log(`  Ecosystem: ${ecosystem}`);
   if (verifyVersions) {
-    const registryName = { maven: 'Maven Central', python: 'PyPI', go: 'Go module proxy' }[ecosystem] || 'npm';
+    const registryName = { maven: 'Maven Central', python: 'PyPI', go: 'Go module proxy', dotnet: 'NuGet', rust: 'crates.io' }[ecosystem] || 'npm';
     console.log(`  Registry: ${registryName} verification enabled`);
   }
 
@@ -525,6 +533,40 @@ async function main() {
     } else {
       console.log('\n[1.5/5] Skipping go.mod parsing (pass --go-mod to enable)');
     }
+  } else if (ecosystem === 'dotnet') {
+    const { parseLockFile: parseDotnetLock, detectLockFile: detectDotnetLock } = require('./src/ecosystems/dotnet/lock-parser');
+    const lockCandidate = packagesPropsPath ||
+      detectDotnetLock(path.dirname(path.resolve(reportFile)));
+    if (lockCandidate && fs.existsSync(lockCandidate)) {
+      console.log('\n[1.5/5] Parsing .NET dependency file...');
+      try {
+        depTree = parseDotnetLock(lockCandidate);
+        console.log(`  ${depTree.size} unique packages in .NET dependency tree`);
+      } catch (err) {
+        console.warn(`  WARN: ${err.message} — dep-tree features disabled`);
+      }
+    } else {
+      console.log('\n[1.5/5] Skipping .NET lock file (pass --packages-props to enable)');
+    }
+  } else if (ecosystem === 'rust') {
+    const cargoLockPath = cargoTomlPath
+      ? path.join(path.dirname(cargoTomlPath), 'Cargo.lock')
+      : null;
+    const lockCandidate = cargoLockPath && fs.existsSync(cargoLockPath) ? cargoLockPath
+      : cargoTomlPath && fs.existsSync(cargoTomlPath) ? cargoTomlPath
+      : null;
+    if (lockCandidate) {
+      console.log('\n[1.5/5] Parsing Cargo.lock...');
+      try {
+        const { parseLockFile: parseRustLock } = require('./src/ecosystems/rust/lock-parser');
+        depTree = parseRustLock(lockCandidate);
+        console.log(`  ${depTree.size} unique crates in Rust dependency tree`);
+      } catch (err) {
+        console.warn(`  WARN: ${err.message} — dep-tree features disabled`);
+      }
+    } else {
+      console.log('\n[1.5/5] Skipping Cargo.lock parsing (pass --cargo-toml to enable)');
+    }
   }
 
   // ── Step 2: Resolve fix versions ─────────────────────────────────────────
@@ -544,6 +586,14 @@ async function main() {
       console.log('\n[3/5] Verifying versions against Go module proxy...');
       const { verifyPlanVersions: verifyGo } = require('./src/ecosystems/go/registry');
       plan = await verifyGo(plan);
+    } else if (ecosystem === 'dotnet') {
+      console.log('\n[3/5] Verifying versions against NuGet...');
+      const { verifyPlanVersions: verifyNuget } = require('./src/ecosystems/dotnet/registry');
+      plan = await verifyNuget(plan);
+    } else if (ecosystem === 'rust') {
+      console.log('\n[3/5] Verifying versions against crates.io...');
+      const { verifyPlanVersions: verifyCrates } = require('./src/ecosystems/rust/registry');
+      plan = await verifyCrates(plan);
     } else {
       console.log('\n[3/5] Verifying versions against npm registry...');
       plan = await verifyNpm(plan);
@@ -551,7 +601,7 @@ async function main() {
 
     for (const item of plan) {
       if (item.registryExists === false && item.phase !== 'C') {
-        const regName = { maven: 'Maven Central', python: 'PyPI', go: 'Go module proxy' }[ecosystem] || 'npm';
+        const regName = { maven: 'Maven Central', python: 'PyPI', go: 'Go module proxy', dotnet: 'NuGet', rust: 'crates.io' }[ecosystem] || 'npm';
         console.log(`  ⚠  ${item.libraryName}: ${item.recommendedVersion} not found on ${regName} — escalating to Phase C`);
         item.phase         = 'C';
         item.justification = `Recommended version ${item.recommendedVersion} is not published. No verified fix available in the ${semver.major(item.currentVersion)}.x range.`;
@@ -700,6 +750,10 @@ async function main() {
     applyFailed = await writeOutputPython(phasedPlan, phaseA, phaseB, phaseC, outDir, requirementsTxtPath, reportContent);
   } else if (ecosystem === 'go') {
     applyFailed = await writeOutputGo(phasedPlan, phaseA, phaseB, phaseC, outDir, goModPath, reportContent);
+  } else if (ecosystem === 'dotnet') {
+    applyFailed = await writeOutputDotnet(phasedPlan, phaseA, phaseB, phaseC, outDir, packagesPropsPath, reportContent);
+  } else if (ecosystem === 'rust') {
+    applyFailed = await writeOutputRust(phasedPlan, phaseA, phaseB, phaseC, outDir, cargoTomlPath, reportContent);
   } else {
     applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions, applyPhaseB);
   }
@@ -727,6 +781,8 @@ async function main() {
       : pomXmlPath          ? path.dirname(pomXmlPath)
       : requirementsTxtPath ? path.dirname(requirementsTxtPath)
       : goModPath           ? path.dirname(goModPath)
+      : packagesPropsPath   ? path.dirname(packagesPropsPath)
+      : cargoTomlPath       ? path.dirname(cargoTomlPath)
       : process.cwd();
     console.log('\nCommitting...');
     const commitResult = commitPhaseA(projectDir, phaseA, ecosystem);
@@ -743,6 +799,8 @@ async function main() {
       : pomXmlPath          ? path.dirname(pomXmlPath)
       : requirementsTxtPath ? path.dirname(requirementsTxtPath)
       : goModPath           ? path.dirname(goModPath)
+      : packagesPropsPath   ? path.dirname(packagesPropsPath)
+      : cargoTomlPath       ? path.dirname(cargoTomlPath)
       : process.cwd();
     console.log('\nCommitting Phase B...');
     const commitResult = commitPhaseBC(projectDir, phaseB, [], ecosystem);
@@ -754,7 +812,7 @@ async function main() {
   }
 
   console.log('\nDone.');
-  printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirementsTxtPath, goModPath, phaseA, phaseB, phaseC, applyPhaseB);
+  printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirementsTxtPath, goModPath, packagesPropsPath, cargoTomlPath, phaseA, phaseB, phaseC, applyPhaseB);
 }
 
 // ---------------------------------------------------------------------------
@@ -1244,13 +1302,160 @@ async function writeOutputGo(phasedPlan, phaseA, phaseB, phaseC, outDir, goModPa
 }
 
 // ---------------------------------------------------------------------------
+// .NET output writer
+// ---------------------------------------------------------------------------
+
+async function writeOutputDotnet(phasedPlan, phaseA, phaseB, phaseC, outDir, packagesPropsPath, reportContent) {
+  const {
+    writePackagesPropsPatch, applyVersionPins,
+    buildManualReview, saveManifest, detectManualChanges,
+  } = require('./src/ecosystems/dotnet/writer');
+
+  const pA = writePackagesPropsPatch(phasedPlan, outDir, 'A');
+  if (pA) console.log(`  Wrote: ${pA}`);
+  const pB = writePackagesPropsPatch(phasedPlan, outDir, 'B');
+  if (pB) console.log(`  Wrote: ${pB}`);
+
+  if (phaseC.length > 0) {
+    const p = path.join(outDir, 'manual-review.md');
+    fs.writeFileSync(p, buildManualReview(phaseC));
+    console.log(`  Wrote: ${p}`);
+  }
+
+  const reportPath = path.join(outDir, 'remediation-report.md');
+  fs.writeFileSync(reportPath, reportContent);
+  console.log(`  Wrote: ${reportPath}`);
+
+  if (!packagesPropsPath || !fs.existsSync(packagesPropsPath)) return false;
+  if (phaseA.length === 0) {
+    console.log(`  No Phase A fixes to apply to ${packagesPropsPath}`);
+    return false;
+  }
+
+  const conflicts   = detectManualChanges(packagesPropsPath, phaseA);
+  const cleanPhaseA = phaseA.filter(i => !conflicts.find(c => c.pkgName === i.libraryName));
+
+  if (conflicts.length > 0) {
+    console.log(`\n  ⚠  Skipping manually-changed entries (preserving your edits):`);
+    for (const c of conflicts) console.log(`     ${c.pkgName}: expected ${c.lastToolVersion}, currently ${c.currentVersion}`);
+  }
+  if (cleanPhaseA.length === 0) {
+    console.log(`  All Phase A entries were manually changed — nothing applied.`);
+    return false;
+  }
+
+  try {
+    applyVersionPins(packagesPropsPath, cleanPhaseA);
+    for (const item of cleanPhaseA) console.log(`  Applied: ${item.libraryName} → ${item.recommendedVersion}`);
+    console.log(`\n  Updated: ${packagesPropsPath}`);
+
+    const { runDotnetRestore, verifyFixVersions: verifyDotnet } = require('./src/ecosystems/dotnet/installer');
+    console.log(`\n  Running: dotnet restore`);
+    const result = runDotnetRestore(path.dirname(packagesPropsPath));
+    if (!result.success) {
+      console.warn(`  WARNING: dotnet restore failed — ${(result.error || '').slice(0, 300)}`);
+    } else {
+      console.log(`  OK — packages restored`);
+      const mismatches = verifyDotnet(cleanPhaseA, path.dirname(packagesPropsPath));
+      if (mismatches.length > 0) {
+        console.warn(`  ⚠  Version mismatches after restore:`);
+        for (const m of mismatches) console.warn(`     ${m.name}: expected ${m.expected}, got ${m.actual}`);
+      } else {
+        console.log(`  Verified: ${cleanPhaseA.length} package(s) at fix version`);
+      }
+    }
+    saveManifest(outDir, cleanPhaseA);
+  } catch (err) {
+    console.error(`  ERROR during apply: ${err.message}`);
+    process.exitCode = 1;
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Rust output writer
+// ---------------------------------------------------------------------------
+
+async function writeOutputRust(phasedPlan, phaseA, phaseB, phaseC, outDir, cargoTomlPath, reportContent) {
+  const {
+    writeCargoTomlPatch, applyVersionPins,
+    buildManualReview, saveManifest, detectManualChanges,
+  } = require('./src/ecosystems/rust/writer');
+
+  const pA = writeCargoTomlPatch(phasedPlan, outDir, 'A');
+  if (pA) console.log(`  Wrote: ${pA}`);
+  const pB = writeCargoTomlPatch(phasedPlan, outDir, 'B');
+  if (pB) console.log(`  Wrote: ${pB}`);
+
+  if (phaseC.length > 0) {
+    const p = path.join(outDir, 'manual-review.md');
+    fs.writeFileSync(p, buildManualReview(phaseC));
+    console.log(`  Wrote: ${p}`);
+  }
+
+  const reportPath = path.join(outDir, 'remediation-report.md');
+  fs.writeFileSync(reportPath, reportContent);
+  console.log(`  Wrote: ${reportPath}`);
+
+  if (!cargoTomlPath || !fs.existsSync(cargoTomlPath)) return false;
+  if (phaseA.length === 0) {
+    console.log(`  No Phase A fixes to apply to ${cargoTomlPath}`);
+    return false;
+  }
+
+  const conflicts   = detectManualChanges(cargoTomlPath, phaseA);
+  const cleanPhaseA = phaseA.filter(i => !conflicts.find(c => c.pkgName === i.libraryName));
+
+  if (conflicts.length > 0) {
+    console.log(`\n  ⚠  Skipping manually-changed entries (preserving your edits):`);
+    for (const c of conflicts) console.log(`     ${c.pkgName}: expected ${c.lastToolVersion}, currently ${c.currentVersion}`);
+  }
+  if (cleanPhaseA.length === 0) {
+    console.log(`  All Phase A entries were manually changed — nothing applied.`);
+    return false;
+  }
+
+  try {
+    applyVersionPins(cargoTomlPath, cleanPhaseA);
+    for (const item of cleanPhaseA) console.log(`  Applied: ${item.libraryName} → ${item.recommendedVersion}`);
+    console.log(`\n  Updated: ${cargoTomlPath}`);
+
+    const { runCargoUpdate, verifyFixVersions: verifyRust } = require('./src/ecosystems/rust/installer');
+    const projectDir = path.dirname(cargoTomlPath);
+    console.log(`\n  Running: cargo update --precise`);
+    const result = runCargoUpdate(cleanPhaseA, projectDir);
+    if (!result.success) {
+      console.warn(`  WARNING: cargo update failed — ${(result.error || '').slice(0, 300)}`);
+    } else {
+      console.log(`  OK — Cargo.lock updated`);
+      const mismatches = verifyRust(cleanPhaseA, projectDir);
+      if (mismatches.length > 0) {
+        console.warn(`  ⚠  Version mismatches in Cargo.lock:`);
+        for (const m of mismatches) console.warn(`     ${m.name}: expected ${m.expected}, got ${m.actual}`);
+      } else {
+        console.log(`  Verified: ${cleanPhaseA.length} crate(s) at fix version`);
+      }
+    }
+    saveManifest(outDir, cleanPhaseA);
+  } catch (err) {
+    console.error(`  ERROR during apply: ${err.message}`);
+    process.exitCode = 1;
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Next-steps summary
 // ---------------------------------------------------------------------------
 
-function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirementsTxtPath, goModPath, phaseA, phaseB, phaseC, appliedPhaseB = false) {
-  const targetApplied = ecosystem === 'maven' ? pomXmlPath
+function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirementsTxtPath, goModPath, packagesPropsPath, cargoTomlPath, phaseA, phaseB, phaseC, appliedPhaseB = false) {
+  const targetApplied = ecosystem === 'maven'  ? pomXmlPath
     : ecosystem === 'python' ? requirementsTxtPath
     : ecosystem === 'go'     ? goModPath
+    : ecosystem === 'dotnet' ? packagesPropsPath
+    : ecosystem === 'rust'   ? cargoTomlPath
     : packageJsonPath;
   const pendingPhaseB = phaseB.length > 0 && !appliedPhaseB;
   const hasNextSteps  = !targetApplied || pendingPhaseB || phaseC.length > 0;
@@ -1272,6 +1477,14 @@ function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirem
       console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-go-mod.txt')}`);
       console.log(`  ${step++}. Add the replace directives to your go.mod`);
       console.log(`  ${step++}. Run: go mod tidy`);
+    } else if (ecosystem === 'dotnet') {
+      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-packages-props.xml')}`);
+      console.log(`  ${step++}. Merge PackageVersion entries into Directory.Packages.props`);
+      console.log(`  ${step++}. Run: dotnet restore`);
+    } else if (ecosystem === 'rust') {
+      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-cargo-toml.txt')}`);
+      console.log(`  ${step++}. Apply the pinned versions to your Cargo.toml`);
+      console.log(`  ${step++}. Run: cargo update --precise <version> for each crate`);
     } else {
       console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-overrides.json')}`);
       console.log(`  ${step++}. Merge Phase A overrides into your project's package.json`);
@@ -1283,13 +1496,12 @@ function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirem
     const hasParentUpgrades = phaseB.some(i => i.parentUpgradePaths);
     const hasOverrides      = phaseB.some(i => !i.parentUpgradePaths);
     if (hasOverrides) {
-      const patchFile = ecosystem === 'maven'
-        ? path.join(outDir, 'phase-b-pom-patch.xml')
-        : ecosystem === 'python'
-          ? path.join(outDir, 'phase-b-requirements.txt')
-          : ecosystem === 'go'
-            ? path.join(outDir, 'phase-b-go-mod.txt')
-            : path.join(outDir, 'phase-b-overrides.json');
+      const patchFile = ecosystem === 'maven'   ? path.join(outDir, 'phase-b-pom-patch.xml')
+        : ecosystem === 'python' ? path.join(outDir, 'phase-b-requirements.txt')
+        : ecosystem === 'go'     ? path.join(outDir, 'phase-b-go-mod.txt')
+        : ecosystem === 'dotnet' ? path.join(outDir, 'phase-b-packages-props.xml')
+        : ecosystem === 'rust'   ? path.join(outDir, 'phase-b-cargo-toml.txt')
+        : path.join(outDir, 'phase-b-overrides.json');
       console.log(`  ${step++}. Review ${patchFile} — then re-run with --apply-phase-b to auto-apply`);
     }
     if (hasParentUpgrades && ecosystem === 'npm') {

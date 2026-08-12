@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-12 (Python + Go ecosystems)
+Last updated: 2026-08-12 (Python + Go + .NET + Rust ecosystems — Phase 3 complete)
 
 ---
 
@@ -95,7 +95,7 @@ lockfile update + verification
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `index.js` | `detectEcosystem(entries, override?)` → `'npm'\|'maven'\|'python'\|'go'` | Auto-detect ecosystem from LibraryEntry types (PYTHON_PACKAGE → python, GO_MODULE → go) |
+| `index.js` | `detectEcosystem(entries, override?)` → `'npm'\|'maven'\|'python'\|'go'\|'dotnet'\|'rust'` | Auto-detect ecosystem from LibraryEntry types: PYTHON_PACKAGE→python, GO_MODULE→go, DOTNET_PACKAGE→dotnet, RUST_CRATE→rust |
 
 ### src/ecosystems/npm/
 
@@ -109,6 +109,26 @@ lockfile update + verification
 | `override-minimizer.js` | `minimizeOverrides(packageJsonPath, lockFilePath, opts?)` → `{removed, kept, skipped, limitHit}` | Override-set minimization (Item 13). Iteratively simulates removal of each flat-string override; marks it removable only when npm still resolves the fix version without it. Iterates in rounds until stable. Wired into mendfix cleanup --simulate. |
 | `simulator.js` | `simulate(...)`, `simulatePackage(pkgObject, lockPath, opts?)` → SimulationResult | simulatePackage added: takes a ready-made pkg object (not base+candidates), used by override-minimizer to test post-removal state. |
 | `simulator.js` | `simulate(basePackageJsonPath, baseLockPath, candidates, options?)` → `SimulationResult[]` | Isolated `npm install --package-lock-only` in temp dir. Per-run cache + 20-sim limit + 30s timeout guardrails. |
+
+### src/ecosystems/dotnet/
+
+| File | Exports | Purpose |
+|------|---------|---------|
+| `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `detectLockFile(dir)` → `string\|null` | Parse `packages.lock.json` (NuGet lock v1, builds full dep-graph) and `.csproj`/`Directory.Packages.props` (flat PackageReference/PackageVersion extraction) |
+| `writer.js` | `writePackagesPropsPatch`, `applyVersionPins`, `buildManualReview`, `saveManifest`, `detectManualChanges` | Write phase-specific XML snippets; apply PackageVersion pins in-place to Directory.Packages.props or .csproj |
+| `registry.js` | `getPublishedVersions(name)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | NuGet flat container API (`api.nuget.org/v3-flatcontainer/{name}/index.json`) |
+| `installer.js` | `snapshotFiles`, `restoreFiles`, `runDotnetRestore(projectDir)`, `verifyFixVersions(items, projectDir)` | `dotnet restore` + verify via `dotnet list package` |
+| `simulator.js` | `simulate(targetPath, candidates, opts?)` → `{success, error?}` | Shallow-copy project to temp dir, apply pins, run `dotnet restore --no-cache` |
+
+### src/ecosystems/rust/
+
+| File | Exports | Purpose |
+|------|---------|---------|
+| `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `parseCargoLock`, `parseCargoToml` | Parse `Cargo.lock` (TOML array-of-tables, builds parents graph) and `Cargo.toml` ([dependencies] block) |
+| `writer.js` | `writeCargoTomlPatch`, `applyVersionPins`, `buildManualReview`, `saveManifest`, `detectManualChanges` | Write phase-specific Cargo.toml snippets; apply exact `=version` pins in-place; appends `[patch.crates-io]` for missing entries |
+| `registry.js` | `getPublishedVersions(name)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | crates.io API (`crates.io/api/v1/crates/{name}/versions`). Skips yanked versions. 1 req/s rate limit. |
+| `installer.js` | `snapshotFiles`, `restoreFiles`, `runCargoUpdate(items, projectDir)`, `runCargoCheck(projectDir)`, `verifyFixVersions(items, projectDir)` | `cargo update --package name --precise version` per crate; verify from Cargo.lock |
+| `simulator.js` | `simulate(cargoTomlPath, candidates, opts?)` → `SimulationResult` | Copy Cargo.toml + Cargo.lock to temp dir, apply pins, run `cargo update --precise` per crate |
 
 ### src/ecosystems/python/
 
@@ -273,8 +293,11 @@ Baseline: **238/238 pass**
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 | Python ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
 | Go ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
+| .NET ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
+| Rust ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
+| **Phase 3 — Universal Dependency Engine (6 ecosystems)** | ✅ **COMPLETE** |
 
-**Next:** Python and Go ecosystems shipped. All 4 ecosystems now at parity. Next work is simulator wiring into cleanup + override-minimizer equivalents for Python/Go, or intelligence layer (Phase 2).
+**Next:** Phase 3 complete — 6 ecosystems (npm, Maven, Python, Go, .NET, Rust). Phase 4 is CI/CD platform write-back (open PRs on GitLab/Azure/Bitbucket). Phase 5 multi-repo portfolio mode. Intelligence layer (Phase 6+) deferred until deterministic layer is mature.
 
 ---
 
@@ -291,6 +314,10 @@ Baseline: **238/238 pass**
 | `phase-b-requirements.txt` | B | python |
 | `phase-a-go-mod.txt` | A | go |
 | `phase-b-go-mod.txt` | B | go |
+| `phase-a-packages-props.xml` | A | dotnet |
+| `phase-b-packages-props.xml` | B | dotnet |
+| `phase-a-cargo-toml.txt` | A | rust |
+| `phase-b-cargo-toml.txt` | B | rust |
 | `manual-review.md` | C | all |
 | `remediation-report.md` | all | all |
 | `pr-description.md` | all | all |

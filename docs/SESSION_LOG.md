@@ -4,6 +4,30 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — .NET and Rust ecosystems — Phase 3 complete (6 ecosystems)
+
+**Before:** 4 ecosystems (npm, Maven, Python, Go). NuGet and Cargo entries from Trivy/Xray/GitLab passed through as NODE_PACKAGED_MODULE and were dropped at apply.
+**Changes:**
+- `src/ecosystems/dotnet/lock-parser.js` — `parsePackagesLockJson` parses NuGet lock v1 `packages.lock.json` (full dep-graph with requires/parents); `parseCsprojXml` parses PackageReference/PackageVersion from `.csproj`/`.props` files; `detectLockFile` probes for both.
+- `src/ecosystems/dotnet/writer.js` — `writePackagesPropsPatch` + `applyVersionPins` writes/updates `PackageVersion` in Directory.Packages.props. Appends new entries before `</ItemGroup>` or wraps in new ItemGroup if needed. `detectManualChanges` guards human edits.
+- `src/ecosystems/dotnet/registry.js` — NuGet flat container API; case-insensitive name matching; same exact/adjusted/missing resolution contract.
+- `src/ecosystems/dotnet/installer.js` — `runDotnetRestore` + `verifyFixVersions` via `dotnet list package`.
+- `src/ecosystems/dotnet/simulator.js` — shallow copies project files to temp dir, applies pins, runs `dotnet restore --no-cache`.
+- `src/ecosystems/rust/lock-parser.js` — `parseCargoLock` state-machine TOML parser for `[[package]]` blocks with reverse-index parents build; `parseCargoToml` extracts [dependencies]/[dev-dependencies] version pins.
+- `src/ecosystems/rust/writer.js` — `applyVersionPins` updates both simple (`name = "ver"`) and inline-table (`name = { version = "ver", ... }`) forms; appends `[patch.crates-io]` for packages not in [dependencies]. Pins as exact `=version` semantics.
+- `src/ecosystems/rust/registry.js` — crates.io API, skips yanked versions, 1 req/s rate limit, User-Agent header required.
+- `src/ecosystems/rust/installer.js` — `runCargoUpdate --package name --precise version` per crate; `runCargoCheck`; `verifyFixVersions` reads Cargo.lock directly.
+- `src/ecosystems/rust/simulator.js` — copies Cargo.toml + Cargo.lock to temp dir, applies pins, runs `cargo update --precise` per crate.
+- `src/providers/trivy.js` — added 'nuget', 'dotnet-core', 'dotnet', 'msbuild' → DOTNET_PACKAGE.
+- `src/providers/osv.js` — `ecosystemToLibraryType` now maps NuGet/crates.io/Go/PyPI correctly (previously only maven was mapped).
+- `src/providers/xray.js` — added nuget:// and cargo:// purl scheme parsing; `ecosystemToLibraryType`/`inferFilename`/`inferDependencyFile` helpers; `isSupportedEcosystem` extended to dotnet/rust.
+- `src/providers/gitlab.js` — `inferEcosystem` now detects Cargo.toml/Cargo.lock → rust and .csproj/.fsproj/packages.lock.json → dotnet; removed the `npm|maven`-only filter (all 6 ecosystems pass through); same ecosystem→libraryType helpers.
+- `src/ecosystems/index.js` — DOTNET_PACKAGE and RUST_CRATE added to TYPE_MAP.
+- `mendfix.js` — `--packages-props` and `--cargo-toml` flags; dotnet/rust branches in lock parse, registry verify, apply; `writeOutputDotnet` + `writeOutputRust`; next-steps per ecosystem.
+**Next:** Phase 3 complete. Phase 4: CI/CD platform write-back (GitLab MRs, Azure PRs). Phase 5: multi-repo portfolio mode.
+
+---
+
 ## 2026-08-12 — Python and Go ecosystems (4 ecosystems at parity)
 
 **Before:** npm and Maven ecosystems only. Python/Go entries from Trivy/Xray were parsed but dropped at the apply step (no writers).

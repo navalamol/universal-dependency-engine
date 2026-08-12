@@ -118,8 +118,10 @@ function parseReport(filePath) {
  *
  * npm/node types   → NODE_PACKAGED_MODULE
  * Maven types      → MAVEN_ARTIFACT
- * Python types     → PYTHON_PACKAGE   (future ecosystem)
- * Go types         → GO_MODULE         (future ecosystem)
+ * Python types     → PYTHON_PACKAGE
+ * Go types         → GO_MODULE
+ * NuGet types      → DOTNET_PACKAGE
+ * Rust/Cargo types → RUST_CRATE
  * Unknown          → NODE_PACKAGED_MODULE (safe default for lang-pkgs)
  */
 function resultTypeToLibraryType(type, vuln) {
@@ -131,6 +133,7 @@ function resultTypeToLibraryType(type, vuln) {
   if (['pip', 'pipenv', 'poetry', 'python-pkg', 'python'].includes(type)) return 'PYTHON_PACKAGE';
   if (['gomod', 'gobinary', 'go'].includes(type)) return 'GO_MODULE';
   if (['cargo', 'rust'].includes(type)) return 'RUST_CRATE';
+  if (['nuget', 'dotnet-core', 'dotnet', 'msbuild'].includes(type)) return 'DOTNET_PACKAGE';
   if (['gem', 'bundler'].includes(type)) return 'RUBY_GEM';
   if (type.includes('maven') || type.includes('java')) return 'MAVEN_ARTIFACT';
   if (type.includes('node') || type.includes('npm')) return 'NODE_PACKAGED_MODULE';

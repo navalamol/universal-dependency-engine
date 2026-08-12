@@ -5,6 +5,8 @@ const TYPE_MAP = {
   MAVEN_ARTIFACT:   'maven',
   PYTHON_PACKAGE:   'python',
   GO_MODULE:        'go',
+  DOTNET_PACKAGE:   'dotnet',
+  RUST_CRATE:       'rust',
 };
 
 // Any type not in TYPE_MAP is treated as npm.
@@ -15,7 +17,7 @@ function resolveEcosystem(libraryType) {
 /**
  * Detect the package ecosystem from parsed entries.
  *
- * Returns 'npm' | 'maven' | 'python' | 'go'.
+ * Returns 'npm' | 'maven' | 'python' | 'go' | 'dotnet' | 'rust'.
  *
  * Throws when entries span multiple incompatible ecosystems — split the report
  * by ecosystem first, or use --ecosystem to force one.
@@ -39,7 +41,7 @@ function detectEcosystem(entries, overrideEcosystem) {
 
   throw new Error(
     `Mixed-ecosystem report detected (${[...ecosystems].join(' + ')} entries). ` +
-    'Split the report by ecosystem before running mendfix, or use --ecosystem npm|maven|python|go to force one.'
+    'Split the report by ecosystem before running mendfix, or use --ecosystem npm|maven|python|go|dotnet|rust to force one.'
   );
 }
 

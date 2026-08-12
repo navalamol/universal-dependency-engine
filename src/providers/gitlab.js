@@ -53,7 +53,6 @@ function parseReport(filePath) {
     if (!name || !version) continue;
 
     const ecosystem = inferEcosystem(loc.file || '');
-    if (ecosystem && ecosystem !== 'npm' && ecosystem !== 'maven') continue;
 
     const resolvedVersion = semver.valid(version) ||
       semver.valid(semver.coerce(version)) ||
@@ -65,17 +64,17 @@ function parseReport(filePath) {
     const score      = extractScore(vuln);
     const fixVersions = extractFixVersions(vuln, remediations);
 
-    const isMaven  = ecosystem === 'maven';
-    const key      = `${name}@${resolvedVersion}`;
+    const libraryType = ecosystemToLibraryType(ecosystem);
+    const key         = `${name}@${resolvedVersion}`;
     if (!byKey.has(key)) {
       byKey.set(key, {
         libraryKey:     key,
         libraryName:    name,
         groupId:        null,
-        libraryType:    isMaven ? 'MAVEN_ARTIFACT' : 'NODE_PACKAGED_MODULE',
+        libraryType,
         currentVersion: resolvedVersion,
-        filename:       `${name}-${resolvedVersion}${isMaven ? '.jar' : '.tgz'}`,
-        dependencyFile: loc.file || (isMaven ? 'pom.xml' : 'package.json'),
+        filename:       loc.file || inferFilename(name, resolvedVersion, ecosystem),
+        dependencyFile: loc.file || inferDependencyFile(ecosystem),
         cves:           [],
       });
     }
@@ -180,8 +179,9 @@ function inferEcosystem(filePath) {
   const f = filePath.toLowerCase();
   if (f.endsWith('pom.xml') || f.endsWith('.gradle')) return 'maven';
   if (f.endsWith('go.mod') || f.endsWith('go.sum')) return 'go';
-  if (f.endsWith('requirements.txt') || f.endsWith('pipfile') || f.endsWith('setup.py')) return 'python';
-  // package.json, package-lock.json, yarn.lock, Gemfile, Cargo.toml — default to npm for JS
+  if (f.endsWith('requirements.txt') || f.endsWith('pipfile') || f.endsWith('setup.py') || f.endsWith('pyproject.toml')) return 'python';
+  if (f.endsWith('cargo.toml') || f.endsWith('cargo.lock')) return 'rust';
+  if (f.endsWith('.csproj') || f.endsWith('.fsproj') || f.endsWith('.vbproj') || f.endsWith('packages.lock.json') || f.endsWith('directory.packages.props')) return 'dotnet';
   return 'npm';
 }
 
@@ -198,6 +198,35 @@ function isGitlabFormat(data) {
   if (!Array.isArray(data.vulnerabilities) || !data.vulnerabilities.length) return false;
   const sample = data.vulnerabilities[0];
   return Boolean(sample.location && sample.location.dependency);
+}
+
+function ecosystemToLibraryType(eco) {
+  const map = {
+    npm:    'NODE_PACKAGED_MODULE',
+    maven:  'MAVEN_ARTIFACT',
+    python: 'PYTHON_PACKAGE',
+    go:     'GO_MODULE',
+    dotnet: 'DOTNET_PACKAGE',
+    rust:   'RUST_CRATE',
+  };
+  return map[eco] || 'NODE_PACKAGED_MODULE';
+}
+
+function inferFilename(name, version, ecosystem) {
+  if (ecosystem === 'maven')  return `${name}-${version}.jar`;
+  if (ecosystem === 'python') return `${name}-${version}.tar.gz`;
+  if (ecosystem === 'dotnet') return `${name}.${version}.nupkg`;
+  if (ecosystem === 'rust')   return `${name}-${version}.crate`;
+  return `${name}-${version}.tgz`;
+}
+
+function inferDependencyFile(ecosystem) {
+  if (ecosystem === 'maven')  return 'pom.xml';
+  if (ecosystem === 'python') return 'requirements.txt';
+  if (ecosystem === 'go')     return 'go.mod';
+  if (ecosystem === 'dotnet') return 'Directory.Packages.props';
+  if (ecosystem === 'rust')   return 'Cargo.toml';
+  return 'package.json';
 }
 
 module.exports = { parseReport, isGitlabFormat };
