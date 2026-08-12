@@ -56,14 +56,14 @@ node renovate-workflow.js \
 ### repos.json shape
 ```json
 {
-  "org": "riversandtechnologies",
+  "org": "navalamol",
   "repos": [
     { "name": "ui-platform", "report": "./input/reports/GH_ui-platform.json" },
     { "name": "ui-platform-elements", "report": "./input/reports/GH_ui-platform-elements.json" }
   ]
 }
 ```
-`org` defaults to `"riversandtechnologies"` if omitted.
+`org` defaults to `"navalamol"` if omitted.
 
 ---
 

@@ -85,6 +85,37 @@ All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 
 - 13 new tests in `tests/core/graph-diff.test.js`.
 - 134/134 tests pass; baseline A:5 B:0 C:3 confirmed.
 
+---
+
+## Phase 5 — Multi-repo Portfolio Mode ✅ COMPLETE 2026-08-12
+
+**`mendfix portfolio --config portfolio.json`** — analyze vulnerabilities across multiple repos in one run.
+
+| Component | File | Status |
+|-----------|------|--------|
+| Portfolio orchestrator | `portfolio-runner.js` (root) | ✅ |
+| Portfolio report generator | `src/core/portfolio-report.js` | ✅ |
+| CLI subcommand `mendfix portfolio` | `mendfix.js` | ✅ |
+| 25 runner tests | `tests/core/portfolio-runner.test.js` | ✅ |
+| 20 report tests | `tests/core/portfolio-report.test.js` | ✅ |
+
+332/332 tests pass. Baseline A:5 B:0 C:3 confirmed.
+
+**Config format:**
+```json
+{
+  "repos": [
+    { "name": "org/repo", "report": "./vuln.json", "ecosystem": "npm", "lockFile": "./package-lock.json" }
+  ],
+  "outDir": "./portfolio-output",
+  "verifyVersions": false
+}
+```
+
+**Output:** `portfolio-output/portfolio-report.md` + per-repo `remediation-report.md` in `portfolio-output/<repo-name>/`.
+
+---
+
 ### Next: Dependabot provider
 
 - Create `src/providers/dependabot.js` implementing `parse(filePath) → LibraryEntry[]`

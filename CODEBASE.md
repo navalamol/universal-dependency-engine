@@ -55,6 +55,7 @@ lockfile update + verification
 |------|---------|
 | `mendfix.js` | Main CLI. `parseArgs()` at line 42. `main()` at line 251. Apply block at line ~462. Commit block at ~503. |
 | `renovate-apply.js` | Renovate-focused apply workflow. `main(argv)` exported. Also runs standalone. |
+| `portfolio-runner.js` | Portfolio orchestrator (Phase 5). `loadConfig(configPath)`, `analyzeRepo(repoEntry, opts)`, `runPortfolio(configPath, opts)`. Imports from both providers and ecosystems — not in src/core/. |
 | `mend-fix.js` | Backward-compat shim. Do not modify. |
 
 ### src/providers/
@@ -87,6 +88,7 @@ lockfile update + verification
 | `security-delta.js` | `computeSecurityDelta(resolvedVersions, findings)` → `{introduced[], fixed[]}` | Cross-reference simulation resolvedVersions against LibraryEntry[] findings; detects regressions introduced by a candidate |
 | `graph-diff.js` | `captureGraph(lockFilePath)` → `Map<name, string[]>\|null`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta?)` → `string` | Whole-graph before/after diff (Item 14). captureGraph snapshots all resolved versions from a lockfile; diffGraphs diffs two snapshots; formatDiff produces markdown. Wired into writeOutputNpm: graph-diff.md written after every successful install. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
+| `portfolio-report.js` | `generatePortfolioReport(portfolio, opts)` → `string`, `writePortfolioReport(portfolio, outDir, opts)` → `path` | Portfolio-level markdown report across multiple repos |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
 | `pr-poster.js` | `openPR(config)`, `validateConfig(config)`, `buildPRTitle(phasedPlan, ecosystem)`, `getCurrentBranch()`, `PLATFORMS` | Platform-agnostic PR/MR dispatcher — validates config, dispatches to github/gitlab/azuredevops/bitbucket provider |
 | `git-commits.js` | `commitPhaseA(projectDir, items, ecosystem)`, `commitPhaseBC(projectDir, bItems, cItems)`, `commitFalsePositives(projectDir, items)` | Git auto-commit by confidence tier. All synchronous. commitPhaseBC/commitFalsePositives = opt-in after human review. |
@@ -281,9 +283,11 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/providers/providers-new.test.js` | npm-audit (v1+v2), dependabot, owasp parsers + format detection + detectProvider routing |
 | `tests/providers/providers-osv-trivy.test.js` | osv (scanner + bulk shapes), trivy (npm/maven/go/python results) + detectProvider routing |
 | `tests/providers/providers-gitlab-xray.test.js` | gitlab (npm+maven, solution/remediations fix parsing), xray (npm+maven+component_id edge cases) |
+| `tests/core/portfolio-runner.test.js` | `loadConfig`, `analyzeRepo`, `runPortfolio` — full mock suite |
+| `tests/core/portfolio-report.test.js` | `generatePortfolioReport`, `writePortfolioReport` |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **238/238 pass**
+Baseline: **332/332 pass**
 
 ---
 
@@ -303,7 +307,10 @@ Baseline: **238/238 pass**
 | Phase 4 entry — write-back: GitHub `createPR`, GitLab `createMR`, AzDO `createPR`, Bitbucket `createPR` | ✅ DONE 2026-08-12 |
 | Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 4 complete — CLI write-back fully wired. `mendfix apply --open-pr --platform <name>` creates a PR/MR after apply on GitHub/GitLab/Azure DevOps/Bitbucket. `pr-poster.js` is the validated dispatcher. 287/287 tests pass. Phase 5 multi-repo portfolio mode is next.
+| Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
+| Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
+
+**Next:** Phase 5 complete — `mendfix portfolio --config portfolio.json` analyzes vulnerabilities across multiple repos and generates a consolidated `portfolio-report.md` with severity breakdown, phase distribution, and prioritized action order. 332/332 tests pass.
 
 ---
 

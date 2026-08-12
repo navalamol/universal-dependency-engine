@@ -4,6 +4,19 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Phase 5 complete: Multi-repo portfolio mode
+
+**Before:** `mendfix` operated on a single repo per invocation; no way to get a cross-portfolio CVE view.
+**Changes:**
+- `portfolio-runner.js` (root, not `src/core/` — it imports from both providers and ecosystems) — `loadConfig(configPath)` validates the portfolio JSON schema; `analyzeRepo(repoEntry, globalOpts)` runs the full parse→resolve→phase→enrich pipeline for one repo and returns `RepoResult` with phase counts, severity counts, and `highestSeverity`; `runPortfolio(configPath, opts)` iterates all repos sequentially and returns an aggregated `PortfolioResult`. Registry verification is opt-in per-repo or globally via `verifyVersions` flag.
+- `src/core/portfolio-report.js` — `generatePortfolioReport(portfolio, opts)` → markdown with severity summary, phase distribution table, per-repo summary table, per-repo detail sections (Phase A/B/C items), error section, and a "Recommended Action Order" sorted by CRITICAL count → HIGH count → total CVEs. `writePortfolioReport(portfolio, outDir)` writes `portfolio-report.md`.
+- `mendfix.js` — added `portfolio` to `SUBCMDS`; `runPortfolioCommand(argv)` handler reads `--config`, `--out-dir`, `--verify-versions`, `--dry-run`; writes per-repo `remediation-report.md` files then the top-level `portfolio-report.md`; dry-run prints the report to stdout.
+- `tests/core/portfolio-runner.test.js` — 25 tests; all dependencies mocked (providers, core, ecosystems); covers loadConfig validation, analyzeRepo success/error/severity/verify paths, runPortfolio aggregation/outDir/errorCount.
+- `tests/core/portfolio-report.test.js` — 20 tests; covers severity table, phase table, repo table rows, error section, per-repo detail, action order sorting, empty portfolio, writePortfolioReport file output.
+**Next:** 332/332 tests pass. Baseline A:5 B:0 C:3 confirmed. Phase 2 Dependabot provider is next open item.
+
+---
+
 ## 2026-08-12 — Phase 4 complete: CLI write-back wiring + pr-poster dispatcher
 
 **Before:** Write-back provider modules existed (github/gitlab/azuredevops/bitbucket) but were not reachable from the CLI; no platform dispatch or validation logic.

@@ -49,7 +49,7 @@ renovate-apply.js (new CLI)
 
 ```json
 {
-  "org": "riversandtechnologies",
+  "org": "navalamol",
   "repos": [
     { "name": "ui-platform" },
     { "name": "ui-platform-elements" }

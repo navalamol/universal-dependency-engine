@@ -62,7 +62,7 @@ Options:
 
 repos.json format:
   {
-    "org": "riversandtechnologies",
+    "org": "navalamol",
     "repos": [
       { "name": "ui-platform", "report": "./input/reports/GH_ui-platform.json" },
       { "name": "ui-platform-elements", "report": "./input/reports/GH_ui-platform-elements.json" }
@@ -255,7 +255,7 @@ async function main() {
     process.exit(1);
   }
 
-  const org = config.org || 'riversandtechnologies';
+  const org = config.org || 'navalamol';
   const repos = config.repos || [];
 
   if (repos.length === 0) {

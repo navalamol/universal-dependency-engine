@@ -57,10 +57,11 @@ function parseArgs(argv) {
 function printUsage() {
   console.log(`
 Usage:
-  mendfix analyze  --report <path> [options]          (dry run — no files changed)
-  mendfix apply    --report <path> [options]          (apply Phase A + optionally Phase B, write output)
-  mendfix cleanup  --package-json <path> --lock-file <path>   (remove stale overrides)
-  mendfix renovate --config <repos.json> [options]    (analyze/apply Renovate PRs across repos)
+  mendfix analyze   --report <path> [options]          (dry run — no files changed)
+  mendfix apply     --report <path> [options]          (apply Phase A + optionally Phase B, write output)
+  mendfix cleanup   --package-json <path> --lock-file <path>   (remove stale overrides)
+  mendfix renovate  --config <repos.json> [options]    (analyze/apply Renovate PRs across repos)
+  mendfix portfolio --config <portfolio.json> [options] (analyze vulnerabilities across multiple repos)
 
   # Legacy flag-based syntax still works:
   node mendfix.js --report <path> [--dry-run] [--package-json <path>] ...
@@ -152,6 +153,25 @@ Open PR/MR after apply (Phase 4):
   --bitbucket-repo-slug <slug> Repository slug
 
 Note: the source branch must be pushed to the remote before --open-pr will succeed.
+
+Portfolio mode (Phase 5):
+  mendfix portfolio --config <portfolio.json> [--out-dir <path>] [--verify-versions] [--dry-run]
+
+  portfolio.json schema:
+  {
+    "repos": [
+      {
+        "name": "org/repo",          // display name (required)
+        "report": "./report.json",   // path to vulnerability report (required)
+        "ecosystem": "npm",          // optional — auto-detected when omitted
+        "provider": "snyk",          // optional — auto-detected when omitted
+        "lockFile": "./package-lock.json",  // optional (npm only)
+        "verifyVersions": true       // optional — per-repo override
+      }
+    ],
+    "outDir": "./portfolio-output",  // optional
+    "verifyVersions": false          // optional global default
+  }
 `);
 }
 
@@ -404,18 +424,103 @@ async function runCleanup(lockFilePath, packageJsonPath, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Portfolio mode (Phase 5)
+// ---------------------------------------------------------------------------
+
+async function runPortfolioCommand(argv) {
+  const args     = parseArgs(argv);
+  const cfgPath  = args.config || null;
+  const outDir   = args['out-dir'] || null;
+  const dryRun   = args['dry-run'] === true;
+  const verify   = args['verify-versions'] === true;
+
+  if (!cfgPath) {
+    console.error('ERROR: mendfix portfolio requires --config <portfolio.json>');
+    process.exit(1);
+  }
+
+  console.log('\nMend AutoFixer [PORTFOLIO]');
+  console.log('==========================');
+  console.log(`Config : ${cfgPath}`);
+  if (outDir)  console.log(`Out dir: ${outDir}`);
+  if (verify)  console.log('Registry verification: enabled');
+  if (dryRun)  console.log('Dry run: no files written');
+
+  const { runPortfolio }                 = require('./portfolio-runner');
+  const { generatePortfolioReport,
+          writePortfolioReport }         = require('./src/core/portfolio-report');
+  const { generateReport }              = require('./src/core/report');
+
+  let portfolio;
+  try {
+    portfolio = await runPortfolio(cfgPath, { outDir, verifyVersions: verify });
+  } catch (err) {
+    console.error(`\nERROR: ${err.message}`);
+    process.exit(1);
+  }
+
+  // Console summary
+  console.log(`\nRepos scanned : ${portfolio.totalRepos}`);
+  console.log(`Total CVEs    : ${portfolio.totalCves}`);
+  console.log(`Libraries     : ${portfolio.totalLibraries}`);
+  console.log(`\n  ✅ Phase A (auto-apply)  : ${portfolio.totalPhaseA}`);
+  console.log(`  ⚠️  Phase B (review first) : ${portfolio.totalPhaseB}`);
+  console.log(`  ❌ Phase C (manual review): ${portfolio.totalPhaseC}`);
+  if (portfolio.errorCount > 0) {
+    console.log(`\n  ⚠  ${portfolio.errorCount} repo(s) failed — see error details in portfolio-report.md`);
+  }
+
+  if (dryRun) {
+    console.log('\n' + '─'.repeat(70));
+    console.log(generatePortfolioReport(portfolio));
+    return;
+  }
+
+  // Write per-repo remediation reports
+  for (const repo of portfolio.repos) {
+    if (repo.status === 'error') continue;
+    const phasedPlan = [...repo.phaseA, ...repo.phaseB, ...repo.phaseC];
+    if (phasedPlan.length === 0) continue;
+
+    try {
+      fs.mkdirSync(repo.outDir, { recursive: true });
+      const reportContent = generateReport(phasedPlan, {
+        project:    repo.name,
+        reportDate: portfolio.runDate,
+        ecosystem:  repo.ecosystem,
+      });
+      const rptPath = path.join(repo.outDir, 'remediation-report.md');
+      fs.writeFileSync(rptPath, reportContent);
+      console.log(`\n  [${repo.name}] Phase A:${repo.phaseA.length} B:${repo.phaseB.length} C:${repo.phaseC.length} — ${rptPath}`);
+    } catch (err) {
+      console.warn(`  WARN: could not write report for ${repo.name}: ${err.message}`);
+    }
+  }
+
+  // Write portfolio report
+  const portfolioReportPath = writePortfolioReport(portfolio, portfolio.outDir);
+  console.log(`\nPortfolio report: ${portfolioReportPath}`);
+  console.log('\nDone.');
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main() {
   // ── Subcommand routing ───────────────────────────────────────────────────
   const rawArgs = process.argv.slice(2);
-  const SUBCMDS = ['analyze', 'apply', 'cleanup', 'renovate'];
+  const SUBCMDS = ['analyze', 'apply', 'cleanup', 'renovate', 'portfolio'];
   const subcmd  = SUBCMDS.includes(rawArgs[0]) ? rawArgs.shift() : null;
 
   if (subcmd === 'renovate') {
     const { main: renovateMain } = require('./renovate-apply');
     await renovateMain(rawArgs);
+    return;
+  }
+
+  if (subcmd === 'portfolio') {
+    await runPortfolioCommand(rawArgs);
     return;
   }
 

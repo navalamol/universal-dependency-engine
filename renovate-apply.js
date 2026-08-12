@@ -84,7 +84,7 @@ Options:
   --help                  Print this message
 
 repos.json:
-  { "org": "riversandtechnologies", "repos": [{ "name": "ui-platform" }, ...] }
+  { "org": "navalamol", "repos": [{ "name": "ui-platform" }, ...] }
 
 Output files written per repo (in --out-dir/<repo> or <clone-dir>/<repo>/output-renovate-<repo>):
   phase-a-overrides.json   — safe same-major upgrades, auto-applicable
@@ -566,7 +566,7 @@ async function main(argv) {
     process.exit(1);
   }
 
-  const org   = config.org   || 'riversandtechnologies';
+  const org   = config.org   || 'navalamol';
   const repos = config.repos || [];
 
   if (repos.length === 0) {
