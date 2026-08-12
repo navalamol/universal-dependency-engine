@@ -2,8 +2,11 @@
 
 const semver = require('semver');
 
-const REGISTRY_URL = 'https://registry.npmjs.org';
-const TIMEOUT_MS   = 8000;
+const REGISTRY_URL  = 'https://registry.npmjs.org';
+const TIMEOUT_MS    = 8000;
+
+// Per-run cache: avoids re-fetching the same manifest when multiple items share a parent.
+const _manifestCache = new Map();
 
 async function fetchJson(url) {
   const controller = new AbortController();
@@ -17,6 +20,26 @@ async function fetchJson(url) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Fetch the declared dependencies for a specific published version of a package.
+ * Results are cached per (name, version) for the lifetime of the process.
+ * Returns { dependencies, peerDependencies } or null on failure.
+ */
+async function getManifest(packageName, version) {
+  const key = `${packageName}@${version}`;
+  if (_manifestCache.has(key)) return _manifestCache.get(key);
+
+  const data = await fetchJson(
+    `${REGISTRY_URL}/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`
+  );
+  const result = data
+    ? { dependencies: data.dependencies || {}, peerDependencies: data.peerDependencies || {} }
+    : null;
+
+  _manifestCache.set(key, result);
+  return result;
 }
 
 /**
@@ -109,4 +132,4 @@ async function verifyPlanVersions(resolutionPlan) {
   return results;
 }
 
-module.exports = { getPublishedVersions, resolveToAvailableVersion, verifyPlanVersions };
+module.exports = { getPublishedVersions, getManifest, resolveToAvailableVersion, verifyPlanVersions };

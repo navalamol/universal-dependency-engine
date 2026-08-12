@@ -1,39 +1,10 @@
 'use strict';
 
 const semver = require('semver');
-const { getPublishedVersions } = require('./registry');
+const { getPublishedVersions, getManifest } = require('./registry');
 
-const REGISTRY_URL = 'https://registry.npmjs.org';
-const TIMEOUT_MS   = 8000;
-
-async function fetchJson(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Fetch the declared dependencies for a specific published version of a package.
- * Returns { dependencies, peerDependencies } or null on failure.
- */
-async function getVersionDeps(packageName, version) {
-  const data = await fetchJson(
-    `${REGISTRY_URL}/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`
-  );
-  if (!data) return null;
-  return {
-    dependencies:     data.dependencies     || {},
-    peerDependencies: data.peerDependencies || {},
-  };
-}
+// Cap versions inspected per parent to bound network calls; guardrail from REMEDIATION_CAPABILITY_ROADMAP §7.
+const CANDIDATE_LIMIT = 10;
 
 /**
  * For a MAJOR_BUMP Phase C item, walk each root parent's published versions
@@ -80,7 +51,8 @@ async function findParentUpgradePaths(item) {
     // Sort descending so we find the latest compatible upgrade first.
     const candidates = allVersions
       .filter(v => semver.valid(v) && semver.satisfies(v, allowedRange))
-      .sort((a, b) => semver.rcompare(a, b));
+      .sort((a, b) => semver.rcompare(a, b))
+      .slice(0, CANDIDATE_LIMIT);
 
     if (candidates.length === 0) continue;
 
@@ -106,6 +78,7 @@ async function findParentUpgradePaths(item) {
             childFixVersion:      fixVersion,
             chainVia:             chainVia,
             isDev:                parent.isDev || false,
+            manifestVerified:     true,
           });
           break;
         }
@@ -113,7 +86,7 @@ async function findParentUpgradePaths(item) {
     } else {
       // Direct parent: rootDep directly declares vulnerableChild
       for (const candidateVersion of candidates) {
-        const deps = await getVersionDeps(parentName, candidateVersion);
+        const deps = await getManifest(parentName, candidateVersion);
         if (!deps) continue;
 
         const childRange =
@@ -132,6 +105,7 @@ async function findParentUpgradePaths(item) {
             childFixVersion:      fixVersion,
             chainVia:             [],
             isDev:                parent.isDev || false,
+            manifestVerified:     true,
           });
           break;
         }
@@ -154,7 +128,7 @@ async function findParentUpgradePaths(item) {
  * Returns the child range string, or null if the chain cannot be resolved.
  */
 async function resolveChainChildRange(rootName, rootVersion, intermediates, childName) {
-  let currentDeps = await getVersionDeps(rootName, rootVersion);
+  let currentDeps = await getManifest(rootName, rootVersion);
   if (!currentDeps) return null;
 
   for (const intermediate of intermediates) {
@@ -170,7 +144,7 @@ async function resolveChainChildRange(rootName, rootVersion, intermediates, chil
       .sort((a, b) => semver.rcompare(a, b))[0];
     if (!latest) return null;
 
-    currentDeps = await getVersionDeps(intermediate, latest);
+    currentDeps = await getManifest(intermediate, latest);
     if (!currentDeps) return null;
   }
 

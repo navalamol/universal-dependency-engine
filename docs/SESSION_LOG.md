@@ -21,6 +21,20 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — V1.x Step B: Manifest inspection — getManifest + candidate limit + manifestVerified
+
+**Before:** `parent-upgrade-explorer.js` had a local `getVersionDeps()` that fetched manifests directly. No caching, no candidate cap, no `manifestVerified` flag on returned paths.
+
+**Changes:**
+- `src/ecosystems/npm/registry.js` — new `getManifest(name, version)` with module-level `_manifestCache` Map. Avoids redundant registry calls when multiple items share a parent. Exported alongside `getPublishedVersions`.
+- `src/ecosystems/npm/parent-upgrade-explorer.js` — removed local `fetchJson` + `getVersionDeps`; all manifest fetches now go through `registry.getManifest` (shared cache). Added `CANDIDATE_LIMIT = 10` applied with `.slice(0, CANDIDATE_LIMIT)` before iterating candidates. Added `manifestVerified: true` on all returned `ParentUpgradePath` objects — distinguishes from future simulation-verified paths (confidence = VERIFIED only after simulation).
+
+**Key decision:** `manifestVerified: true` marks the current level of confidence — manifest says the range covers the fix, but npm hasn't actually resolved it yet. When simulation (Step C) is added, it will set a separate `simulationVerified: true` to promote confidence to VERIFIED.
+
+**Next:** `src/ecosystems/npm/simulator.js` — isolated `npm install --package-lock-only` in temp dir; lockfile inspection; promotes INFERRED → VERIFIED.
+
+---
+
 ## 2026-08-12 — Wire enrichWithConfidence into mendfix.js main path (Scenario 14 complete)
 
 **Before:** `enrichWithConfidence` was called only in `renovate-apply.js`. Phase items from `mendfix analyze/apply` had no `evidence` or `alternative` fields in output files.

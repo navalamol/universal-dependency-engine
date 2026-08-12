@@ -5,43 +5,81 @@ Single source of truth for what to build next. Updated after each session.
 
 ---
 
-## Phase 1 — Remaining gaps (ordered by priority)
+## Phase 1 — ✅ COMPLETE (2026-08-12)
 
-Phase 1 is at ~99%. One gap remains before Phase 1 is complete.
+All 26 Phase 1 scenarios done. 32/32 tests passing. Regression baseline A:5 B:0 C:3 confirmed.
 
-### ~~1. Wire git-commits.js into mendfix.js apply (Scenarios 15/16)~~ ✅ DONE
-
-Wired 2026-08-12: `--commit` flag added; `commitPhaseA` called after successful Phase A install.
-Phase B/C commits remain opt-in after human review (not auto-triggered). Maven path uses
-`path.dirname(pomXmlPath)` as project dir. 32/32 tests pass.
-
-### 1. Confidence enrichment in mendfix CLI path
-
-`src/core/confidence.js` fields (evidence, alternative) are wired into the Renovate path
-but **not into the main mendfix analyze/apply output**. Phase C items should carry full evidence.
-
-- Wire `enrichWithConfidence` into `mendfix.js` analyze/apply output path
-- File: `mendfix.js` + `src/core/confidence.js`
+| Completed item | Date |
+|----------------|------|
+| git-commits.js wiring (`--commit` flag) | 2026-08-12 |
+| PR description generation (`pr-description.js`) | 2026-08-12 |
+| Maven dep-tree parser (`dep-tree.js`) | 2026-08-12 |
+| V1 blockers (exit codes, control flow, Maven range field) | 2026-08-12 |
+| `enrichWithConfidence` wired into mendfix CLI path | 2026-08-12 |
 
 ---
 
-## Completed since last NEXT_MISSION.md update (2026-08-12 SESSION_LOG)
+## Phase 1.x — Remediation Path Explorer (current)
 
-The following items were listed as gaps in the previous version but are now done:
+### ~~Step A/B: Manifest inspection per candidate parent version~~ ✅ DONE 2026-08-12
 
-| Item | Scenario | Status |
-|------|----------|--------|
-| PR description generation | 18 | `src/core/pr-description.js` written |
-| Maven dep-tree parser | — | `src/ecosystems/maven/dep-tree.js` written |
-| V1 blockers (exit codes, control flow, Maven dep-tree range field) | — | All fixed; 32/32 tests passing |
+- `registry.js` — added `getManifest(name, version)` with per-run cache (`_manifestCache`)
+- `parent-upgrade-explorer.js` — removed local `fetchJson`/`getVersionDeps`; uses `getManifest` from registry; applies `CANDIDATE_LIMIT = 10` per level; adds `manifestVerified: true` to returned path objects
+- All previous `getVersionDeps` calls now go through the shared cached registry function
+
+### Next: Step C — Isolated package-manager simulation
+
+**File to create:** `src/ecosystems/npm/simulator.js`
+
+```js
+// Returns SimulationResult[]
+simulate(basePackageJsonPath, baseLockPath, candidates, options)
+
+// SimulationResult shape:
+{
+  candidate: { name, from, to },
+  success: boolean,
+  resolvedVersions: Map<name, version>,
+  peerConflicts: string[],
+  timedOut: boolean
+}
+```
+
+Implementation:
+1. Create temp directory
+2. Copy `package.json` + `package-lock.json` into temp dir
+3. Apply candidate version change to temp `package.json`
+4. Run `npm install --package-lock-only --legacy-peer-deps` with 30s timeout
+5. Parse resulting `package-lock.json` using existing `lock-parser.js`
+6. Return `resolvedVersions` map + `peerConflicts`
+7. Clean up temp dir unconditionally
+
+Apply all guardrails from `REMEDIATION_CAPABILITY_ROADMAP.md §7`:
+- Timeout per simulation (30s default)
+- Simulation limit per run (20 default) — fail-open to INFERRED on limit
+- Hash-based simulation cache: `hash(package.json state)` → `SimulationResult`
+- Clean temp directories unconditionally
+
+After simulator.js exists: wire into `parent-upgrade-explorer.js` — for each manifest-verified candidate, simulate to promote from INFERRED → VERIFIED.
 
 ---
 
-## Phase 1 → Phase 1.x entry: Remediation Path Explorer
+## Phase 1.x — After simulation is stable
 
-**Phase 1 is complete when gaps 1 and 2 above are closed AND:**
-- Test baseline holds: `node mendfix.js analyze --report ...` → Phase A:5, B:0, C:3
-- `mendfix apply` with a real project completes end-to-end: apply → install → verify → commit → pr-description.md
+See `REMEDIATION_CAPABILITY_ROADMAP.md §11` for:
+- Multi-path comparison + Change Budget ranking (`src/core/remediation-paths.js`)
+- Security verification in simulated graph
+- Dependency blast radius
+- Safety Gate pre-edit checklist
+- Decision label taxonomy
+
+---
+
+## Phase 1 → Phase 1.x entry: Remediation Path Explorer (preserved)
+
+**Phase 1 is complete (all conditions met as of 2026-08-12):**
+- Test baseline holds: `node mendfix.js analyze --report ...` → Phase A:5, B:0, C:3 ✅
+- All 26 scenarios verified ✅
 
 **Phase 1.x entry point (Remediation Path Explorer):**
 

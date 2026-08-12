@@ -93,7 +93,7 @@ lockfile update + verification
 | `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `getRootDeps(path)`, `findDepChain(name, tree, rootDeps)` → `string[]` | Parse package-lock.json v2/v3 flat map → DepTree |
 | `overrides.js` | `buildPhaseAOverrides`, `buildPhaseBOverrides`, `buildParentUpgradeMap`, `applyOverridesToPackageJson`, `writeOverridesPatch`, `detectDirectDeps`, `applyDirectUpgrades` | Build + apply npm overrides/direct dep bumps |
 | `installer.js` | `snapshotFiles`, `restoreFiles`, `runPackageLockUpdate`, `runMavenResolve`, `verifyFixVersions`, `saveManifest`, `detectManualChanges` | npm/mvn install, rollback, verify, manifest |
-| `registry.js` | `getPublishedVersions(name)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | npm registry version checks (Node 18+ fetch) |
+| `registry.js` | `getPublishedVersions(name)`, `getManifest(name, ver)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | npm registry version checks + manifest fetch with per-run cache (Node 18+ fetch) |
 | `parent-upgrade-explorer.js` | `findParentUpgradePaths(item)` → `ParentUpgradePath[]`, `exploreParentUpgrades(phasedPlan, ecosystem)` | 2-level parent upgrade exploration. Static SemVer only — no simulation yet. |
 
 ### src/ecosystems/maven/
@@ -232,7 +232,7 @@ Baseline: **32/32 pass**
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 
-**Next:** All V1 scenarios complete. See `NEXT_MISSION.md` for Phase 2 entry criteria.
+**Next:** V1.x Step B complete (manifest inspection). Next: `src/ecosystems/npm/simulator.js` — isolated npm install simulation to promote INFERRED → VERIFIED.
 
 ---
 
