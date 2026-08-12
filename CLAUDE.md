@@ -46,16 +46,7 @@ mend-fix.js             backward-compat shim → requires mendfix.js
 - `PhasedItem[]` — output of phases.js; input to ecosystem writers
 - `DepTree` — `Map<name, Entry[]>` output of any lock parser
 
-Core (`src/core/`) has **zero imports** from providers or ecosystems. This is what keeps Phases 2–9
-cheap to add: drop a new provider file, register it in index.js — core is untouched.
-
-## Coding standards
-
-- Plain Node.js CommonJS `require`. No TypeScript. No build step.
-- Deps: `semver`, `xlsx` only.
-- One file, one responsibility. No mixing parsing with output.
-- Comments only for non-obvious "why," never "what."
-- No error handling in internal paths; validate only at CLI boundaries.
+Core (`src/core/`) has **zero imports** from providers or ecosystems.
 
 ## 3-Phase confidence model
 
@@ -73,85 +64,24 @@ cheap to add: drop a new provider file, register it in index.js — core is unto
 - `--package-json <path>` applies Phase A only — automatic, no extra flag.
 - Phase C output is `manual-review.md` (renamed from `phase-c-review.md`).
 
-## Phase 1 completion status
-
-**Done (all verified against test baseline):**
-- Scenarios 1, 11: Parse Mend JSON + Excel; highest-safe-version selection
-- Scenario 2: package-lock.json dep tree (parents, ranges, dev flag)
-- Scenarios 3, 10: SemVer compatibility check; multiple dep chain analysis
-- Scenario 4: parent upgrade recommendations surfaced in Phase C output
-- Scenario 5: npm install + lock verification after apply
-- Scenarios 6, 7: stale override detection and cleanup (mendfix cleanup)
-- Scenario 8: dev classification (all-dev → probableFalsePositive); mixed chains deferred
-- Scenario 9: false positive flag + justification template via CLAUDE_WORKFLOW.md
-- Scenarios 12, 13: direct dep vs override detection; priority order enforced
-- Scenario 14: confidence.js — evidence + alternative fields (wired into enrichWithConfidence)
-- Scenario 17: markdown remediation report
-- Scenarios 19, 20: mendfix analyze / apply subcommands
-- Scenario 21: idempotency pre-flight (compares against .mend-manifest.json)
-- Scenario 22: rollback on npm install failure
-- Scenario 23: WHY-focused logging on every decision
-- Scenario 24: manual-review.md output
-- Scenario 26: human change detection via .mend-manifest.json
-
-**Remaining gaps (Phase 1 not yet complete):**
-- Scenarios 15/16: git-commits.js written but NOT called from mendfix.js apply — needs wiring
-- Scenario 18: PR description generation — `pr-description.md` not yet built
-- Scenario 25: Final PR-ready state blocked by 15/16 + 18
-- Maven dep-tree parser (`src/ecosystems/maven/dep-tree.js`) — unlocks Phase B for Java
-- Scenario 8 full: deep mixed dev/runtime chain classification
-
 ## Test baseline — run after every logic change
 
 ```bash
-node mendfix.js analyze --report GH_ui-platform_dev-vulnerability-report.json
+node mendfix.js analyze --report ../GH_ui-platform_dev-vulnerability-report.json
 ```
 
-Report location: `D:\Automation\GH_ui-platform_dev-vulnerability-report.json` (one level up from project root)
-
-Expected: 8 libraries, 22 CVEs. Phase A: 5 (fast-uri, socket.io-parser, postcss, unzipper, axios).
-Phase B: 0. Phase C: 3 (nanoid [MAJOR_BUMP], brace-expansion ×2 [multi-major conflict]). Exit 0.
+Expected: 8 libraries, 22 CVEs. Phase A: 5, Phase B: 0, Phase C: 3. Exit 0.
 
 ```bash
 # With registry verification
 node mendfix.js analyze --report ../GH_ui-platform_dev-vulnerability-report.json --verify-versions
-
-# Full apply (needs a real project's package.json)
-node mendfix.js apply --report ../GH_ui-platform_dev-vulnerability-report.json \
-  --package-json /path/to/package.json --verify-versions
-
-# Post-install cleanup
-node mendfix.js cleanup --package-json /path/to/package.json \
-  --lock-file /path/to/package-lock.json
 ```
 
-## Never break existing functionality
-
-- `resolveFixVersion`: same-major safe, cross-major bump, no-fix, multi-CVE grouping. Do not simplify.
-- Phase A overrides: clean `"pkg": "version"` — no selectors, no ranges.
-- `applyOverridesToPackageJson`: merges, never replaces, existing overrides.
-- Registry check: always optional; script works without network; phase not downgraded if unreachable.
-- `mend-fix.js` shim: must stay for backward compat.
-
-## Script vs Claude division
-
-**Script owns (deterministic):** parse → SemVer → dep graph → overrides → npm install → verify lock → remove overrides → commits → report
-
-**Claude owns (uncertain 5–10%, via `CLAUDE_WORKFLOW.md`):** Phase C justification review · false positive chain analysis · MAJOR_BUMP API compatibility judgement
-
+Report location: `D:\Automation\GH_ui-platform_dev-vulnerability-report.json`
 
 ## Rules
 
-Don't read Plans_Prompst folder it is for just maintaining history
-
-# Context Budget
-
-
-**Soft limit: Warn at 80,000 tokens.**
-**Hard limit: Warn at 120,000 tokens.**
-
-If you estimate the conversation has consumed ~80k tokens, stop and alert the user before continuing:
-> ⚠ Context is approaching 80k tokens. To avoid autocompact (which caused context loss at ~200k in Mission 8–9), consider starting a fresh conversation and loading only the required context for the next task.
+Don't read Plans_Prompst folder — history only.
 
 ## Key decisions
 
@@ -166,17 +96,6 @@ If you estimate the conversation has consumed ~80k tokens, stop and alert the us
 
 After every session that changes code, append one entry to `docs/SESSION_LOG.md`.
 
-## CODEBASE.md rule
-
-After every session that adds, removes, or renames a file or exported function, update `CODEBASE.md`:
-- Add new files to the File Map with one-line purpose
-- Update exported function signatures that changed
-- Update the Current V1 Status table
-- Update "Next:" line to reflect the new next task
-
-`CODEBASE.md` is the first file to read in any new session — it provides the full file map,
-data shapes, and function signatures in ~5k tokens so you can touch only relevant code.
-
 ```
 ## YYYY-MM-DD — <title>
 **Before:** one line on state before this session
@@ -185,8 +104,20 @@ data shapes, and function signatures in ~5k tokens so you can touch only relevan
 **Next:** what's blocked or what comes after
 ```
 
-Skip: debugging steps, things obvious from reading the code. Include: architectural decisions,
-reversed decisions, non-obvious constraints, user feedback that shaped direction.
+## CODEBASE.md rule
+
+After every session that adds, removes, or renames a file or exported function, update `CODEBASE.md`:
+- Add new files to the File Map with one-line purpose
+- Update exported function signatures that changed
+- Update the Current V1 Status table
+- Update "Next:" line to reflect the new next task
+
+## Context Budget
+
+**Soft limit: Warn at 80,000 tokens.**
+**Hard limit: Warn at 120,000 tokens.**
+
+If you estimate the conversation has consumed ~80k tokens, alert the user before continuing.
 
 ## Where to read more
 

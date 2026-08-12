@@ -27,3 +27,60 @@ What I should do (and will going forward):
 4. Never read NEXT_MISSION.md, REMEDIATION_CAPABILITY_ROADMAP.md, or V1_COMPLETION_STATUS.md to resume — they're reference docs, not work queues
 
 What was built: simulator.js — isolated npm install simulation with 3 guardrails (timeout, sim limit, hash cache). Next step is wiring it into parent-upgrade-explorer.js to promote manifest-verified paths to simulation-verified. Say "continue" to do that.
+
+
+****************
+
+Why MCP are loaded. We don't need any unrequired MCP for now. Like artifacts and all, when needed that time can we load.
+
+MCP fix: The 22 connectors (Asana, Atlassian, Figma, etc.) are claude.ai cloud connectors auto-fetched on every session — not something you configured. Added "disableClaudeAiConnectors": true to ~/.claude/settings.json. Restart Claude Code for it to take effect — they'll no longer load, saving ~4.4k tokens of deferred tool schemas each session.
+
+Code: Wired simulator.js into parent-upgrade-explorer.js:
+- exploreParentUpgrades now accepts packageJsonPath + lockPath
+- After manifest-verified paths are found, calls simulate() per path
+- If npm resolves the child package to >= fixVersion, stamps simulationVerified: true on that path
+- Falls back silently to manifest-only (INFERRED) when --package-json isn't provided
+- mendfix.js passes packageJsonPath + lockFilePath through
+
+Next: src/core/remediation-paths.js — multi-path comparison + Change Budget ranking.
+
+
+
+ What is there in ⛁ System tools: 22.2k tokens (11.1%). Which is required. Wnat to save context and token size if possible &  System prompt: 6.9k tokens (3.4%)
+
+
+ -->
+
+ System Tools: 22.2k tokens
+
+These are the JSON schemas for every tool Claude Code can call. They're built into the CLI — you can't remove them. Breakdown:
+
+- Active tools (~22k): Read, Write, Edit, Grep, Glob, Bash, PowerShell, Agent, Artifact, Workflow, Skill, AskUserQuestion, ReportFindings, etc. — each schema is ~500–2k tokens
+- Deferred tools (15.9k, already saved): CronCreate, WebFetch, WebSearch, TaskCreate, Monitor, etc. — these are listed by name only; their schemas load on demand via ToolSearch. The deferred system is already doing the optimization here.
+
+Can you reduce it? No — tool schemas are injected by the Claude Code harness, not configurable.
+
+System Prompt: 6.9k tokens
+
+This has two parts:
+
+┌─────────────────────────────────────────────────────────────────────────┬────────┬───────────────┐
+│                                  Part                                   │ Tokens │ Controllable? │
+├─────────────────────────────────────────────────────────────────────────┼────────┼───────────────┤
+│ Claude Code base instructions (coding standards, git rules, tone, etc.) │ ~4.2k  │ No — built-in │
+├─────────────────────────────────────────────────────────────────────────┼────────┼───────────────┤
+│ CLAUDE.md (your project instructions)                                   │ ~2.7k  │ Yes           │
+└─────────────────────────────────────────────────────────────────────────┴────────┴───────────────┘
+
+What you can actually do
+
+CLAUDE.md is your lever. At 2.7k tokens it's loaded every session. You could trim it by:
+
+1. Moving the "Phase 1 completion status" table to CODEBASE.md (it's already there per the rule)
+2. Removing the "Coding standards" section (obvious from reading the code)
+3. Shortening the test baseline section to just the command, not the expected output
+
+The "Where to read more" table and "Architecture" section are worth keeping — they're the high-value bootstrap context.
+
+Want me to do a trimming pass on CLAUDE.md to cut it toward ~1.5k without losing critical rules?
+
