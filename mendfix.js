@@ -121,6 +121,37 @@ Examples:
     --verify-versions
   mendfix cleanup  --package-json ../ui-platform/package.json \\
     --lock-file ../ui-platform/package-lock.json [--simulate]
+
+Open PR/MR after apply (Phase 4):
+  --open-pr                  Create a PR/MR on the CI/CD platform after apply
+  --platform <name>          Platform: github, gitlab, azuredevops, bitbucket
+  --pr-branch <branch>       Source branch (defaults to current git branch)
+  --pr-base <branch>         Target/base branch for the PR  [default: main]
+  --pr-title <title>         PR title (auto-generated from CVE summary when omitted)
+  --pr-draft                 Create as draft PR (GitHub only)
+
+  GitHub:
+  --github-token <token>     GitHub token (or GITHUB_TOKEN env var)
+  --github-owner <owner>     GitHub org or user
+  --github-repo <repo>       GitHub repository name
+
+  GitLab:
+  --gitlab-token <token>     GitLab token (or GITLAB_TOKEN env var)
+  --gitlab-project-id <id>   Project numeric ID or namespace/path
+  --gitlab-base-url <url>    Base URL for self-hosted GitLab  [default: https://gitlab.com]
+
+  Azure DevOps:
+  --ado-token <token>        PAT with Code (Read & Write) scope (or AZURE_DEVOPS_TOKEN)
+  --ado-org <org>            Azure DevOps organisation
+  --ado-project <project>    Team project name or GUID
+  --ado-repo-id <id>         Repository name or GUID
+
+  Bitbucket:
+  --bitbucket-token <token>  "username:app_password" or repository access token (or BITBUCKET_TOKEN)
+  --bitbucket-workspace <ws> Workspace slug
+  --bitbucket-repo-slug <slug> Repository slug
+
+Note: the source branch must be pushed to the remote before --open-pr will succeed.
 `);
 }
 
@@ -772,6 +803,52 @@ async function main() {
   };
   fs.writeFileSync(prDescPath, generatePRDescription(phasedPlan, prDescMeta));
   console.log(`  Wrote: ${prDescPath}`);
+
+  // Phase 4: open PR/MR on CI/CD platform when --open-pr is set.
+  if (args['open-pr']) {
+    const { openPR, buildPRTitle, getCurrentBranch } = require('./src/core/pr-poster');
+
+    const platformArg = args['platform'] || null;
+    const tokenByPlatform = {
+      github:      args['github-token']    || process.env.GITHUB_TOKEN,
+      gitlab:      args['gitlab-token']    || process.env.GITLAB_TOKEN,
+      azuredevops: args['ado-token']       || process.env.AZURE_DEVOPS_TOKEN,
+      bitbucket:   args['bitbucket-token'] || process.env.BITBUCKET_TOKEN,
+    };
+
+    const prToken      = platformArg ? (tokenByPlatform[platformArg] || null) : null;
+    const sourceBranch = args['pr-branch'] || getCurrentBranch();
+    const prTitle      = args['pr-title'] || buildPRTitle(phasedPlan, ecosystem);
+    const prBody       = fs.readFileSync(prDescPath, 'utf8');
+
+    const prConfig = {
+      platform:           platformArg,
+      token:              prToken,
+      sourceBranch,
+      targetBranch:       args['pr-base'] || 'main',
+      title:              prTitle,
+      body:               prBody,
+      draft:              !!args['pr-draft'],
+      githubOwner:        args['github-owner']          || null,
+      githubRepo:         args['github-repo']           || null,
+      gitlabProjectId:    args['gitlab-project-id']     || null,
+      gitlabBaseUrl:      args['gitlab-base-url']       || null,
+      adoOrg:             args['ado-org']               || null,
+      adoProject:         args['ado-project']           || null,
+      adoRepoId:          args['ado-repo-id']           || null,
+      bitbucketWorkspace: args['bitbucket-workspace']   || null,
+      bitbucketRepoSlug:  args['bitbucket-repo-slug']   || null,
+    };
+
+    console.log(`\nOpening ${platformArg === 'gitlab' ? 'MR' : 'PR'} on ${platformArg || '(no platform set)'}...`);
+    const prResult = await openPR(prConfig);
+    if (prResult.ok) {
+      console.log(`  Created: ${prResult.url}`);
+    } else {
+      console.warn(`  WARN: PR/MR creation failed: ${prResult.error}`);
+      console.warn(`  PR description saved to: ${prDescPath} — create the PR manually.`);
+    }
+  }
 
   // Scenarios 15/16: auto-commit Phase A after successful apply.
   // Phase B commit is opt-in via --commit-phase-b (requires --apply-phase-b).

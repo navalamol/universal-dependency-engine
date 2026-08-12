@@ -4,6 +4,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Phase 4 complete: CLI write-back wiring + pr-poster dispatcher
+
+**Before:** Write-back provider modules existed (github/gitlab/azuredevops/bitbucket) but were not reachable from the CLI; no platform dispatch or validation logic.
+**Changes:**
+- `src/core/pr-poster.js` — new platform-agnostic dispatcher. `validateConfig` checks required fields per platform and returns an error array (not exceptions). `openPR` dispatches to the right provider, normalises the response to `{ok, platform, url, id, error?}`. `buildPRTitle` generates a conventional-commit PR title from the phased plan CVE count. `getCurrentBranch` calls `git rev-parse --abbrev-ref HEAD` and returns null on detached HEAD or error. `PLATFORMS` constant shared with tests.
+- `mendfix.js` — added `--open-pr` block (placed after pr-description.md is written, before auto-commits). Platform token resolved from flag or env var in priority order. Source branch defaults to `getCurrentBranch()`. Prints the created URL on success; prints a fallback warning on failure (non-fatal — the run still completes). Added full `--open-pr` flags section to `printUsage()` including per-platform credential and location params.
+- `tests/core/pr-poster.test.js` — 49 new tests: `getCurrentBranch` (5), `buildPRTitle` (8), `PLATFORMS` (1), `validateConfig` 4 platforms × missing fields (20), `openPR` dispatch per platform + error cases (15).
+**Next:** 287/287 tests pass. Phase 4 complete. Phase 5: multi-repo portfolio mode.
+
+---
+
 ## 2026-08-12 — Phase 4 entry: CI/CD platform write-back modules
 
 **Before:** No write-back support beyond the GitHub-specific `postComment`/`closePR` in `github.js` (Renovate workflow only). GitLab, Azure DevOps, and Bitbucket had no API clients.

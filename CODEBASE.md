@@ -88,6 +88,7 @@ lockfile update + verification
 | `graph-diff.js` | `captureGraph(lockFilePath)` → `Map<name, string[]>\|null`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta?)` → `string` | Whole-graph before/after diff (Item 14). captureGraph snapshots all resolved versions from a lockfile; diffGraphs diffs two snapshots; formatDiff produces markdown. Wired into writeOutputNpm: graph-diff.md written after every successful install. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
+| `pr-poster.js` | `openPR(config)`, `validateConfig(config)`, `buildPRTitle(phasedPlan, ecosystem)`, `getCurrentBranch()`, `PLATFORMS` | Platform-agnostic PR/MR dispatcher — validates config, dispatches to github/gitlab/azuredevops/bitbucket provider |
 | `git-commits.js` | `commitPhaseA(projectDir, items, ecosystem)`, `commitPhaseBC(projectDir, bItems, cItems)`, `commitFalsePositives(projectDir, items)` | Git auto-commit by confidence tier. All synchronous. commitPhaseBC/commitFalsePositives = opt-in after human review. |
 | `renovate-builder.js` | `buildResolutionItems(prUpgrades, pkg, lockEntries?)`, `getCurrentVersion(name, pkg, lockEntries?)` | Convert Renovate PR upgrades → `ResolutionItem[]` |
 | `renovate-classifier.js` | `classifyPRs(renovatePRs, phasedItems)`, `parsePRTitleNew(title)`, `summarize(classifiedPRs)`, `buildCloseComment(classified)`, `analyzePRRelationships(classifiedPRs, phasedItems)`, `CATEGORIES` | Classify Renovate PRs against Mend findings; PR redundancy/chain/order analysis |
@@ -300,8 +301,9 @@ Baseline: **238/238 pass**
 | Rust ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
 | **Phase 3 — Universal Dependency Engine (6 ecosystems)** | ✅ **COMPLETE** |
 | Phase 4 entry — write-back: GitHub `createPR`, GitLab `createMR`, AzDO `createPR`, Bitbucket `createPR` | ✅ DONE 2026-08-12 |
+| Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 4 entry complete — write-back modules added for GitHub (`createPR`), GitLab (`createMR`/`addMRComment`), Azure DevOps (`createPR`/`addComment`), Bitbucket (`createPR`/`addComment`). Next: wire write-back into the CLI (`mendfix apply --open-pr`) + per-platform credential flags. Phase 5 multi-repo portfolio mode deferred.
+**Next:** Phase 4 complete — CLI write-back fully wired. `mendfix apply --open-pr --platform <name>` creates a PR/MR after apply on GitHub/GitLab/Azure DevOps/Bitbucket. `pr-poster.js` is the validated dispatcher. 287/287 tests pass. Phase 5 multi-repo portfolio mode is next.
 
 ---
 
