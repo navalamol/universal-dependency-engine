@@ -3,6 +3,7 @@
 const semver = require('semver');
 const { getPublishedVersions, getManifest } = require('./registry');
 const { simulate } = require('./simulator');
+const { computeSecurityDelta } = require('../../core/security-delta');
 
 // Cap versions inspected per parent to bound network calls; guardrail from REMEDIATION_CAPABILITY_ROADMAP §7.
 const CANDIDATE_LIMIT = 10;
@@ -194,6 +195,8 @@ async function exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, loc
           if (resolved && semver.gte(resolved, item.recommendedVersion)) {
             p.simulationVerified = true;
           }
+          // Attach security delta so path ranker can penalise regressions (Item 6)
+          p._simulatedResolvedVersions = r.resolvedVersions;
         }
       }
     }

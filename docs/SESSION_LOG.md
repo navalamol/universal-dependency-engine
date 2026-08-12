@@ -4,6 +4,24 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — V1.x Enhancements 6–11
+
+**Before:** Security delta not computed; blast radius not tracked; no Safety Gate halts on apply; decisionLabel only in Phase C report; dev-chain classification only fired when ALL entries were dev:true; no Renovate PR relationship analysis.
+
+**Changes:**
+- New `src/core/security-delta.js` — `computeSecurityDelta(resolvedVersions, findings)` cross-references a simulation's resolved graph against the findings set; returns `{introduced[], fixed[]}`. "introduced" = candidate regresses a previously-safe package into a vulnerable range. Integrated into `parent-upgrade-explorer.js` (stores `_simulatedResolvedVersions` on path) and `remediation-paths.js` (computes delta per PARENT_UPGRADE path; penalises paths with regressions in `rankPaths`). `enrichWithPaths(plan, allFindings)` now takes findings as second param; wired in `mendfix.js`.
+- `src/ecosystems/npm/lock-parser.js` — new `buildBlastRadius(libraryName, depTree)` export: BFS over reverse-dep graph; returns `{directCount, transitiveCount, productionCount, devCount, consumers[]}`.
+- `mendfix.js` — new `assembleSafetyGate(item)` (formats §6 checklist) and `shouldHaltForSafetyGate(item)` (returns true for MANUAL confidence, MAJOR_BUMP without parent upgrade, peer conflicts, or security regressions). Safety Gate runs before every apply; halts with `--force` bypass. New CLI flags: `--verbose` (print checklist for all items), `--force` (override gate halts).
+- `src/core/report.js` — added `Decision` column to Phase A and Phase B tables.
+- `src/core/pr-description.js` — added `Decision` column to Phase A and Phase B PR description tables.
+- `src/core/phases.js` — `applyPhases(plan, depTree, rootDeps?)` gains optional `rootDeps` third param. Mixed dev/runtime chain classification (Scenario 8 full): when `rootDeps` is provided and a NO_FIX item's production entries only reach devDependency roots via BFS, `probableFalsePositive` is set. New private helpers `_isDevOnlyChain`, `_findRootPackages`. `mendfix.js` now passes `rootDeps` to `applyPhases`.
+- `src/core/renovate-classifier.js` — new `analyzePRRelationships(classifiedPRs, phasedItems)` export: detects redundant PRs (direct child upgrade superseded by a parent upgrade PR), groups PRs by shared dependency chains, and builds a recommended merge order.
+- 10 new tests: `tests/core/security-delta.test.js` (5 tests), `tests/ecosystems/npm/blast-radius.test.js` (4 tests), new phases tests for mixed chain (2 tests). 58/58 total passing.
+
+**Next:** Step G — Recursive parent-chain exploration with all 9 guardrails; V2 starts with override-set minimization.
+
+---
+
 ## 2026-08-12 — Multi-path comparison + Change Budget ranking (Step E)
 
 **Before:** Each PhasedItem carried a single phase/justification. No structured representation of alternative remediation paths. No decision label taxonomy.

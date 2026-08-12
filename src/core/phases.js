@@ -53,9 +53,11 @@ function classifyPhase(item, allItems) {
  * optional dep-tree enrichments (probableFalsePositive, rangeViolation).
  *
  * @param {object[]} resolutionPlan
- * @param {Map}      [depTree]  - from lock-parser.parseLockFile(); optional
+ * @param {Map}      [depTree]   — from lock-parser.parseLockFile(); optional
+ * @param {object}   [rootDeps]  — { dependencies, devDependencies } from getRootDeps(); optional
+ *                                 When present, enables mixed dev/runtime chain classification (Scenario 8).
  */
-function applyPhases(resolutionPlan, depTree) {
+function applyPhases(resolutionPlan, depTree, rootDeps) {
   let result = resolutionPlan.map(item => {
     let phase = classifyPhase(item, resolutionPlan);
     let justification = buildJustification(item, phase, resolutionPlan);
@@ -94,14 +96,25 @@ function applyPhases(resolutionPlan, depTree) {
         }
       }
 
-      // Dev classification — flag NO_FIX items where every lock-file instance is dev: true.
+      // Dev classification — flag NO_FIX items where every lock-file instance is
+      // reachable only through dev/build roots (Scenario 8 full).
       if (item.upgradeType === 'NO_FIX') {
         const entries = depTree.get(item.libraryName) || [];
-        if (entries.length > 0 && entries.every(e => e.dev === true)) {
-          extra.probableFalsePositive = true;
-          justification =
-            `All dependency chains are build/dev-only. Probable false positive — ` +
-            `confirm with \`npm ls ${item.libraryName} --prod\`. ` + justification;
+        if (entries.length > 0) {
+          const allExplicitlyDev = entries.every(e => e.dev === true);
+          const mixedButDevOnly  = !allExplicitlyDev && rootDeps
+            ? _isDevOnlyChain(item.libraryName, depTree, rootDeps)
+            : false;
+
+          if (allExplicitlyDev || mixedButDevOnly) {
+            extra.probableFalsePositive = true;
+            const reason = mixedButDevOnly
+              ? 'All production dependency chains lead only to devDependency roots. Probable false positive (mixed chain) — '
+              : 'All dependency chains are build/dev-only. Probable false positive — ';
+            justification =
+              reason +
+              `confirm with \`npm ls ${item.libraryName} --prod\`. ` + justification;
+          }
         }
       }
     }
@@ -263,6 +276,75 @@ function buildJustification(item, phase, allItems) {
   }
 
   return '';
+}
+
+/**
+ * Mixed dev/runtime chain classification (Scenario 8 full).
+ *
+ * Returns true when EVERY path from any entry of `libraryName` to a root dependency
+ * passes only through devDependency roots — even for entries where dev: false.
+ *
+ * This catches the case where a package marked as a runtime transitive dep is only
+ * reachable at runtime via chains that originate in devDependencies.
+ */
+function _isDevOnlyChain(libraryName, depTree, rootDeps) {
+  const devRoots  = new Set(Object.keys(rootDeps.devDependencies || {}));
+  const allRoots  = new Set([
+    ...Object.keys(rootDeps.dependencies    || {}),
+    ...Object.keys(rootDeps.devDependencies || {}),
+  ]);
+
+  const entries = depTree.get(libraryName) || [];
+  if (entries.length === 0) return false;
+
+  for (const entry of entries) {
+    if (entry.parents.length === 0) {
+      // This package IS a root dep — only dev-only if it's in devDependencies itself
+      if (!devRoots.has(libraryName)) return false;
+      continue;
+    }
+
+    const reachableRoots = _findRootPackages(
+      entry.parents.map(p => p.name), depTree, allRoots
+    );
+    if (reachableRoots.size === 0) return false; // orphan — treat as runtime to be safe
+
+    for (const rootName of reachableRoots) {
+      if (!devRoots.has(rootName)) return false; // at least one production root
+    }
+  }
+
+  return true;
+}
+
+/**
+ * BFS upward through depTree starting from `initialParentNames`.
+ * Returns the set of root package names reached (those present in `allRoots`).
+ */
+function _findRootPackages(initialParentNames, depTree, allRoots) {
+  const roots   = new Set();
+  const visited = new Set();
+  const queue   = [...initialParentNames];
+
+  while (queue.length > 0) {
+    const name = queue.shift();
+    if (visited.has(name)) continue;
+    visited.add(name);
+
+    if (allRoots.has(name)) {
+      roots.add(name);
+      continue; // don't recurse past root
+    }
+
+    const parentEntries = depTree.get(name) || [];
+    for (const e of parentEntries) {
+      for (const p of e.parents) {
+        if (!visited.has(p.name)) queue.push(p.name);
+      }
+    }
+  }
+
+  return roots;
 }
 
 module.exports = { PHASE_META, classifyPhase, applyPhases };

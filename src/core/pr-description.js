@@ -36,11 +36,12 @@ function generatePRDescription(phasedPlan, reportMeta) {
   ];
 
   if (phaseA.length > 0) {
-    lines.push('| Package | Current | Fix | Type |');
-    lines.push('|---------|---------|-----|------|');
+    lines.push('| Package | Current | Fix | Decision | Type |');
+    lines.push('|---------|---------|-----|----------|------|');
     for (const item of phaseA) {
-      const type = item._directUpgrade ? 'direct' : 'override';
-      lines.push(`| \`${item.libraryName}\` | ${item.currentVersion} | **${item.recommendedVersion}** | ${type} |`);
+      const type   = item._directUpgrade ? 'direct' : 'override';
+      const dlabel = item.decisionLabel || 'SAFE_ALIGNED';
+      lines.push(`| \`${item.libraryName}\` | ${item.currentVersion} | **${item.recommendedVersion}** | ${dlabel} | ${type} |`);
     }
     lines.push('');
   } else {
@@ -50,13 +51,14 @@ function generatePRDescription(phasedPlan, reportMeta) {
   if (phaseB.length > 0) {
     lines.push(`### Phase B — Requires Reviewer Action (${phaseB.length} packages)`, '');
     lines.push('These overrides were written but require team review before merging.', '');
-    lines.push('| Package | Current | Fix | Reason |');
-    lines.push('|---------|---------|-----|--------|');
+    lines.push('| Package | Current | Fix | Decision | Reason |');
+    lines.push('|---------|---------|-----|----------|--------|');
     for (const item of phaseB) {
+      const dlabel = item.decisionLabel || 'CONTROLLED_OVERRIDE';
       const reason = item.rangeViolation
         ? `Consumer \`${item.rangeViolation.consumer}\` pins \`${item.rangeViolation.range}\``
         : item.justification.slice(0, 80);
-      lines.push(`| \`${item.libraryName}\` | ${item.currentVersion} | ${item.recommendedVersion} | ${reason} |`);
+      lines.push(`| \`${item.libraryName}\` | ${item.currentVersion} | ${item.recommendedVersion} | ${dlabel} | ${reason} |`);
     }
     lines.push('');
   }

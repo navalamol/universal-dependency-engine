@@ -38,24 +38,26 @@ All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 
 - Wired into `mendfix.js` after `enrichWithConfidence`; `decisionLabel` now shown in report + manual-review.md
 - 16 new tests; 48/48 total passing
 
-### Next: Step D — Security verification in simulated graph
+### ~~Steps 6–11: V1.x Enhancements~~ ✅ DONE 2026-08-12
 
-For each simulated `resolvedVersions` map, cross-reference against the current `LibraryEntry[]` finding set:
-- For each package in `resolvedVersions`: check if any finding has same name AND simulated version is still in vulnerable range
-- Surface: `newVulnerabilitiesIntroduced[]`, `existingVulnerabilitiesFixed[]`
-- Feed into path ranking: a candidate that fixes CVE-A but introduces CVE-B is not a valid recommendation
-
-**File:** extend `src/ecosystems/npm/simulator.js` or new `src/core/security-delta.js`
-**Dependency:** Step C (simulation already done)
+| # | Enhancement | Status |
+|---|-------------|--------|
+| 6 | Security verification in simulated graph (`security-delta.js`) | ✅ DONE |
+| 7 | Dependency blast radius (`buildBlastRadius` in `lock-parser.js`) | ✅ DONE |
+| 8 | Safety Gate pre-edit checklist + `--verbose` / `--force` flags | ✅ DONE |
+| 9 | Decision label taxonomy in Phase A/B report + PR description | ✅ DONE |
+| 10 | Mixed dev/runtime chain classification (Scenario 8 full) | ✅ DONE |
+| 11 | Renovate PR relationship analysis (`analyzePRRelationships`) | ✅ DONE |
 
 ---
 
-## Phase 1.x — After Step D: further enhancements
+## Next: Step G — Recursive parent-chain exploration with guardrails
 
-See `REMEDIATION_CAPABILITY_ROADMAP.md §11` for:
-- Dependency blast radius (`src/ecosystems/npm/lock-parser.js` reverse-index)
-- Safety Gate pre-edit checklist
-- Mixed dev/runtime chain classification (Scenario 8 full)
+Extend `parent-upgrade-explorer.js` beyond 2 levels with all 9 guardrails from REMEDIATION_CAPABILITY_ROADMAP §7:
+- Cycle detection (visited `(pkg, version)` pairs)
+- Depth limit (default 5)
+- All existing candidate/simulation/timeout limits apply at each level
+- Stop when: fix found AND verified, OR depth limit hit, OR candidate limit exhausted
 
 ---
 

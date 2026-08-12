@@ -61,21 +61,23 @@ function generateReport(phasedPlan, options = {}) {
     lines.push(``);
 
     if (verifyVersions) {
-      lines.push(`| Package | Current → Fix | Verified | CVEs | Severity |`);
-      lines.push(`|---------|---------------|----------|------|----------|`);
+      lines.push(`| Package | Current → Fix | Decision | Verified | CVEs | Severity |`);
+      lines.push(`|---------|---------------|----------|----------|------|----------|`);
       for (const r of phaseA) {
         const cves = r.cves.map(c => `\`${c.id}\``).join(', ');
         const verifiedTag = r.registryExists === true
           ? (r.registryAdjusted ? `✓ adjusted from ${r.registryRequested}` : '✓')
           : (r.registryExists === null ? '? (registry unreachable)' : '✗ not found');
-        lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${verifiedTag} | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} |`);
+        const dlabel = r.decisionLabel || 'SAFE_ALIGNED';
+        lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${dlabel} | ${verifiedTag} | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} |`);
       }
     } else {
-      lines.push(`| Package | Current → Fix | CVEs | Severity |`);
-      lines.push(`|---------|---------------|------|----------|`);
+      lines.push(`| Package | Current → Fix | Decision | CVEs | Severity |`);
+      lines.push(`|---------|---------------|----------|------|----------|`);
       for (const r of phaseA) {
         const cves = r.cves.map(c => `\`${c.id}\``).join(', ');
-        lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} |`);
+        const dlabel = r.decisionLabel || 'SAFE_ALIGNED';
+        lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${dlabel} | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} |`);
       }
     }
 
@@ -117,11 +119,12 @@ function generateReport(phasedPlan, options = {}) {
     lines.push(``);
     lines.push(PHASE_META.B.description);
     lines.push(``);
-    lines.push(`| Package | Current → Fix | CVEs | Severity | Notes |`);
-    lines.push(`|---------|---------------|------|----------|-------|`);
+    lines.push(`| Package | Current → Fix | Decision | CVEs | Severity | Notes |`);
+    lines.push(`|---------|---------------|----------|------|----------|-------|`);
     for (const r of phaseB) {
       const cves = r.cves.map(c => `\`${c.id}\``).join(', ');
-      lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} | ${r.justification} |`);
+      const dlabel = r.decisionLabel || 'CONTROLLED_OVERRIDE';
+      lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${dlabel} | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} | ${r.justification} |`);
     }
     lines.push(``);
   }

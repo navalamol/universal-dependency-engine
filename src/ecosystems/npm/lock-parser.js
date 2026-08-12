@@ -143,4 +143,52 @@ function findDepChain(libraryName, depTree, rootDeps) {
   return [];
 }
 
-module.exports = { parseLockFile, getRootDeps, findDepChain };
+/**
+ * Compute the blast radius of a package: how many packages (directly and transitively)
+ * depend on it. Breaks down by production vs dev.
+ *
+ * @param {string} libraryName
+ * @param {Map}    depTree  — from parseLockFile()
+ * @returns {{
+ *   directCount:     number,   // unique direct consumers
+ *   transitiveCount: number,   // all ancestor packages (direct + indirect)
+ *   productionCount: number,   // lock-file entries for this package with dev: false
+ *   devCount:        number,   // lock-file entries for this package with dev: true
+ *   consumers:       string[], // all ancestor package names (deduped)
+ * }}
+ */
+function buildBlastRadius(libraryName, depTree) {
+  const entries = depTree.get(libraryName) || [];
+
+  const productionCount = entries.filter(e => !e.dev).length;
+  const devCount        = entries.filter(e => e.dev).length;
+
+  const directConsumers = new Set(entries.flatMap(e => e.parents.map(p => p.name)));
+
+  // BFS upward through the reverse-dependency graph
+  const allConsumers = new Set();
+  const visited      = new Set([libraryName]);
+  const queue        = [...directConsumers];
+
+  for (const name of queue) {
+    if (visited.has(name)) continue;
+    visited.add(name);
+    allConsumers.add(name);
+    const parentEntries = depTree.get(name) || [];
+    for (const entry of parentEntries) {
+      for (const p of entry.parents) {
+        if (!visited.has(p.name)) queue.push(p.name);
+      }
+    }
+  }
+
+  return {
+    directCount:     directConsumers.size,
+    transitiveCount: allConsumers.size,
+    productionCount,
+    devCount,
+    consumers:       [...allConsumers],
+  };
+}
+
+module.exports = { parseLockFile, getRootDeps, findDepChain, buildBlastRadius };

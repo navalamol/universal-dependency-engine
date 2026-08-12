@@ -78,6 +78,9 @@ Options:
   --dry-run                  Print plan to stdout; write nothing to disk
   --commit                   (apply only) Auto-commit Phase A fixes after successful install
                              Phase B/C commits are opt-in after human review
+  --verbose                  Print Safety Gate pre-edit checklist for every item
+  --force                    Override Safety Gate halts (MANUAL confidence, MAJOR_BUMP paths,
+                             peer conflicts). Use only after manual review.
 
 Phase output files written to --out-dir:
   npm:   phase-a-overrides.json / phase-b-overrides.json / manual-review.md
@@ -122,6 +125,66 @@ function writeJson(filePath, raw, obj) {
 function printPhaseRow(tag, phase, items) {
   const meta = PHASE_META[phase];
   console.log(`  ${tag} Phase ${phase} (${meta.confidence}): ${noun(items.length, 'library', 'libraries')} — ${meta.label}`);
+}
+
+// ---------------------------------------------------------------------------
+// Safety Gate pre-edit checklist (Item 8 — REMEDIATION_CAPABILITY_ROADMAP §6)
+// ---------------------------------------------------------------------------
+
+/**
+ * Format the pre-edit safety checklist for one PhasedItem.
+ * Printed at --verbose level; halts apply when confidence is MANUAL, path has MAJOR_BUMP,
+ * or peer conflicts detected — unless --force is passed.
+ */
+function assembleSafetyGate(item) {
+  const rp    = item.recommendedPath;
+  const cves  = (item.cves || []).map(c => `${c.id} (${c.severity} ${c.score})`).join(', ');
+  const chain = item.depChain && item.depChain.length > 1 ? item.depChain.join(' → ') : item.libraryName;
+
+  const rows = [
+    `Finding:          ${cves || '(see report)'}`,
+    `Dependency path:  ${chain}`,
+    `Current:          ${item.libraryName}@${item.currentVersion}`,
+    `Fixed:            ${item.libraryName}@${item.recommendedVersion || 'N/A'}`,
+  ];
+
+  if (rp) {
+    if (rp.type === 'PARENT_UPGRADE' && rp.detail) {
+      rows.push(`Parent range:     ${rp.detail.parent} declares ${item.libraryName}@${rp.detail.childDeclaredRange || '?'}`);
+      rows.push(`Parent candidate: ${rp.detail.parent}@${rp.detail.parentUpgradeVersion} (within ${rp.detail.parentAllowedRange})`);
+      rows.push(`Simulation:       ${rp.detail.simulationVerified ? 'VERIFIED' : 'INFERRED (not simulated)'}`);
+    }
+    const peerInfo = rp.peerConflicts && rp.peerConflicts.length
+      ? `CONFLICTS: ${rp.peerConflicts.join(', ')}`
+      : 'none detected';
+    rows.push(`Runtime class:    ${item.probableFalsePositive ? 'DEV-ONLY' : 'RUNTIME'}`);
+    rows.push(`Decision:         ${item.decisionLabel || '?'}`);
+    rows.push(`Confidence:       ${rp.confidence}`);
+    rows.push(`Budget tier:      ${rp.budgetLabel}`);
+    rows.push(`Risk:             ${item.upgradeType}; peer dep conflicts: ${peerInfo}`);
+    if (rp.securityDelta) {
+      rows.push(`Security delta:   fixed=${rp.securityDelta.fixed.length} introduced=${rp.securityDelta.introduced.length}`);
+    }
+  } else {
+    rows.push(`Decision:         ${item.decisionLabel || 'MANUAL_SECURITY_REVIEW'}`);
+    rows.push(`Confidence:       MANUAL`);
+  }
+
+  return rows.map(r => `    ${r}`).join('\n');
+}
+
+/**
+ * Returns true (= should halt apply) when the item requires human confirmation.
+ * The caller should skip the item or exit unless --force is set.
+ */
+function shouldHaltForSafetyGate(item) {
+  const rp = item.recommendedPath;
+  if (!rp) return true; // no path = MANUAL
+  if (rp.confidence === 'MANUAL') return true;
+  if (item.upgradeType === 'MAJOR_BUMP' && rp.type !== 'PARENT_UPGRADE') return true;
+  if (rp.peerConflicts && rp.peerConflicts.length > 0) return true;
+  if (rp.securityDelta && rp.securityDelta.introduced.length > 0) return true;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +360,8 @@ async function main() {
   const verifyVersions  = args['verify-versions'] === true;
   const dryRun          = args['dry-run'] === true;
   const autoCommit      = args['commit'] === true;
+  const verbose         = args['verbose'] === true;
+  const forceApply      = args['force']   === true;
 
   const mode = subcmd ? subcmd.toUpperCase() : (dryRun ? 'ANALYZE' : 'APPLY');
   console.log(`\nMend AutoFixer [${mode}]`);
@@ -389,7 +454,7 @@ async function main() {
 
   // ── Step 4: Apply phase classification ───────────────────────────────────
   console.log('\n[4/5] Classifying by phase...');
-  let phasedPlan = applyPhases(plan, depTree);
+  let phasedPlan = applyPhases(plan, depTree, rootDeps);
 
   if (depTree && rootDeps) {
     const allRootDeps = { ...rootDeps.dependencies, ...rootDeps.devDependencies };
@@ -439,7 +504,7 @@ async function main() {
   }
 
   phasedPlan = enrichWithConfidence(phasedPlan, depTree);
-  phasedPlan = enrichWithPaths(phasedPlan);
+  phasedPlan = enrichWithPaths(phasedPlan, entries);
 
   const phaseA = phasedPlan.filter(r => r.phase === 'A');
   const phaseB = phasedPlan.filter(r => r.phase === 'B');
@@ -463,6 +528,38 @@ async function main() {
     const fix = r.recommendedVersion || 'NO FIX';
     const fp  = r.probableFalsePositive ? ' [PROBABLE FALSE POSITIVE]' : '';
     console.log(`  ❌ ${r.libraryName}: ${r.currentVersion} → ${fix}  [${r.upgradeType}]${fp}`);
+  }
+
+  // ── Safety Gate (Item 8) ────────────────────────────────────────────────
+  // Print pre-edit checklist at --verbose; halt apply for MANUAL/MAJOR/peer-conflict
+  // items unless --force is set.
+  if (!dryRun) {
+    const haltItems = [];
+    if (verbose) console.log('\n[Safety Gate]');
+    for (const item of phasedPlan) {
+      if (verbose) {
+        console.log(`\n  ${item.libraryName}:`);
+        console.log(assembleSafetyGate(item));
+      }
+      if (shouldHaltForSafetyGate(item) && !forceApply) {
+        haltItems.push(item);
+      }
+    }
+    if (haltItems.length > 0) {
+      console.log('\n⛔ Safety Gate halted apply for the following items (use --force to override):');
+      for (const item of haltItems) {
+        const reason = !item.recommendedPath ? 'no viable path'
+          : item.recommendedPath.confidence === 'MANUAL' ? 'MANUAL confidence'
+          : item.upgradeType === 'MAJOR_BUMP' ? 'MAJOR_BUMP without verified parent upgrade'
+          : item.recommendedPath.peerConflicts && item.recommendedPath.peerConflicts.length ? 'peer conflicts detected'
+          : 'new vulnerabilities introduced by candidate';
+        console.log(`  ❌ ${item.libraryName}: ${reason}`);
+        if (!verbose) console.log(assembleSafetyGate(item));
+      }
+      console.log('\nRun with --force to apply anyway, or address the flagged items first.');
+      process.exitCode = 1;
+      return;
+    }
   }
 
   // ── Step 5: Write output ─────────────────────────────────────────────────

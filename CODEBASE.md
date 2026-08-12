@@ -70,14 +70,15 @@ lockfile update + verification
 | File | Exports | Purpose |
 |------|---------|---------|
 | `semver-engine.js` | `resolveFixVersion(entry)`, `buildResolutionPlan(entries)` → `ResolutionItem[]` | Deterministic SemVer resolution. NEVER use AI here. |
-| `phases.js` | `PHASE_META`, `classifyPhase(item, allItems)`, `applyPhases(plan, depTree?)` → `PhasedItem[]` | Phase A/B/C classification |
+| `phases.js` | `PHASE_META`, `classifyPhase(item, allItems)`, `applyPhases(plan, depTree?, rootDeps?)` → `PhasedItem[]` | Phase A/B/C classification; mixed dev/runtime chain detection when rootDeps provided |
 | `confidence.js` | `enrichWithConfidence(phasedPlan, depTree)` → `PhasedItem[]` + `evidence`+`alternative` fields | Adds evidence text per item |
-| `remediation-paths.js` | `buildPaths(item)`, `rankPaths(paths)`, `comparePaths(item)`, `enrichWithPaths(phasedPlan)`, `LABELS`, `BUDGET_TIERS` | Multi-path comparison + Change Budget ranking; adds `recommendedPath`, `alternativePaths[]`, `decisionLabel` to every PhasedItem |
+| `remediation-paths.js` | `buildPaths(item, allFindings?)`, `rankPaths(paths)`, `comparePaths(item, allFindings?)`, `enrichWithPaths(phasedPlan, allFindings?)`, `LABELS`, `BUDGET_TIERS` | Multi-path comparison + Change Budget ranking; adds `recommendedPath`, `alternativePaths[]`, `decisionLabel` to every PhasedItem; `securityDelta` computed per PARENT_UPGRADE path when allFindings provided |
+| `security-delta.js` | `computeSecurityDelta(resolvedVersions, findings)` → `{introduced[], fixed[]}` | Cross-reference simulation resolvedVersions against LibraryEntry[] findings; detects regressions introduced by a candidate |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
 | `git-commits.js` | `commitPhaseA(projectDir, items, ecosystem)`, `commitPhaseBC(projectDir, bItems, cItems)`, `commitFalsePositives(projectDir, items)` | Git auto-commit by confidence tier. All synchronous. commitPhaseBC/commitFalsePositives = opt-in after human review. |
 | `renovate-builder.js` | `buildResolutionItems(prUpgrades, pkg, lockEntries?)`, `getCurrentVersion(name, pkg, lockEntries?)` | Convert Renovate PR upgrades → `ResolutionItem[]` |
-| `renovate-classifier.js` | `classifyPRs(renovatePRs, phasedItems)`, `parsePRTitleNew(title)`, `summarize(classifiedPRs)`, `buildCloseComment(classified)`, `CATEGORIES` | Classify Renovate PRs against Mend findings |
+| `renovate-classifier.js` | `classifyPRs(renovatePRs, phasedItems)`, `parsePRTitleNew(title)`, `summarize(classifiedPRs)`, `buildCloseComment(classified)`, `analyzePRRelationships(classifiedPRs, phasedItems)`, `CATEGORIES` | Classify Renovate PRs against Mend findings; PR redundancy/chain/order analysis |
 | `renovate-report.js` | `generateMarkdown(repoResults, runDate)`, `writeReport(repoResults, outDir, runDate)` | Multi-repo Renovate workflow report |
 | `renovate-apply-report.js` | `generateApplyReport(params)`, `writeApplyReport(params, outDir)` | Per-repo Renovate apply report |
 
@@ -91,7 +92,7 @@ lockfile update + verification
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `getRootDeps(path)`, `findDepChain(name, tree, rootDeps)` → `string[]` | Parse package-lock.json v2/v3 flat map → DepTree |
+| `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `getRootDeps(path)`, `findDepChain(name, tree, rootDeps)` → `string[]`, `buildBlastRadius(name, tree)` → `BlastRadius` | Parse package-lock.json v2/v3 flat map → DepTree; reverse-dep index for blast radius |
 | `overrides.js` | `buildPhaseAOverrides`, `buildPhaseBOverrides`, `buildParentUpgradeMap`, `applyOverridesToPackageJson`, `writeOverridesPatch`, `detectDirectDeps`, `applyDirectUpgrades` | Build + apply npm overrides/direct dep bumps |
 | `installer.js` | `snapshotFiles`, `restoreFiles`, `runPackageLockUpdate`, `runMavenResolve`, `verifyFixVersions`, `saveManifest`, `detectManualChanges` | npm/mvn install, rollback, verify, manifest |
 | `registry.js` | `getPublishedVersions(name)`, `getManifest(name, ver)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | npm registry version checks + manifest fetch with per-run cache (Node 18+ fetch) |
@@ -224,7 +225,7 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/integration/regression-mend-report.test.js` | End-to-end: parse → resolve → phase → report. Baseline: A:5 B:0 C:3 |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **32/32 pass**
+Baseline: **58/58 pass**
 
 ---
 
@@ -237,7 +238,7 @@ Baseline: **32/32 pass**
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 
-**Next:** Step D — Security verification in simulated graph: new `src/core/security-delta.js`, cross-references `resolvedVersions` from `simulator.js` against the active `LibraryEntry[]` finding set to surface `newVulnerabilitiesIntroduced[]`.
+**Next:** Step G — Recursive parent-chain exploration with all 9 guardrails (depth limit, cycle detection, etc.). V2 entry: override-set minimization via simulator.
 
 ---
 

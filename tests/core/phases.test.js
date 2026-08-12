@@ -73,19 +73,46 @@ describe('applyPhases — phase classification', () => {
     expect(item.probableFalsePositive).toBe(true);
   });
 
-  test('mixed dev/prod entries → probableFalsePositive NOT set', () => {
+  test('mixed dev/prod entries → probableFalsePositive NOT set when prod root exists', () => {
     const depTree = makeDepTree({
       'mixed-pkg': [
-        { resolvedVersion: '1.0.0', dev: true,  parents: ['dev-dep'] },
-        { resolvedVersion: '1.0.0', dev: false, parents: ['prod-dep'] },
+        { resolvedVersion: '1.0.0', dev: true,  parents: [{ name: 'dev-dep', range: '*' }] },
+        { resolvedVersion: '1.0.0', dev: false, parents: [{ name: 'prod-dep', range: '*' }] },
       ],
+      'prod-dep': [{ resolvedVersion: '2.0.0', dev: false, parents: [] }],
     });
+    const rootDeps = {
+      dependencies:    { 'prod-dep': '^2.0.0' },
+      devDependencies: { 'dev-dep': '^1.0.0' },
+    };
     const plan = [makeResItem({
       libraryName: 'mixed-pkg',
       upgradeType: 'NO_FIX',
       recommendedVersion: null,
     })];
-    const [item] = applyPhases(plan, depTree);
+    const [item] = applyPhases(plan, depTree, rootDeps);
     expect(item.probableFalsePositive).toBeFalsy();
+  });
+
+  test('mixed chain: prod entry only reachable via dev root → probableFalsePositive', () => {
+    // Scenario 8 full: even the "production" entry (dev:false) traces up only to devDependencies
+    const depTree = makeDepTree({
+      'vuln-pkg': [
+        // dev:false but its only parent is 'jest-runner' which is a devDependency root
+        { resolvedVersion: '1.0.0', dev: false, parents: [{ name: 'jest-runner', range: '*' }] },
+      ],
+      'jest-runner': [{ resolvedVersion: '3.0.0', dev: false, parents: [] }],
+    });
+    const rootDeps = {
+      dependencies:    {},
+      devDependencies: { 'jest-runner': '^3.0.0' },
+    };
+    const plan = [makeResItem({
+      libraryName: 'vuln-pkg',
+      upgradeType: 'NO_FIX',
+      recommendedVersion: null,
+    })];
+    const [item] = applyPhases(plan, depTree, rootDeps);
+    expect(item.probableFalsePositive).toBe(true);
   });
 });

@@ -312,4 +312,132 @@ function summarize(classifiedPRs) {
   return counts;
 }
 
-module.exports = { CATEGORIES, parsePRTitleNew, classifyPRs, summarize, buildCloseComment };
+/**
+ * Analyze relationships between classified Renovate PRs.
+ *
+ * Detects:
+ *  - redundantPRs: PRs whose direct upgrade becomes unnecessary when a parent-upgrade PR merges.
+ *    E.g., PR-B upgrades X directly; PR-A upgrades parent Y which transitively fixes X → PR-B is redundant.
+ *  - chainGroups: sets of PRs that affect packages in the same dependency chain.
+ *  - orderedMerge: recommended merge order (parent upgrades before direct child upgrades).
+ *
+ * @param {object[]} classifiedPRs  — output of classifyPRs()
+ * @param {object[]} phasedItems    — output of applyPhases()
+ * @returns {{
+ *   redundantPRs: Array<{ redundantPR, supersededBy, reason }>,
+ *   chainGroups:  Array<{ packages: string[], prs: object[] }>,
+ *   orderedMerge: Array<{ pr, order: number, note: string }>,
+ * }}
+ */
+function analyzePRRelationships(classifiedPRs, phasedItems) {
+  // Index phasedItems by library name for O(1) lookup
+  const byPkg = new Map();
+  for (const item of phasedItems) {
+    byPkg.set(item.libraryName, item);
+  }
+
+  // ── Redundancy detection ──────────────────────────────────────────────────
+  // PR-B directly upgrades child package X.
+  // PR-A upgrades parent Y → its parentUpgradePaths covers X.
+  // → PR-B is redundant when PR-A is merged.
+  const redundantPRs = [];
+
+  for (const pr of classifiedPRs) {
+    if (!pr.parsed || pr.parsed.isMonorepoGroup) continue;
+    const childPkg = pr.parsed.packageName;
+    const childItem = byPkg.get(childPkg);
+
+    // Skip if the child has no finding or has no parent upgrade path
+    if (!childItem || !childItem.parentUpgradePaths || childItem.parentUpgradePaths.length === 0) continue;
+
+    // Find other PRs in this set that upgrade the parent
+    for (const parentPath of childItem.parentUpgradePaths) {
+      const parentName = parentPath.parent;
+      const parentPR   = classifiedPRs.find(
+        p => p !== pr && p.parsed && p.parsed.packageName === parentName
+      );
+      if (parentPR) {
+        redundantPRs.push({
+          redundantPR:  pr,
+          supersededBy: parentPR,
+          reason:       `Upgrading ${parentName} (PR #${parentPR.pr.number || '?'}) transitively fixes ${childPkg}. ` +
+                        `Direct upgrade PR #${pr.pr.number || '?'} is redundant once the parent PR merges.`,
+        });
+      }
+    }
+  }
+
+  // ── Chain grouping ────────────────────────────────────────────────────────
+  // Group PRs that touch packages in the same parent→child chains.
+  const grouped = _groupByChain(classifiedPRs, phasedItems, byPkg);
+
+  // ── Merge order ───────────────────────────────────────────────────────────
+  // Parent upgrades should merge before direct child upgrades in the same chain.
+  const orderedMerge = _buildMergeOrder(classifiedPRs, phasedItems, byPkg);
+
+  return { redundantPRs, chainGroups: grouped, orderedMerge };
+}
+
+function _groupByChain(classifiedPRs, phasedItems, byPkg) {
+  // Build a chain-membership map: pkg → chain IDs it participates in
+  const chainOf = new Map();  // pkgName → set of chainIds
+  let chainId   = 0;
+
+  for (const item of phasedItems) {
+    if (!item.parentUpgradePaths || item.parentUpgradePaths.length === 0) continue;
+    for (const path of item.parentUpgradePaths) {
+      const id  = chainId++;
+      const set = new Set([item.libraryName, path.parent, ...(path.chainVia || [])]);
+      for (const pkg of set) {
+        if (!chainOf.has(pkg)) chainOf.set(pkg, new Set());
+        chainOf.get(pkg).add(id);
+      }
+    }
+  }
+
+  // For each PR, find which chain(s) its package belongs to
+  const chainToPRs = new Map();
+  for (const pr of classifiedPRs) {
+    if (!pr.parsed || pr.parsed.isMonorepoGroup) continue;
+    const pkg    = pr.parsed.packageName;
+    const chains = chainOf.get(pkg) || new Set();
+    for (const id of chains) {
+      if (!chainToPRs.has(id)) chainToPRs.set(id, { packages: new Set(), prs: [] });
+      chainToPRs.get(id).packages.add(pkg);
+      chainToPRs.get(id).prs.push(pr);
+    }
+  }
+
+  // Only emit groups with more than one PR
+  return [...chainToPRs.values()]
+    .filter(g => g.prs.length > 1)
+    .map(g => ({ packages: [...g.packages], prs: g.prs }));
+}
+
+function _buildMergeOrder(classifiedPRs, phasedItems, byPkg) {
+  // Parent upgrade PRs go first (order 1); direct child upgrades go second (order 2);
+  // unrelated PRs get order 3.
+  const parentUpgradeTargets = new Set(
+    phasedItems.flatMap(i => (i.parentUpgradePaths || []).map(p => p.parent))
+  );
+
+  return classifiedPRs
+    .filter(pr => pr.parsed && !pr.parsed.isMonorepoGroup)
+    .map(pr => {
+      const pkg   = pr.parsed.packageName;
+      const item  = byPkg.get(pkg);
+      const isParentUpgradePR = parentUpgradeTargets.has(pkg);
+      const isDirectChildPR   = item && item.parentUpgradePaths && item.parentUpgradePaths.length > 0;
+
+      if (isParentUpgradePR) {
+        return { pr, order: 1, note: `Parent upgrade — merge first; transitively fixes dependent vulnerabilities` };
+      }
+      if (isDirectChildPR) {
+        return { pr, order: 2, note: `Direct child upgrade — can be replaced by a parent upgrade if one exists` };
+      }
+      return { pr, order: 3, note: `Independent upgrade — no ordering constraint` };
+    })
+    .sort((a, b) => a.order - b.order);
+}
+
+module.exports = { CATEGORIES, parsePRTitleNew, classifyPRs, summarize, buildCloseComment, analyzePRRelationships };

@@ -1,6 +1,7 @@
 'use strict';
 
 const semver = require('semver');
+const { computeSecurityDelta } = require('./security-delta');
 
 // Decision label taxonomy — REMEDIATION_CAPABILITY_ROADMAP §4
 const LABELS = {
@@ -31,17 +32,18 @@ const CONFIDENCE_RANK = { VERIFIED: 0, INFERRED: 1, MANUAL: 2 };
  *
  * Path shape:
  * {
- *   type:          'PARENT_UPGRADE' | 'DIRECT_OVERRIDE' | 'NESTED_OVERRIDE' | 'NO_FIX',
- *   confidence:    'VERIFIED' | 'INFERRED' | 'MANUAL',
- *   budgetTier:    number,   // BUDGET_TIERS value
- *   budgetLabel:   string,   // human-readable tier name
- *   semverDist:    number,   // rough SemVer distance (major*10000 + minor*100 + patch)
- *   decisionLabel: string,   // LABELS value
- *   peerConflicts: string[],
- *   detail:        object,   // type-specific fields
+ *   type:              'PARENT_UPGRADE' | 'DIRECT_OVERRIDE' | 'NESTED_OVERRIDE' | 'NO_FIX',
+ *   confidence:        'VERIFIED' | 'INFERRED' | 'MANUAL',
+ *   budgetTier:        number,
+ *   budgetLabel:       string,
+ *   semverDist:        number,
+ *   decisionLabel:     string,
+ *   peerConflicts:     string[],
+ *   securityDelta:     { introduced: [], fixed: [] } | null,
+ *   detail:            object,
  * }
  */
-function buildPaths(item) {
+function buildPaths(item, allFindings) {
   const paths = [];
 
   // 1. Parent upgrade paths (populated by parent-upgrade-explorer.js)
@@ -50,6 +52,13 @@ function buildPaths(item) {
       const confidence = p.simulationVerified ? 'VERIFIED'
                        : p.manifestVerified   ? 'INFERRED' : 'MANUAL';
       const budgetTier = parentBudgetTier(p.parentAllowedRange, p.parentUpgradeVersion);
+
+      // Security delta — computed from resolved versions when simulation ran (Item 6)
+      let securityDelta = null;
+      if (p._simulatedResolvedVersions && allFindings && allFindings.length) {
+        securityDelta = computeSecurityDelta(p._simulatedResolvedVersions, allFindings);
+      }
+
       paths.push({
         type:          'PARENT_UPGRADE',
         confidence,
@@ -58,6 +67,7 @@ function buildPaths(item) {
         semverDist:    versionDist(rangeMin(p.parentAllowedRange), p.parentUpgradeVersion),
         decisionLabel: LABELS.SAFE_PARENT_UPGRADE,
         peerConflicts: [],
+        securityDelta,
         detail: {
           parent:               p.parent,
           parentAllowedRange:   p.parentAllowedRange,
@@ -84,6 +94,7 @@ function buildPaths(item) {
         semverDist:    versionDist(item.currentVersion, item.recommendedVersion),
         decisionLabel: LABELS.CONTROLLED_OVERRIDE,
         peerConflicts: [],
+        securityDelta: null,
         detail: { name: item.libraryName, from: item.currentVersion, to: item.recommendedVersion },
       });
     } else if (item.nestedOverrides) {
@@ -95,6 +106,7 @@ function buildPaths(item) {
         semverDist:    versionDist(item.currentVersion, item.recommendedVersion),
         decisionLabel: LABELS.CONTROLLED_OVERRIDE,
         peerConflicts: [],
+        securityDelta: null,
         detail: { nestedOverrides: item.nestedOverrides },
       });
     } else if (item.phase === 'A') {
@@ -106,6 +118,7 @@ function buildPaths(item) {
         semverDist:    versionDist(item.currentVersion, item.recommendedVersion),
         decisionLabel: LABELS.SAFE_ALIGNED,
         peerConflicts: [],
+        securityDelta: null,
         detail: { name: item.libraryName, from: item.currentVersion, to: item.recommendedVersion },
       });
     } else {
@@ -118,6 +131,7 @@ function buildPaths(item) {
         semverDist:    versionDist(item.currentVersion, item.recommendedVersion),
         decisionLabel: LABELS.CONTROLLED_OVERRIDE,
         peerConflicts: [],
+        securityDelta: null,
         detail: { name: item.libraryName, from: item.currentVersion, to: item.recommendedVersion },
       });
     }
@@ -133,6 +147,7 @@ function buildPaths(item) {
       semverDist:    0,
       decisionLabel: item.probableFalsePositive ? LABELS.NON_RUNTIME_EXPOSURE : LABELS.NOT_FIXABLE,
       peerConflicts: [],
+      securityDelta: null,
       detail:        {},
     });
   }
@@ -141,12 +156,17 @@ function buildPaths(item) {
 }
 
 /**
- * Rank paths: VERIFIED > INFERRED > MANUAL, then lower budget tier, then lower semver distance.
+ * Rank paths: VERIFIED > INFERRED > MANUAL, then fewest regressions introduced,
+ * then lower budget tier, then lower semver distance.
  */
 function rankPaths(paths) {
   return [...paths].sort((a, b) => {
     const cr = (CONFIDENCE_RANK[a.confidence] ?? 99) - (CONFIDENCE_RANK[b.confidence] ?? 99);
     if (cr !== 0) return cr;
+    // Penalise paths that introduce security regressions
+    const ar = (a.securityDelta ? a.securityDelta.introduced.length : 0);
+    const br = (b.securityDelta ? b.securityDelta.introduced.length : 0);
+    if (ar !== br) return ar - br;
     const bt = a.budgetTier - b.budgetTier;
     if (bt !== 0) return bt;
     return a.semverDist - b.semverDist;
@@ -156,9 +176,12 @@ function rankPaths(paths) {
 /**
  * Enrich a single item with ranked remediation paths and a decision label.
  * Returns item with: recommendedPath, alternativePaths[], decisionLabel.
+ *
+ * @param {object}   item
+ * @param {object[]} [allFindings]  — LibraryEntry[] passed through to security-delta (optional)
  */
-function comparePaths(item) {
-  const all    = buildPaths(item);
+function comparePaths(item, allFindings) {
+  const all    = buildPaths(item, allFindings);
   const ranked = rankPaths(all);
   const [recommended, ...alternatives] = ranked;
 
@@ -181,9 +204,12 @@ function comparePaths(item) {
 
 /**
  * Apply comparePaths to every item in a phased plan.
+ *
+ * @param {object[]} phasedPlan
+ * @param {object[]} [allFindings]  — original LibraryEntry[] for security-delta cross-check
  */
-function enrichWithPaths(phasedPlan) {
-  return phasedPlan.map(comparePaths);
+function enrichWithPaths(phasedPlan, allFindings) {
+  return phasedPlan.map(item => comparePaths(item, allFindings));
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
