@@ -74,6 +74,8 @@ Options:
   --out-dir <path>           Output directory  [default: ./mend-output]
   --verify-versions          Check registry to confirm versions exist
   --dry-run                  Print plan to stdout; write nothing to disk
+  --commit                   (apply only) Auto-commit Phase A fixes after successful install
+                             Phase B/C commits are opt-in after human review
 
 Phase output files written to --out-dir:
   npm:   phase-a-overrides.json / phase-b-overrides.json / manual-review.md
@@ -86,7 +88,7 @@ Examples:
   mendfix apply    --report npm-report.json \\
     --package-json ../ui-platform/package.json \\
     --lock-file    ../ui-platform/package-lock.json \\
-    --verify-versions
+    --verify-versions --commit
   mendfix apply    --report maven-report.json \\
     --pom-xml ../dataplatform/pom.xml \\
     --verify-versions
@@ -498,26 +500,21 @@ async function main() {
   fs.writeFileSync(prDescPath, generatePRDescription(phasedPlan, prDescMeta));
   console.log(`  Wrote: ${prDescPath}`);
 
-  // Scenarios 15/16: auto-commit after successful apply
+  // Scenarios 15/16: auto-commit Phase A after successful apply.
+  // Phase B/C commits are opt-in after human review — never triggered automatically here.
   if (autoCommit && phaseA.length > 0) {
-    const { commitPhaseA, commitPhaseBC, commitFalsePositives } = require('./src/core/git-commits');
-    const projectDir = packageJsonPath ? path.dirname(packageJsonPath) : process.cwd();
+    const { commitPhaseA } = require('./src/core/git-commits');
+    const projectDir = packageJsonPath
+      ? path.dirname(packageJsonPath)
+      : pomXmlPath
+        ? path.dirname(pomXmlPath)
+        : process.cwd();
     console.log('\nCommitting...');
-    const commitResult = await commitPhaseA(projectDir, phaseA, ecosystem);
+    const commitResult = commitPhaseA(projectDir, phaseA, ecosystem);
     if (commitResult.success) {
       console.log(`  Committed Phase A fixes: ${commitResult.message.split('\n')[0]}`);
     } else {
       console.warn(`  Warning: git commit failed: ${commitResult.message}`);
-    }
-    const phaseBC = [...phaseB, ...phaseC.filter(i => !i.probableFalsePositive)];
-    const falsePositives = phaseC.filter(i => i.probableFalsePositive);
-    if (phaseBC.length > 0) {
-      const bcResult = commitPhaseBC(projectDir, phaseB, phaseC.filter(i => !i.probableFalsePositive));
-      if (!bcResult.success) console.warn(`  Warning: Phase B/C commit failed: ${bcResult.message}`);
-    }
-    if (falsePositives.length > 0) {
-      const fpResult = commitFalsePositives(projectDir, falsePositives);
-      if (!fpResult.success) console.warn(`  Warning: false-positive commit failed: ${fpResult.message}`);
     }
   }
 

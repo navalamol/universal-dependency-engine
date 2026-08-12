@@ -350,3 +350,19 @@ Minimal change history for future Claude sessions. Only decisions and context th
 **Key constraint:** Static SemVer inference is INFERRED; only `npm install --package-lock-only` simulation in a temp directory produces VERIFIED confidence. The canonical example (z→y@1.5→x@^1.2, fixed x@2.2, y@1.6→x@^2.1) must be discovered and verified automatically via simulation.
 
 **Next:** Wire `git-commits.js` into `mendfix apply --commit` (V1 blocker 1), then wire enrichWithConfidence into CLI path (V1 blocker 2), then begin Phase 1.x with manifest inspection per candidate parent version.
+
+---
+
+## 2026-08-12 — Wire git-commits.js into mendfix apply (Scenarios 15/16)
+
+**Before:** `git-commits.js` was written but not called anywhere. The `autoCommit` variable was already parsed from `--commit` flag at line 295 but the block at lines 502–522 had two bugs: (1) it unconditionally called `commitPhaseBC` and `commitFalsePositives` even though Phase B/C items are never auto-applied (causing spurious warnings), and (2) Maven `projectDir` fell through to `process.cwd()` instead of `path.dirname(pomXmlPath)`.
+
+**Changes:**
+- Removed automatic `commitPhaseBC` and `commitFalsePositives` calls from the auto-commit block — Phase B/C commits are opt-in after human review, never triggered automatically.
+- Fixed Maven `projectDir`: now uses `path.dirname(pomXmlPath)` when `packageJsonPath` is null.
+- Added `--commit` and its description to `printUsage()` help text with example.
+- `commitPhaseA` call cleaned up: no `await` (function is synchronous), only `commitPhaseA` imported.
+
+**Test result:** 32/32 tests pass.
+
+**Next:** Wire `enrichWithConfidence` into `mendfix.js` main analyze/apply path (Scenario 14 fields absent from CLI output — only present in renovate path).

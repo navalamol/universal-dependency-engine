@@ -7,20 +7,15 @@ Single source of truth for what to build next. Updated after each session.
 
 ## Phase 1 — Remaining gaps (ordered by priority)
 
-Phase 1 is at ~99%. Two gaps remain before Phase 1 is complete.
+Phase 1 is at ~99%. One gap remains before Phase 1 is complete.
 
-### 1. Wire git-commits.js into mendfix.js apply (Scenarios 15/16)
+### ~~1. Wire git-commits.js into mendfix.js apply (Scenarios 15/16)~~ ✅ DONE
 
-`src/core/git-commits.js` is fully written and exports `commitPhaseA`, `commitPhaseBC`,
-`commitFalsePositives`. It is **not called from mendfix.js apply** — needs wiring.
+Wired 2026-08-12: `--commit` flag added; `commitPhaseA` called after successful Phase A install.
+Phase B/C commits remain opt-in after human review (not auto-triggered). Maven path uses
+`path.dirname(pomXmlPath)` as project dir. 32/32 tests pass.
 
-What to do:
-- Add `--commit` flag to `mendfix apply`
-- After Phase A is applied and install succeeds → call `commitPhaseA(projectDir, phaseAItems, ecosystem)`
-- Document that Phase B/C commit (`commitPhaseBC`) is opt-in after human review
-- Files: `mendfix.js` (apply block only), `src/core/git-commits.js` (already done)
-
-### 2. Confidence enrichment in mendfix CLI path
+### 1. Confidence enrichment in mendfix CLI path
 
 `src/core/confidence.js` fields (evidence, alternative) are wired into the Renovate path
 but **not into the main mendfix analyze/apply output**. Phase C items should carry full evidence.
