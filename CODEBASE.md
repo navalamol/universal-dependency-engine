@@ -69,9 +69,12 @@ lockfile update + verification
 | `owasp.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isOwaspFormat(data)` → `bool` | Parse OWASP Dependency-Check JSON report (schema 1.1). Extracts name+version from purl `pkg:npm/…@version`; fix versions from `versionEndExcluding`; supports both npm and Maven artifacts. |
 | `osv.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isOsvFormat(data)` → `bool` | Parse OSV-format reports: osv-scanner JSON (`results[].packages`) and OSV API bulk (`vulns[]`). osv-scanner shape embeds installed version; bulk shape cross-references lock file. Fix versions from SEMVER/ECOSYSTEM range events. CVE ID preferred over GHSA over raw OSV id. |
 | `trivy.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isTrivyFormat(data)` → `bool` | Parse Trivy JSON (SchemaVersion 2). Embeds both InstalledVersion and FixedVersion — no lock file needed. Multi-ecosystem: npm, Maven, Go (GO_MODULE), Python (PYTHON_PACKAGE) all parsed; unknown ecosystem types pass through with NODE_PACKAGED_MODULE fallback. FixedVersion can be comma-separated multi-version string. |
-| `gitlab.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isGitlabFormat(data)` → `bool` | Parse GitLab Dependency Scanning JSON (gl-dependency-scanning-report.json, v15+). Ecosystem inferred from location.file (pom.xml → maven, else npm). Fix version from: top-level remediations map → solution field → identifiers type=remediation. CVE from identifiers type=cve. |
+| `gitlab.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isGitlabFormat(data)` → `bool`, `createMR(...)`, `addMRComment(...)` | Parse GitLab Dependency Scanning JSON (gl-dependency-scanning-report.json, v15+). Also exposes MR creation + comment write-back (see providers/github.js row for write-back exports). |
 | `xray.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isXrayFormat(data)` → `bool` | Parse JFrog Xray JSON. Installed version embedded in component_id purl: npm://name:ver, gav://group:artifact:ver, pypi://name:ver, go://module@ver. Fix versions from components[].fixed_versions[]. No lock file needed. |
-| `github.js` | `fetchRenovatePRs(org,repo,token)`, `postComment(...)`, `closePR(...)` | GitHub API for Renovate PR workflow |
+| `github.js` | `fetchRenovatePRs(org,repo,token)`, `postComment(...)`, `closePR(...)`, `createPR(owner,repo,token,opts)` | GitHub API for Renovate PR workflow + PR creation write-back |
+| `gitlab.js` | `parseReport(filePath)`, `isGitlabFormat(data)`, `createMR(projectId,token,opts,baseUrl?)`, `addMRComment(projectId,mrIid,token,body,baseUrl?)` | GitLab Dependency Scanning parser + MR creation write-back |
+| `azuredevops.js` | `createPR(org,project,repoId,token,opts)`, `addComment(org,project,repoId,prId,token,body)` | Azure DevOps Git PR creation + comment write-back (PAT auth) |
+| `bitbucket.js` | `createPR(workspace,repoSlug,token,opts)`, `addComment(workspace,repoSlug,prId,token,body)` | Bitbucket Cloud PR creation + comment write-back (Basic or Bearer auth) |
 
 ### src/core/
 
@@ -296,8 +299,9 @@ Baseline: **238/238 pass**
 | .NET ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
 | Rust ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
 | **Phase 3 — Universal Dependency Engine (6 ecosystems)** | ✅ **COMPLETE** |
+| Phase 4 entry — write-back: GitHub `createPR`, GitLab `createMR`, AzDO `createPR`, Bitbucket `createPR` | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 3 complete — 6 ecosystems (npm, Maven, Python, Go, .NET, Rust). Phase 4 is CI/CD platform write-back (open PRs on GitLab/Azure/Bitbucket). Phase 5 multi-repo portfolio mode. Intelligence layer (Phase 6+) deferred until deterministic layer is mature.
+**Next:** Phase 4 entry complete — write-back modules added for GitHub (`createPR`), GitLab (`createMR`/`addMRComment`), Azure DevOps (`createPR`/`addComment`), Bitbucket (`createPR`/`addComment`). Next: wire write-back into the CLI (`mendfix apply --open-pr`) + per-platform credential flags. Phase 5 multi-repo portfolio mode deferred.
 
 ---
 

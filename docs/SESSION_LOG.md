@@ -4,6 +4,18 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Phase 4 entry: CI/CD platform write-back modules
+
+**Before:** No write-back support beyond the GitHub-specific `postComment`/`closePR` in `github.js` (Renovate workflow only). GitLab, Azure DevOps, and Bitbucket had no API clients.
+**Changes:**
+- `src/providers/github.js` — added `createPR(owner, repo, token, opts)`. Same `apiRequest` pattern; returns `{ ok, status, data: { number, html_url } }`.
+- `src/providers/gitlab.js` — added `createMR(projectId, token, opts, baseUrl?)` and `addMRComment(projectId, mrIid, token, body, baseUrl?)` alongside the existing `parseReport`. Bearer token auth; supports self-hosted via `baseUrl` param; `projectId` accepts numeric id or URL-encoded namespace/path.
+- `src/providers/azuredevops.js` — new file. `createPR(org, project, repoId, token, opts)` and `addComment(org, project, repoId, prId, token, body)`. PAT auth (`Basic base64(:token)`). Short branch names converted to `refs/heads/` internally. `webUrl` flattened from `_links.web.href`. API version 7.1.
+- `src/providers/bitbucket.js` — new file. `createPR(workspace, repoSlug, token, opts)` and `addComment(workspace, repoSlug, prId, token, body)`. Dual auth: `username:app_password` → Basic; plain token → Bearer. Reviewers array supported via `opts.reviewers`.
+**Next:** Wire write-back into CLI (`mendfix apply --open-pr --platform gitlab|github|azuredevops|bitbucket` + per-platform credential flags). 238/238 tests pass.
+
+---
+
 ## 2026-08-12 — .NET and Rust ecosystems — Phase 3 complete (6 ecosystems)
 
 **Before:** 4 ecosystems (npm, Maven, Python, Go). NuGet and Cargo entries from Trivy/Xray/GitLab passed through as NODE_PACKAGED_MODULE and were dropped at apply.

@@ -89,4 +89,16 @@ async function closePR(org, repo, prNumber, token) {
   return apiRequest('PATCH', `/repos/${org}/${repo}/pulls/${prNumber}`, token, { state: 'closed' });
 }
 
-module.exports = { fetchRenovatePRs, postComment, closePR };
+/**
+ * Create a pull request.
+ * opts: { title, body, head, base?, draft? }
+ * Returns { ok, status, data: { number, html_url } }
+ */
+async function createPR(owner, repo, token, opts) {
+  const { title, body, head, base = 'main', draft = false } = opts;
+  return apiRequest('POST', `/repos/${owner}/${repo}/pulls`, token, {
+    title, body, head, base, draft,
+  });
+}
+
+module.exports = { fetchRenovatePRs, postComment, closePR, createPR };

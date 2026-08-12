@@ -3,6 +3,76 @@
 const fs = require('fs');
 const semver = require('semver');
 
+// ---------------------------------------------------------------------------
+// GitLab API write-back (MR creation + comments)
+// ---------------------------------------------------------------------------
+
+const GITLAB_API_VERSION = 'v4';
+const TIMEOUT_MS = 15000;
+
+function gitlabHeaders(token) {
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'User-Agent': 'mendfix-gitlab-writeback',
+  };
+}
+
+async function gitlabRequest(method, baseUrl, path, token, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const opts = {
+      method,
+      headers: gitlabHeaders(token),
+      signal: controller.signal,
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(`${baseUrl}/api/${GITLAB_API_VERSION}${path}`, opts);
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return { ok: false, status: 0, error: err.message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Create a GitLab merge request.
+ * projectId: numeric id or URL-encoded namespace/path (e.g. "mygroup%2Fmyrepo")
+ * opts: { title, description?, sourceBranch, targetBranch?, removeSourceBranch? }
+ * baseUrl: defaults to https://gitlab.com — override for self-hosted instances
+ * Returns { ok, status, data: { iid, web_url } }
+ */
+async function createMR(projectId, token, opts, baseUrl = 'https://gitlab.com') {
+  const {
+    title,
+    description = '',
+    sourceBranch,
+    targetBranch = 'main',
+    removeSourceBranch = true,
+  } = opts;
+  const encodedId = encodeURIComponent(String(projectId));
+  return gitlabRequest('POST', baseUrl, `/projects/${encodedId}/merge_requests`, token, {
+    title,
+    description,
+    source_branch: sourceBranch,
+    target_branch: targetBranch,
+    remove_source_branch: removeSourceBranch,
+  });
+}
+
+/**
+ * Post a note (comment) on an existing merge request.
+ * mrIid: the MR's internal project IID (not the global ID).
+ * Returns { ok, status, data }
+ */
+async function addMRComment(projectId, mrIid, token, body, baseUrl = 'https://gitlab.com') {
+  const encodedId = encodeURIComponent(String(projectId));
+  return gitlabRequest('POST', baseUrl, `/projects/${encodedId}/merge_requests/${mrIid}/notes`, token, { body });
+}
+
 /**
  * Parse a GitLab Dependency Scanning JSON report into LibraryEntry[].
  *
@@ -229,4 +299,4 @@ function inferDependencyFile(ecosystem) {
   return 'package.json';
 }
 
-module.exports = { parseReport, isGitlabFormat };
+module.exports = { parseReport, isGitlabFormat, createMR, addMRComment };
