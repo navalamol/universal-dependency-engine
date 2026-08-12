@@ -31,6 +31,7 @@ const { writePomPatch, applyPomPatch,
         detectManualChanges: detectMavenChanges }          = require('./src/ecosystems/maven/pom-writer');
 const { generateReport }                                 = require('./src/core/report');
 const { generatePRDescription }                          = require('./src/core/pr-description');
+const { enrichWithConfidence }                           = require('./src/core/confidence');
 const { parseLockFile, getRootDeps, findDepChain }       = require('./src/ecosystems/npm/lock-parser');
 const { detectEcosystem }                                = require('./src/ecosystems/index');
 
@@ -387,7 +388,7 @@ async function main() {
 
   // ── Step 4: Apply phase classification ───────────────────────────────────
   console.log('\n[4/5] Classifying by phase...');
-  const phasedPlan = applyPhases(plan, depTree);
+  let phasedPlan = applyPhases(plan, depTree);
 
   if (depTree && rootDeps) {
     const allRootDeps = { ...rootDeps.dependencies, ...rootDeps.devDependencies };
@@ -435,6 +436,8 @@ async function main() {
       await exploreParentUpgrades(phasedPlan, ecosystem);
     }
   }
+
+  phasedPlan = enrichWithConfidence(phasedPlan, depTree);
 
   const phaseA = phasedPlan.filter(r => r.phase === 'A');
   const phaseB = phasedPlan.filter(r => r.phase === 'B');

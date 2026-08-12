@@ -21,6 +21,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Wire enrichWithConfidence into mendfix.js main path (Scenario 14 complete)
+
+**Before:** `enrichWithConfidence` was called only in `renovate-apply.js`. Phase items from `mendfix analyze/apply` had no `evidence` or `alternative` fields in output files.
+
+**Changes:**
+- `mendfix.js` — added `require('./src/core/confidence')` import; changed `const phasedPlan` → `let phasedPlan` at the `applyPhases` call; added `phasedPlan = enrichWithConfidence(phasedPlan, depTree)` immediately after all dep-tree enrichment (rootParents, depChain, parent upgrade exploration), before the phase A/B/C filter split.
+
+**Next:** All V1 Phase 1 scenarios complete. See NEXT_MISSION.md for Phase 2 entry criteria.
+
+---
+
 ## 2026-08-04 — Initial build: parser + semver engine + overrides + report
 
 **Before:** Empty project. Doc stubs only (`01_PRODUCT.md`–`07_FUTURE.md`). One sample Mend report in JSON + Excel.

@@ -230,9 +230,9 @@ Baseline: **32/32 pass**
 | Scenarios 15/16: git-commits.js wiring (`--commit` flag) | ✅ DONE 2026-08-12 |
 | Scenario 18: pr-description.js | ✅ DONE 2026-08-12 |
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
-| Scenario 14: `enrichWithConfidence` into mendfix CLI path | ⏳ PENDING (only in renovate-apply.js) |
+| Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 
-**Next:** Wire `enrichWithConfidence` from `src/core/confidence.js` into `mendfix.js` — call after `applyPhases`, pass `phasedPlan` + `depTree`.
+**Next:** All V1 scenarios complete. See `NEXT_MISSION.md` for Phase 2 entry criteria.
 
 ---
 
