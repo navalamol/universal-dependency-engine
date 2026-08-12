@@ -21,6 +21,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — V1.x Step C: simulator.js — isolated npm install simulation
+
+**Before:** Parent upgrade paths were INFERRED from SemVer + manifest inspection only. No actual npm resolution confirmed them.
+
+**Changes:**
+- New `src/ecosystems/npm/simulator.js` — `simulate(basePackageJsonPath, baseLockPath, candidates, options)` copies `package.json` + lockfile to a temp dir, applies the candidate version change (or adds to `overrides` for transitive-only packages), runs `npm install --package-lock-only --legacy-peer-deps --no-audit --no-fund`, parses resulting lockfile via `lock-parser.js`, returns `SimulationResult[]`. Guardrails: 30s timeout, 20-sim limit (fail-open), SHA-256 hash cache on modified `package.json` content. Temp dir always cleaned up.
+
+**Next:** Wire into `parent-upgrade-explorer.js` — after manifest-verified candidates are found, call `simulate()` and stamp `simulationVerified: true` on confirmed paths.
+
+---
+
 ## 2026-08-12 — V1.x Step B: Manifest inspection — getManifest + candidate limit + manifestVerified
 
 **Before:** `parent-upgrade-explorer.js` had a local `getVersionDeps()` that fetched manifests directly. No caching, no candidate cap, no `manifestVerified` flag on returned paths.

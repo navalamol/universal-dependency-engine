@@ -433,7 +433,7 @@ async function main() {
     // Only runs when --verify-versions is set (makes registry calls).
     if (verifyVersions) {
       console.log('\n[4b/5] Exploring parent upgrade paths...');
-      await exploreParentUpgrades(phasedPlan, ecosystem);
+      await exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockFilePath);
     }
   }
 

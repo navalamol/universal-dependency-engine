@@ -2,6 +2,7 @@
 
 const semver = require('semver');
 const { getPublishedVersions, getManifest } = require('./registry');
+const { simulate } = require('./simulator');
 
 // Cap versions inspected per parent to bound network calls; guardrail from REMEDIATION_CAPABILITY_ROADMAP §7.
 const CANDIDATE_LIMIT = 10;
@@ -159,7 +160,7 @@ async function resolveChainChildRange(rootName, rootVersion, intermediates, chil
  * @param {object[]} phasedPlan  — mutated in place
  * @param {string}   ecosystem
  */
-async function exploreParentUpgrades(phasedPlan, ecosystem) {
+async function exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockPath) {
   if (ecosystem !== 'npm') return;
 
   const candidates = phasedPlan.filter(
@@ -177,6 +178,25 @@ async function exploreParentUpgrades(phasedPlan, ecosystem) {
     process.stdout.write('.');
 
     if (paths.length === 0) continue;
+
+    // Attempt simulation-verification for each manifest-verified path.
+    // Requires --package-json to be set; skipped (stays INFERRED) when unavailable.
+    if (packageJsonPath) {
+      for (const p of paths) {
+        const simResults = simulate(packageJsonPath, lockPath || null, [{
+          name: p.parent,
+          from: p.parentAllowedRange,
+          to:   p.parentUpgradeVersion,
+        }]);
+        const r = simResults[0];
+        if (r && r.success && !r.timedOut && !r.limitExceeded) {
+          const resolved = r.resolvedVersions.get(item.libraryName);
+          if (resolved && semver.gte(resolved, item.recommendedVersion)) {
+            p.simulationVerified = true;
+          }
+        }
+      }
+    }
 
     item.parentUpgradePaths = paths;
     item.phase              = 'B';

@@ -1,6 +1,6 @@
 Perfect. This is commited. Can you update the md file add new ones missing, remove unnecessary and redudant one, create/update claude.md with understanding of repo, ensuring what md to refer when. With minimal context you have to boostrap app and get work done everytime while working on roadmap. So ensure you create the best optimial, minimal, efficient & in-depth version of all .md files. May be with just next_mission you'll know what to do, keep track of it minimally, what's done what important, what's no strategically important. Think like product owner, architect, cto. This is one of the futurustic product can be widely adopted and can potentially be used by millions
 
-
+**********
 
 Hey, observered something, little change. See renovate is using or not using mend that is secondary. Important is renovate
   suggestions are good to upgrade or not. The way we analyze mend fixes. If good, patch them to package.json or pom.xml the way we
@@ -11,3 +11,19 @@ Hey, observered something, little change. See renovate is using or not using men
   and close the PR's and create the report and one PR out of it which is safe & report which are safe to close with option for
   closing all the PR's of renovate. So eventually result will be 10 RENOVATE PRs -> Analyzed -> All safe fix under one PR along
   with report of risky changes can't handle -> Close all the PR's of renovate. Simplified workflow
+
+
+**********
+
+Why so much context used again in fresh new session. Why don't you keep track to jump directly on line of mission. E.g V1.x — Remediation Path Explorer step 4. Isolated package-manager simulation (simulator.js) for next misison. Directly use it. If you need to modify something do it. Also, Let me know what I am doing wrong?
+
+----->>
+What you're doing wrong: Saying "Run next_mission" makes me read the full roadmap to figure out what's next. Instead say "continue" — CODEBASE.md's Next: line is the only signal I need.
+
+What I should do (and will going forward):
+1. Read CODEBASE.md Next: line → know the exact target file
+2. Read only those 1–2 target files (with offset/limit if large)
+3. Build → test → update Next: line
+4. Never read NEXT_MISSION.md, REMEDIATION_CAPABILITY_ROADMAP.md, or V1_COMPLETION_STATUS.md to resume — they're reference docs, not work queues
+
+What was built: simulator.js — isolated npm install simulation with 3 guardrails (timeout, sim limit, hash cache). Next step is wiring it into parent-upgrade-explorer.js to promote manifest-verified paths to simulation-verified. Say "continue" to do that.
