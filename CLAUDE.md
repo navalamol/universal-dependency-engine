@@ -166,6 +166,17 @@ If you estimate the conversation has consumed ~80k tokens, stop and alert the us
 
 After every session that changes code, append one entry to `docs/SESSION_LOG.md`.
 
+## CODEBASE.md rule
+
+After every session that adds, removes, or renames a file or exported function, update `CODEBASE.md`:
+- Add new files to the File Map with one-line purpose
+- Update exported function signatures that changed
+- Update the Current V1 Status table
+- Update "Next:" line to reflect the new next task
+
+`CODEBASE.md` is the first file to read in any new session — it provides the full file map,
+data shapes, and function signatures in ~5k tokens so you can touch only relevant code.
+
 ```
 ## YYYY-MM-DD — <title>
 **Before:** one line on state before this session
@@ -181,6 +192,7 @@ reversed decisions, non-obvious constraints, user feedback that shaped direction
 
 | Goal | File |
 |------|------|
+| **File map, function signatures, data shapes (read first every session)** | `CODEBASE.md` |
 | What to build next (priorities, Phase 2 entry) | `NEXT_MISSION.md` |
 | Phase C Claude triage instructions | `CLAUDE_WORKFLOW.md` |
 | 9-phase product vision | `Master_Roadmap.md` |
