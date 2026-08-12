@@ -34,6 +34,8 @@ const { generatePRDescription }                          = require('./src/core/p
 const { enrichWithConfidence }                           = require('./src/core/confidence');
 const { enrichWithPaths }                                = require('./src/core/remediation-paths');
 const { parseLockFile, getRootDeps, findDepChain }       = require('./src/ecosystems/npm/lock-parser');
+const { captureGraph, diffGraphs, formatDiff }           = require('./src/core/graph-diff');
+const { minimizeOverrides }                              = require('./src/ecosystems/npm/override-minimizer');
 const { detectEcosystem }                                = require('./src/ecosystems/index');
 
 // ---------------------------------------------------------------------------
@@ -85,6 +87,8 @@ Options:
                              peer conflicts). Use only after manual review.
   --max-depth <n>            Max recursion depth for parent-chain exploration  [default: 5]
   --max-simulations <n>      Max npm install simulations per run               [default: 20]
+  --simulate                 (cleanup only) Use simulation to verify override removal
+                             instead of static lockfile analysis. Slower but exact.
 
 Phase output files written to --out-dir:
   npm:   phase-a-overrides.json / phase-b-overrides.json / manual-review.md
@@ -106,7 +110,7 @@ Examples:
     --pom-xml ../dataplatform/pom.xml \\
     --verify-versions
   mendfix cleanup  --package-json ../ui-platform/package.json \\
-    --lock-file ../ui-platform/package-lock.json
+    --lock-file ../ui-platform/package-lock.json [--simulate]
 `);
 }
 
@@ -221,7 +225,7 @@ function isAlreadyApplied(packageJsonPath, phaseAOverrides, directUpgrades) {
 // Cleanup mode (standalone post-install override removal, npm only)
 // ---------------------------------------------------------------------------
 
-async function runCleanup(lockFilePath, packageJsonPath) {
+async function runCleanup(lockFilePath, packageJsonPath, opts = {}) {
   console.log('\nMend AutoFixer — Cleanup');
   console.log('========================');
 
@@ -241,6 +245,45 @@ async function runCleanup(lockFilePath, packageJsonPath) {
 
   if (overrideEntries.length === 0) {
     console.log('\nNo flat string overrides found in package.json — nothing to check.');
+    return;
+  }
+
+  // Item 13 — simulation-based override minimization
+  if (opts.simulate) {
+    if (!lockFilePath || !fs.existsSync(lockFilePath)) {
+      console.error('ERROR: --lock-file <path> is required for --simulate mode');
+      process.exit(1);
+    }
+    console.log(`\nLock file: ${lockFilePath}`);
+    console.log(`Simulating removal of ${overrideEntries.length} override(s) via npm install...\n`);
+    console.log('(Each simulation runs npm install in a temp dir — may take a few seconds per override)\n');
+
+    const result = minimizeOverrides(packageJsonPath, lockFilePath, {
+      maxSimulations: opts.maxSimulations,
+      dryRun: false,
+    });
+
+    if (result.removed.length > 0) {
+      console.log(`  ✅ Removed (simulation confirmed unnecessary):`);
+      for (const name of result.removed) console.log(`     ${name}`);
+    }
+    if (result.kept.length > 0) {
+      console.log(`  🔒 Kept (still needed or simulation inconclusive):`);
+      for (const name of result.kept) console.log(`     ${name}`);
+    }
+    if (result.skipped.length > 0) {
+      console.log(`  ℹ  Skipped (nested overrides — manual review required):`);
+      for (const name of result.skipped) console.log(`     ${name}`);
+    }
+    if (result.limitHit) {
+      console.log(`\n  ⚠  Simulation limit reached — some overrides were not tested. Pass --max-simulations <n> to increase.`);
+    }
+    if (result.removed.length === 0) {
+      console.log('\nNo overrides could be safely removed by simulation.');
+    } else {
+      console.log(`\n${result.removed.length} override(s) removed from ${packageJsonPath}`);
+      console.log('Next: npm install --package-lock-only --legacy-peer-deps');
+    }
     return;
   }
 
@@ -345,7 +388,7 @@ async function main() {
       console.error('ERROR: mendfix cleanup requires --lock-file <path>');
       process.exit(1);
     }
-    await runCleanup(lf, args['package-json'] || null);
+    await runCleanup(lf, args['package-json'] || null, { simulate: !!args.simulate, maxSimulations: args['max-simulations'] ? parseInt(args['max-simulations'], 10) : undefined });
     return;
   }
 
@@ -830,6 +873,8 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
   }
 
   const installLockPath = path.join(path.dirname(packageJsonPath), 'package-lock.json');
+  // Capture graph before install so we can diff after (Item 14 — whole-graph diff)
+  const graphBefore = captureGraph(installLockPath);
   const snapshots = snapshotFiles([packageJsonPath, installLockPath]);
 
   try {
@@ -964,6 +1009,24 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
     const directMap = {};
     for (const u of directUpgrades) directMap[u.libraryName] = u.recommendedVersion;
     saveManifest(packageJsonPath, { ...cleanOverrides, ...cleanPhaseBOverrides }, directMap);
+
+    // Item 14 — whole-graph diff: compare resolved versions before vs after install
+    if (fs.existsSync(installLockPath)) {
+      const graphAfter = captureGraph(installLockPath);
+      const diff = diffGraphs(graphBefore, graphAfter);
+      const { added, removed, changed } = diff;
+      if (added.length > 0 || removed.length > 0 || changed.length > 0) {
+        const diffPath = path.join(outDir, 'graph-diff.md');
+        const project  = path.basename(packageJsonPath, '.json');
+        fs.writeFileSync(diffPath, formatDiff(diff, {
+          project,
+          reportDate: new Date().toISOString().split('T')[0],
+        }));
+        console.log(`  Wrote: ${diffPath}  (${changed.length} changed, ${added.length} added, ${removed.length} removed)`);
+      } else {
+        console.log(`  Graph diff: no version changes outside of targeted packages`);
+      }
+    }
   } catch (err) {
     console.error(`  ERROR during apply: ${err.message}`);
     restoreFiles(snapshots);

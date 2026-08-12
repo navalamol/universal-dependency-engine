@@ -164,4 +164,35 @@ function extractPeerConflicts(stderr) {
     .slice(0, 10);
 }
 
-module.exports = { simulate };
+/**
+ * Simulate `npm install --package-lock-only` for a pre-built package.json object.
+ * Unlike `simulate()`, this takes the full package.json object directly rather
+ * than a base file + candidate changes.  Used by override-minimizer to test what
+ * happens after a specific override is removed.
+ *
+ * Returns a single SimulationResult (no `candidate` field).
+ */
+function simulatePackage(pkgObject, baseLockPath, options = {}) {
+  const timeoutMs      = options.timeoutMs      ?? DEFAULT_TIMEOUT_MS;
+  const maxSimulations = options.maxSimulations ?? DEFAULT_MAX_SIMULATIONS;
+
+  const pkgContent = JSON.stringify(pkgObject, null, 2);
+  const cacheKey   = crypto.createHash('sha256').update(pkgContent).digest('hex');
+
+  if (_simCache.has(cacheKey)) return _simCache.get(cacheKey);
+
+  if (_simCount >= maxSimulations) {
+    return {
+      success: false, resolvedVersions: new Map(),
+      peerConflicts: [], timedOut: false, limitExceeded: true,
+      error: 'SIMULATION_LIMIT_EXCEEDED',
+    };
+  }
+
+  _simCount++;
+  const result = runOne(pkgContent, baseLockPath, {}, timeoutMs);
+  _simCache.set(cacheKey, result);
+  return result;
+}
+
+module.exports = { simulate, simulatePackage };

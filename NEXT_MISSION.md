@@ -71,6 +71,20 @@ All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 
 - `src/providers/index.js` — Snyk detection wired before Mend fallback
 - 20 new tests in `tests/providers/snyk.test.js`; 106/106 total passing; baseline A:5 B:0 C:3 confirmed
 
+### ✅ Step V2-13: Override-set minimization — DONE 2026-08-12
+
+- `src/ecosystems/npm/override-minimizer.js` — `minimizeOverrides()` iteratively simulates removal of each flat-string override via temp npm install; keeps only those still needed.
+- `simulator.js` — added `simulatePackage(pkgObject, lockPath, opts)` export (takes a raw pkg object, not base+candidates).
+- `mendfix cleanup --simulate` flag activates simulation path; `--max-simulations` also honored.
+- 15 new tests in `tests/ecosystems/npm/override-minimizer.test.js` (simulator mocked).
+
+### ✅ Step V2-14: Whole-graph before/after diff — DONE 2026-08-12
+
+- `src/core/graph-diff.js` — `captureGraph(lockFilePath)` → `Map<name, string[]>`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta)` → markdown.
+- Wired into `writeOutputNpm` in `mendfix.js`: captures lock state before install; after successful install diffs and writes `graph-diff.md` to `--out-dir`.
+- 13 new tests in `tests/core/graph-diff.test.js`.
+- 134/134 tests pass; baseline A:5 B:0 C:3 confirmed.
+
 ### Next: Dependabot provider
 
 - Create `src/providers/dependabot.js` implementing `parse(filePath) → LibraryEntry[]`

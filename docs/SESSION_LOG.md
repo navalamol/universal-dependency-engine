@@ -4,6 +4,19 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — V2-13/14: Override-set minimization + Whole-graph diff
+
+**Before:** Cleanup used static lockfile analysis to guess which overrides might be removable. No visibility into how an install changed the full dependency graph.
+**Changes:**
+- `simulator.js` — new `simulatePackage(pkgObject, lockPath, opts)` export: runs temp npm install on a ready-made pkg object (used by override-minimizer; different from `simulate()` which takes base+candidates).
+- New `src/ecosystems/npm/override-minimizer.js` — `minimizeOverrides(packageJsonPath, lockPath, opts)`. For each flat-string override: removes it from a working copy of package.json, runs simulation, checks if resolved version is still >= pinned version. Iterates in rounds until no new removals. Returns `{removed, kept, skipped, limitHit}`. `dryRun: true` skips writing.
+- `mendfix cleanup` — new `--simulate` flag routes to override-minimizer instead of static lockfile check. `--max-simulations` honored.
+- New `src/core/graph-diff.js` — `captureGraph(lockFilePath)` → `Map<name, string[]>|null`; `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`; `formatDiff(diff, meta)` → markdown. All pure functions; null-safe.
+- `mendfix apply` (npm path) — captures `graphBefore` from lockfile before install; after successful install and verification, calls `diffGraphs` and writes `graph-diff.md` to `--out-dir`. Only written when there are actual version changes (not for no-op runs).
+- 28 new tests: `tests/core/graph-diff.test.js` (13), `tests/ecosystems/npm/override-minimizer.test.js` (15, simulator mocked).
+- 134/134 tests pass; baseline A:5 B:0 C:3 confirmed.
+**Next:** Dependabot provider, then npm-audit provider.
+
 ## 2026-08-12 — Phase 2 entry: Snyk provider
 
 **Before:** Only Mend JSON/Excel supported. `providers/index.js` had no Snyk detection; all JSON fell through to mend parser.
