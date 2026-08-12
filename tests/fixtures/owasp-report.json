@@ -1,0 +1,91 @@
+{
+  "reportSchema": "1.1",
+  "scanInfo": {
+    "engineVersion": "9.0.0",
+    "dataSource": [{ "name": "NVD", "timestamp": "2024-01-01" }]
+  },
+  "projectInfo": { "name": "test-project", "reportDate": "2024-01-01T00:00:00Z" },
+  "dependencies": [
+    {
+      "isVirtual": false,
+      "fileName": "lodash-4.17.15.tgz",
+      "filePath": "/project/node_modules/lodash/lodash-4.17.15.tgz",
+      "projectReferences": ["package.json"],
+      "packages": [
+        {
+          "id": "pkg:npm/lodash@4.17.15",
+          "confidence": "HIGHEST",
+          "url": "https://ossindex.sonatype.org/component/pkg:npm/lodash@4.17.15"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2021-23337",
+          "severity": "HIGH",
+          "cvssv3": { "baseScore": 7.2, "baseSeverity": "HIGH" },
+          "description": "Lodash versions prior to 4.17.21 are vulnerable to Command Injection.",
+          "vulnerableSoftware": [
+            { "software": { "id": "cpe:2.3:a:lodash:lodash:*:*:*:*:*:*:*:*", "versionEndExcluding": "4.17.21" } }
+          ]
+        }
+      ]
+    },
+    {
+      "isVirtual": false,
+      "fileName": "minimist-1.2.0.tgz",
+      "filePath": "/project/node_modules/minimist/minimist-1.2.0.tgz",
+      "projectReferences": ["package.json"],
+      "packages": [
+        {
+          "id": "pkg:npm/minimist@1.2.0",
+          "confidence": "HIGHEST",
+          "url": "https://ossindex.sonatype.org/component/pkg:npm/minimist@1.2.0"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2020-7598",
+          "severity": "CRITICAL",
+          "cvssv3": { "baseScore": 9.8, "baseSeverity": "CRITICAL" },
+          "description": "minimist before 1.2.2 has a prototype pollution.",
+          "vulnerableSoftware": [
+            { "software": { "id": "cpe:2.3:a:minimist:minimist:*:*:*:*:*:*:*:*", "versionEndExcluding": "1.2.2" } }
+          ]
+        }
+      ]
+    },
+    {
+      "isVirtual": false,
+      "fileName": "commons-lang3-3.9.0.jar",
+      "filePath": "/project/target/dependency/commons-lang3-3.9.0.jar",
+      "projectReferences": ["pom.xml"],
+      "packages": [
+        {
+          "id": "pkg:maven/org.apache.commons:commons-lang3@3.9.0",
+          "confidence": "HIGHEST"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2021-29425",
+          "severity": "MEDIUM",
+          "cvssv3": { "baseScore": 5.3, "baseSeverity": "MEDIUM" },
+          "description": "Apache Commons IO 2.2 to 2.6 allows path traversal.",
+          "vulnerableSoftware": [
+            { "software": { "id": "cpe:2.3:a:apache:commons-lang3:*:*:*:*:*:*:*:*", "versionEndExcluding": "3.12.0" } }
+          ]
+        }
+      ]
+    },
+    {
+      "isVirtual": false,
+      "fileName": "clean-package-no-vulns.tgz",
+      "filePath": "/project/node_modules/clean/clean-1.0.0.tgz",
+      "packages": [{ "id": "pkg:npm/clean@1.0.0" }],
+      "vulnerabilities": []
+    }
+  ]
+}

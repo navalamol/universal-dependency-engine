@@ -10,10 +10,10 @@ const fs   = require('fs');
 const path = require('path');
 const semver = require('semver');
 
-const { detectProvider, getParser }                      = require('./src/providers/index');
+const { detectProvider, getParser, PROVIDER_NAMES }      = require('./src/providers/index');
 
-function parseReport(reportPath) {
-  const provider = detectProvider(reportPath);
+function parseReport(reportPath, providerOverride) {
+  const provider = providerOverride || detectProvider(reportPath);
   return getParser(provider).parseReport(reportPath);
 }
 const { buildResolutionPlan }                            = require('./src/core/semver-engine');
@@ -66,7 +66,9 @@ Usage:
   node mendfix.js --report <path> [--dry-run] [--package-json <path>] ...
 
 Required (analyze / apply):
-  --report <path>            Mend vulnerability report (.json or .xlsx)
+  --report <path>            Vulnerability report (.json or .xlsx)
+  --provider <name>          Force provider parser (auto-detected when omitted)
+                             Supported: mend, snyk, npm-audit, dependabot, owasp
 
 Options:
   --package-json <path>      (npm) Apply overrides/direct upgrades directly to this file
@@ -404,6 +406,7 @@ async function main() {
   }
 
   const reportFile      = args.report;
+  const providerFlag    = args['provider'] || null;
   const packageJsonPath = args['package-json'] || null;
   const pomXmlPath      = args['pom-xml'] || null;
   const lockFilePath    = args['lock-file'] || null;
@@ -418,10 +421,16 @@ async function main() {
   const maxDepth        = args['max-depth']       ? parseInt(args['max-depth'], 10)       : undefined;
   const maxSimulations  = args['max-simulations'] ? parseInt(args['max-simulations'], 10) : undefined;
 
+  if (providerFlag && !PROVIDER_NAMES.includes(providerFlag)) {
+    console.error(`ERROR: Unknown --provider "${providerFlag}". Valid values: ${PROVIDER_NAMES.join(', ')}`);
+    process.exit(1);
+  }
+
   const mode = subcmd ? subcmd.toUpperCase() : (dryRun ? 'ANALYZE' : 'APPLY');
   console.log(`\nMend AutoFixer [${mode}]`);
   console.log('='.repeat(16 + mode.length));
   console.log(`Report  : ${reportFile}`);
+  if (providerFlag) console.log(`Provider: ${providerFlag} (forced)`);
   if (packageJsonPath) console.log(`Target  : ${packageJsonPath}`);
   if (pomXmlPath)      console.log(`POM     : ${pomXmlPath}`);
   if (lockFilePath)    console.log(`Lock    : ${lockFilePath}`);
@@ -431,7 +440,7 @@ async function main() {
   console.log('\n[1/5] Parsing vulnerability report...');
   let entries;
   try {
-    entries = parseReport(reportFile);
+    entries = parseReport(reportFile, providerFlag);
   } catch (err) {
     console.error(`  ERROR: ${err.message}`);
     process.exit(1);

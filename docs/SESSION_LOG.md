@@ -4,6 +4,20 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Top-5 provider expansion: npm-audit, Dependabot, OWASP
+
+**Before:** Two providers (Mend + Snyk). All other industry formats unsupported.
+**Changes:**
+- `src/providers/npm-audit.js` — `parseReport` + `isNpmAuditFormat`. Handles npm 6 v1 (`advisories` object) and npm 7+ v2 (`auditReportVersion: 2, vulnerabilities` object). v1: installed version from `findings[].version`. v2: cross-references adjacent `package-lock.json` for installed versions since npm audit v2 omits them. GHSA IDs extracted from advisory URLs; fallback to `NPM-{source}` IDs.
+- `src/providers/dependabot.js` — `parseReport` + `isDependabotFormat`. Consumes GitHub Security API Dependabot alerts JSON. Skips dismissed alerts; skips non-npm/maven ecosystems. Cross-references adjacent `package-lock.json` for installed versions (same lock-lookup pattern as npm-audit). CVE ID prefers `cve_id`, falls back to `ghsa_id`.
+- `src/providers/owasp.js` — `parseReport` + `isOwaspFormat`. Consumes OWASP Dependency-Check JSON (reportSchema 1.1). Extracts name+version from purl (`pkg:npm/name@version`, `pkg:maven/group:artifact@version`). Fix version from `versionEndExcluding`; `versionEndIncluding` used as fallback. Supports both npm and Maven artifacts in the same report. No lock file needed (versions embedded in purl).
+- `src/providers/index.js` — Detection order updated: npm-audit → dependabot → owasp → snyk → mend. Exports `PROVIDER_NAMES`. `detectProvider` catches JSON parse errors gracefully. `getParser` error message now includes valid provider names.
+- `mendfix.js` — New `--provider <name>` flag to force provider when auto-detection is ambiguous. Validated against `PROVIDER_NAMES` at startup.
+- `tests/providers/providers-new.test.js` — 39 tests covering all three new providers + detectProvider routing + PROVIDER_NAMES.
+- 4 test fixtures added: `npm-audit-v2.json`, `npm-audit-v1.json`, `dependabot-alerts.json`, `owasp-report.json`.
+- 173/173 tests pass; baseline A:5 B:0 C:3 confirmed.
+**Next:** All 5 industry providers shipped. Potential addition: Trivy/Grype SARIF format.
+
 ## 2026-08-12 — V2-13/14: Override-set minimization + Whole-graph diff
 
 **Before:** Cleanup used static lockfile analysis to guess which overrides might be removable. No visibility into how an install changed the full dependency graph.

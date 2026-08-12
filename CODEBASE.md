@@ -61,9 +61,12 @@ lockfile update + verification
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `index.js` | `detectProvider(filePath)`, `getParser(provider)` | Auto-detect report format; return parser module |
+| `index.js` | `detectProvider(filePath)`, `getParser(provider)`, `PROVIDER_NAMES` | Auto-detect report format; return parser module. 5 providers: mend, snyk, npm-audit, dependabot, owasp |
 | `mend.js` | `parseReport(filePath)` → `LibraryEntry[]` | Parse Mend JSON + Excel reports |
 | `snyk.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isSnykFormat(data)` → `bool` | Parse Snyk JSON reports (standard + all-projects shapes) |
+| `npm-audit.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isNpmAuditFormat(data)` → `bool` | Parse `npm audit --json` output (v1 npm 6 advisories shape + v2 npm 7+ vulnerabilities shape). Cross-references package-lock.json for installed versions in v2. |
+| `dependabot.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isDependabotFormat(data)` → `bool` | Parse GitHub Dependabot alerts JSON (from GitHub Security API / `gh api …/dependabot/alerts`). Skips dismissed alerts; cross-references package-lock.json for installed versions. |
+| `owasp.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isOwaspFormat(data)` → `bool` | Parse OWASP Dependency-Check JSON report (schema 1.1). Extracts name+version from purl `pkg:npm/…@version`; fix versions from `versionEndExcluding`; supports both npm and Maven artifacts. |
 | `github.js` | `fetchRenovatePRs(org,repo,token)`, `postComment(...)`, `closePR(...)` | GitHub API for Renovate PR workflow |
 
 ### src/core/
@@ -227,9 +230,10 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/ecosystems/npm/lock-parser.test.js` | `parseLockFile`, `getRootDeps`, `findDepChain` |
 | `tests/ecosystems/npm/installer.test.js` | `snapshotFiles`, `restoreFiles`, `saveManifest`, `detectManualChanges` |
 | `tests/integration/regression-mend-report.test.js` | End-to-end: parse → resolve → phase → report. Baseline: A:5 B:0 C:3 |
+| `tests/providers/providers-new.test.js` | npm-audit (v1+v2), dependabot, owasp parsers + format detection + detectProvider routing |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **58/58 pass**
+Baseline: **173/173 pass**
 
 ---
 
@@ -242,7 +246,7 @@ Baseline: **58/58 pass**
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 
-**Next:** Step G — Recursive parent-chain exploration with all 9 guardrails (depth limit, cycle detection, etc.). V2 entry: override-set minimization via simulator.
+**Next:** All 5 industry providers shipped. Next up: Trivy/Grype SARIF provider (if needed), or Phase 2 entry criteria work.
 
 ---
 

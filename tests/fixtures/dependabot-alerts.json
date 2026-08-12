@@ -1,0 +1,77 @@
+[
+  {
+    "number": 1,
+    "state": "open",
+    "dependency": {
+      "package": { "ecosystem": "npm", "name": "lodash" },
+      "manifest_path": "package.json",
+      "scope": "runtime"
+    },
+    "security_advisory": {
+      "ghsa_id": "GHSA-35jh-r3h4-6jhm",
+      "cve_id": "CVE-2021-23337",
+      "summary": "Command Injection in lodash",
+      "severity": "high",
+      "cvss": { "score": 7.2, "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N" }
+    },
+    "security_vulnerability": {
+      "package": { "ecosystem": "npm", "name": "lodash" },
+      "severity": "high",
+      "vulnerable_version_range": "< 4.17.21",
+      "first_patched_version": { "identifier": "4.17.21" }
+    },
+    "auto_dismissed_at": null,
+    "dismissed_at": null,
+    "fixed_at": null
+  },
+  {
+    "number": 2,
+    "state": "open",
+    "dependency": {
+      "package": { "ecosystem": "npm", "name": "minimist" },
+      "manifest_path": "package.json",
+      "scope": "runtime"
+    },
+    "security_advisory": {
+      "ghsa_id": "GHSA-7fhm-mqm4-2wp7",
+      "cve_id": null,
+      "summary": "Prototype Pollution in minimist",
+      "severity": "critical",
+      "cvss": { "score": 9.8 }
+    },
+    "security_vulnerability": {
+      "package": { "ecosystem": "npm", "name": "minimist" },
+      "severity": "critical",
+      "vulnerable_version_range": "< 1.2.6",
+      "first_patched_version": { "identifier": "1.2.6" }
+    },
+    "auto_dismissed_at": null,
+    "dismissed_at": null,
+    "fixed_at": null
+  },
+  {
+    "number": 3,
+    "state": "dismissed",
+    "dependency": {
+      "package": { "ecosystem": "npm", "name": "semver" },
+      "manifest_path": "package.json",
+      "scope": "runtime"
+    },
+    "security_advisory": {
+      "ghsa_id": "GHSA-c2qf-rxjj-qqgw",
+      "cve_id": "CVE-2022-25883",
+      "summary": "ReDoS in semver",
+      "severity": "moderate",
+      "cvss": { "score": 5.3 }
+    },
+    "security_vulnerability": {
+      "package": { "ecosystem": "npm", "name": "semver" },
+      "severity": "moderate",
+      "vulnerable_version_range": "< 7.5.2",
+      "first_patched_version": { "identifier": "7.5.2" }
+    },
+    "dismissed_at": "2024-01-01T00:00:00Z",
+    "auto_dismissed_at": null,
+    "fixed_at": null
+  }
+]

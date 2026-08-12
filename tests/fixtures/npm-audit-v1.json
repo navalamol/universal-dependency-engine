@@ -1,0 +1,38 @@
+{
+  "advisories": {
+    "1523": {
+      "id": 1523,
+      "cves": ["CVE-2021-23337"],
+      "title": "Command Injection in lodash",
+      "module_name": "lodash",
+      "vulnerable_versions": "<4.17.21",
+      "patched_versions": ">=4.17.21",
+      "severity": "high",
+      "cvss": { "score": 7.2 },
+      "findings": [
+        { "version": "4.17.15", "paths": ["lodash"] },
+        { "version": "4.17.4",  "paths": ["some-pkg>lodash"] }
+      ]
+    },
+    "1179": {
+      "id": 1179,
+      "cves": [],
+      "title": "Prototype Pollution in minimist",
+      "module_name": "minimist",
+      "vulnerable_versions": "<1.2.3",
+      "patched_versions": ">=1.2.3",
+      "severity": "critical",
+      "cvss": { "score": 9.8 },
+      "findings": [
+        { "version": "1.2.0", "paths": ["minimist"] }
+      ]
+    }
+  },
+  "metadata": {
+    "vulnerabilities": { "info": 0, "low": 0, "moderate": 0, "high": 1, "critical": 1, "total": 2 },
+    "dependencies": 12,
+    "devDependencies": 3,
+    "optionalDependencies": 0,
+    "totalDependencies": 15
+  }
+}
