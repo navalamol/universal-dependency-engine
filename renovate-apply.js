@@ -288,15 +288,22 @@ async function writeOutputRenovate({
         restoreFiles(snapshots);
         errors.push(`npm install failed — rolled back. Exit code: ${installResult.status}`);
       } else {
-        // Post-install verification — failure triggers rollback
+        // Post-install verification — rollback only when override had zero effect
         const allApplied = [...directUpgrades, ...phaseAOverrideItems];
-        verifyFailures = verifyFixVersions(lockFilePath, allApplied);
-        if (verifyFailures.length > 0) {
-          for (const f of verifyFailures) {
+        const { failures: vFails, warnings: vWarns } = verifyFixVersions(lockFilePath, allApplied);
+        verifyFailures = vFails;
+        if (vWarns.length > 0) {
+          for (const w of vWarns) {
+            const old = w.resolved.filter(v => semver.lt(v, w.expected));
+            console.log(`  ⚠  ${w.libraryName}: nested copies at ${old.join(', ')} remain (Phase B/C — see manual-review.md)`);
+          }
+        }
+        if (vFails.length > 0) {
+          for (const f of vFails) {
             console.error(`  Verification FAILED: ${f.libraryName} expected >= ${f.expected}, got [${f.resolved.join(', ')}]`);
           }
           restoreFiles(snapshots);
-          errors.push(`Post-install verification failed for ${verifyFailures.map(f => f.libraryName).join(', ')} — rolled back`);
+          errors.push(`Post-install verification failed for ${vFails.map(f => f.libraryName).join(', ')} — rolled back`);
           console.log(`  Rolled back. No files changed.`);
         } else {
           applied = true;

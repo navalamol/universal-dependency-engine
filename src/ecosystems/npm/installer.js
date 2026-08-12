@@ -47,19 +47,23 @@ function verifyFixVersions(lockFilePath, items) {
   let depMap;
   try { depMap = parseLockFile(lockFilePath); } catch { return []; }
 
-  const failures = [];
+  const failures  = [];
+  const warnings  = [];
   for (const item of items) {
     if (!item.recommendedVersion) continue;
     const entries  = depMap.get(item.libraryName) || [];
-    const resolved = entries.map(e => e.resolvedVersion);
-    const allFixed = resolved.length > 0 && resolved.every(v =>
-      semver.valid(v) && semver.gte(v, item.recommendedVersion)
-    );
-    if (!allFixed) {
+    const resolved = entries.map(e => e.resolvedVersion).filter(v => semver.valid(v));
+
+    // Pass if the highest resolved version meets the fix — the override is in effect.
+    // A lower nested copy (pinned by a consumer) is a separate Phase B/C concern, not a rollback trigger.
+    const anyFixed = resolved.length > 0 && resolved.some(v => semver.gte(v, item.recommendedVersion));
+    if (!anyFixed) {
       failures.push({ libraryName: item.libraryName, expected: item.recommendedVersion, resolved });
+    } else if (resolved.some(v => semver.lt(v, item.recommendedVersion))) {
+      warnings.push({ libraryName: item.libraryName, expected: item.recommendedVersion, resolved });
     }
   }
-  return failures;
+  return { failures, warnings };
 }
 
 // Scenario 26 — persist what the tool last wrote so future runs can detect manual edits

@@ -550,6 +550,8 @@ async function main() {
     const haltItems = [];
     if (verbose) console.log('\n[Safety Gate]');
     for (const item of phasedPlan) {
+      // Phase C items go to manual-review.md — never auto-applied, never a halt trigger.
+      if (item.phase === 'C') continue;
       if (verbose) {
         console.log(`\n  ${item.libraryName}:`);
         console.log(assembleSafetyGate(item));
@@ -937,9 +939,9 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
     }
 
     if (fs.existsSync(installLockPath) && verifyItems.length > 0) {
-      const failures = verifyFixVersions(installLockPath, verifyItems);
+      const { failures, warnings } = verifyFixVersions(installLockPath, verifyItems);
       if (failures.length > 0) {
-        console.error(`\n  ✗  Post-install verification FAILED — rolling back:`);
+        console.error(`\n  ✗  Post-install verification FAILED — override had no effect, rolling back:`);
         for (const f of failures) {
           console.error(`     ${f.libraryName}: expected >=${f.expected}, got [${f.resolved.join(', ') || 'not found'}]`);
         }
@@ -948,7 +950,15 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
         process.exitCode = 1;
         return true;
       }
-      console.log(`  Verified: all ${verifyItems.length} package(s) at fix version in lock file.`);
+      if (warnings.length > 0) {
+        console.log(`\n  ⚠  Partial coverage (nested copies remain — Phase B/C items):`);
+        for (const w of warnings) {
+          const old = w.resolved.filter(v => semver.lt(v, w.expected));
+          console.log(`     ${w.libraryName}: ${old.join(', ')} still present alongside fixed version (see manual-review.md)`);
+        }
+      }
+      const deduped = [...new Set(verifyItems.map(i => i.libraryName))];
+      console.log(`  Verified: ${deduped.length} package(s) at fix version in lock file.`);
     }
 
     const directMap = {};
