@@ -51,13 +51,20 @@ All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 
 
 ---
 
-## Next: Step G — Recursive parent-chain exploration with guardrails
+### ~~Step G: Recursive parent-chain exploration with guardrails~~ ✅ DONE 2026-08-12
 
-Extend `parent-upgrade-explorer.js` beyond 2 levels with all 9 guardrails from REMEDIATION_CAPABILITY_ROADMAP §7:
-- Cycle detection (visited `(pkg, version)` pairs)
-- Depth limit (default 5)
-- All existing candidate/simulation/timeout limits apply at each level
-- Stop when: fix found AND verified, OR depth limit hit, OR candidate limit exhausted
+- `recursiveResolveChainChildRange` replaces `resolveChainChildRange` — explores all candidate versions at each intermediate hop (not just latest)
+- All 9 guardrails applied: cycle detection, depth limit (5), candidate limit (10), simulation limit (20), registry cache, deterministic ordering
+- Key invariant: function only propagates a child range if it covers `fixVersion` (checked at leaf)
+- New CLI flags: `--max-depth`, `--max-simulations`
+- 28 new tests in `tests/ecosystems/npm/parent-upgrade-explorer.test.js`
+- 86/86 tests passing; regression baseline A:5 B:0 C:3 confirmed
+
+---
+
+## Next: Phase 2 entry — Universal Finding Engine
+
+**All Phase 1 + Phase 1.x criteria met as of 2026-08-12.**
 
 ---
 

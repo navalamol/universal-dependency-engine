@@ -81,6 +81,8 @@ Options:
   --verbose                  Print Safety Gate pre-edit checklist for every item
   --force                    Override Safety Gate halts (MANUAL confidence, MAJOR_BUMP paths,
                              peer conflicts). Use only after manual review.
+  --max-depth <n>            Max recursion depth for parent-chain exploration  [default: 5]
+  --max-simulations <n>      Max npm install simulations per run               [default: 20]
 
 Phase output files written to --out-dir:
   npm:   phase-a-overrides.json / phase-b-overrides.json / manual-review.md
@@ -362,6 +364,8 @@ async function main() {
   const autoCommit      = args['commit'] === true;
   const verbose         = args['verbose'] === true;
   const forceApply      = args['force']   === true;
+  const maxDepth        = args['max-depth']       ? parseInt(args['max-depth'], 10)       : undefined;
+  const maxSimulations  = args['max-simulations'] ? parseInt(args['max-simulations'], 10) : undefined;
 
   const mode = subcmd ? subcmd.toUpperCase() : (dryRun ? 'ANALYZE' : 'APPLY');
   console.log(`\nMend AutoFixer [${mode}]`);
@@ -499,7 +503,8 @@ async function main() {
     // Only runs when --verify-versions is set (makes registry calls).
     if (verifyVersions) {
       console.log('\n[4b/5] Exploring parent upgrade paths...');
-      await exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockFilePath);
+      await exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockFilePath,
+        { maxDepth, maxSimulations });
     }
   }
 

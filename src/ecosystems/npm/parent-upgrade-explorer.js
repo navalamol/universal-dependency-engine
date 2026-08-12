@@ -5,8 +5,90 @@ const { getPublishedVersions, getManifest } = require('./registry');
 const { simulate } = require('./simulator');
 const { computeSecurityDelta } = require('../../core/security-delta');
 
-// Cap versions inspected per parent to bound network calls; guardrail from REMEDIATION_CAPABILITY_ROADMAP §7.
+// Cap versions inspected per parent per level; guardrail from REMEDIATION_CAPABILITY_ROADMAP §7.
 const CANDIDATE_LIMIT = 10;
+// Max depth for recursive chain exploration (guardrail §7).
+const MAX_DEPTH       = 5;
+// Max npm simulations per exploreParentUpgrades run (guardrail §7).
+const MAX_SIMULATIONS = 20;
+
+/**
+ * Recursively walk an intermediate chain to find the range the final package
+ * in the chain declares for `childName`, exploring multiple candidate versions
+ * at each intermediate hop rather than always picking the latest.
+ *
+ * Returns a range string only when that range covers `fixVersion` (i.e.
+ * `semver.intersects(range, '>=' + fixVersion)` is true). This ensures the
+ * recursive exploration skips intermediates that don't lead to a fix, rather
+ * than returning the first non-null range regardless of whether it helps.
+ *
+ * Guardrails applied (REMEDIATION_CAPABILITY_ROADMAP §7):
+ *   - Cycle detection        : abort branch if (pkg, version) already visited on this branch
+ *   - Depth limit            : ctx.maxDepth  (default MAX_DEPTH = 5)
+ *   - Candidate limit        : CANDIDATE_LIMIT versions per level, semver-descending
+ *   - Duplicate-state dedup  : registry.js per-run manifest cache prevents redundant fetches;
+ *                              no separate graph-state map needed at this layer
+ *   - Deterministic ordering : semver descending before slicing to CANDIDATE_LIMIT
+ *
+ * @param {string}   currentName     package currently being inspected
+ * @param {string}   currentVersion  version of that package
+ * @param {string[]} chain           remaining intermediates before childName
+ * @param {string}   childName       the vulnerable package name
+ * @param {string}   fixVersion      minimum safe version for childName
+ * @param {object}   ctx             guardrail state
+ * @param {Set}      ctx.visited     (pkg@version) pairs visited on this branch
+ * @param {number}   ctx.depth       current recursion depth
+ * @param {number}   ctx.maxDepth    hard depth limit
+ * @returns {Promise<string|null>} childName's declared range (covering fixVersion), or null
+ */
+async function recursiveResolveChainChildRange(currentName, currentVersion, chain, childName, fixVersion, ctx) {
+  if (ctx.depth >= ctx.maxDepth) return null;
+
+  // Cycle detection: same (pkg, version) already on this branch path
+  const nodeKey = `${currentName}@${currentVersion}`;
+  if (ctx.visited.has(nodeKey)) return null;
+
+  // Clone visited for this branch so sibling branches are unaffected
+  const branchVisited = new Set(ctx.visited);
+  branchVisited.add(nodeKey);
+
+  const manifest = await getManifest(currentName, currentVersion);
+  if (!manifest) return null;
+
+  if (chain.length === 0) {
+    // currentName is the direct parent of childName; check its declared range
+    const rawRange = manifest.dependencies[childName] || manifest.peerDependencies[childName];
+    if (!rawRange) return null;
+    // Only propagate this range upward if it actually covers the fix version
+    let covers = false;
+    try { covers = semver.intersects(rawRange, '>=' + fixVersion); } catch {}
+    return covers ? rawRange : null;
+  }
+
+  const nextPkg   = chain[0];
+  const nextRange = manifest.dependencies[nextPkg] || manifest.peerDependencies[nextPkg];
+  if (!nextRange) return null;
+
+  const allVersions = await getPublishedVersions(nextPkg);
+  if (!allVersions) return null;
+
+  // Deterministic: semver descending; bounded by CANDIDATE_LIMIT (guardrail §7)
+  const candidates = allVersions
+    .filter(v => semver.valid(v) && semver.satisfies(v, nextRange))
+    .sort((a, b) => semver.rcompare(a, b))
+    .slice(0, CANDIDATE_LIMIT);
+
+  for (const cv of candidates) {
+    const range = await recursiveResolveChainChildRange(
+      nextPkg, cv, chain.slice(1), childName, fixVersion,
+      { visited: branchVisited, depth: ctx.depth + 1, maxDepth: ctx.maxDepth }
+    );
+    // range is non-null only if it covers fixVersion (checked at the leaf)
+    if (range) return range;
+  }
+
+  return null;
+}
 
 /**
  * For a MAJOR_BUMP Phase C item, walk each root parent's published versions
@@ -16,31 +98,26 @@ const CANDIDATE_LIMIT = 10;
  *
  * Handles both direct and indirect chains:
  *   Direct  (chainVia absent): rootDep → vulnerableChild
- *   Indirect (chainVia present): rootDep → intermediate → vulnerableChild
+ *   Indirect (chainVia present): rootDep → intermediate(s) → vulnerableChild
+ *
+ * For indirect chains, uses recursiveResolveChainChildRange to explore
+ * multiple candidate versions at each intermediate hop (Step G).
  *
  * The check: semver.intersects(childRange, '>=' + fixVersion)
  *   true  → the parent's declared range can resolve to a safe child version
  *   false → the parent still pins the vulnerable major
  *
- * Returns an array (one entry per parent that has a viable upgrade):
- *   [{
- *     parent:               string,   // e.g. 'y'
- *     parentAllowedRange:   string,   // e.g. '^1.5.0'   (from project package.json)
- *     parentUpgradeVersion: string,   // e.g. '1.6.0'    (latest within range that fixes child)
- *     childDeclaredRange:   string,   // e.g. '^2.1.0'   (what that parent version declares)
- *     childFixVersion:      string,   // e.g. '2.2.0'    (minimum safe version)
- *     chainVia:             string[], // intermediate packages (empty for direct parents)
- *     isDev:                boolean,
- *   }]
- *
- * Empty array = no parent upgrade path found within current semver constraints.
+ * @param {object} item  PhasedItem
+ * @param {object} opts  { maxDepth?: number }
+ * @returns {Promise<object[]>} array of path objects (one per viable parent)
  */
-async function findParentUpgradePaths(item) {
+async function findParentUpgradePaths(item, opts) {
   if (!item.rootParents || item.rootParents.length === 0) return [];
   if (!item.recommendedVersion) return [];
 
   const fixVersion = item.recommendedVersion;
   const childName  = item.libraryName;
+  const maxDepth   = (opts && opts.maxDepth) || MAX_DEPTH;
   const paths      = [];
 
   for (const parent of item.rootParents) {
@@ -60,30 +137,29 @@ async function findParentUpgradePaths(item) {
 
     if (chainVia && chainVia.length > 0) {
       // Indirect chain: rootDep → intermediate(s) → vulnerableChild
-      // For each candidate root version, follow the intermediate chain to find
-      // the child range it would ultimately declare.
+      // Use recursive exploration to try multiple versions at each intermediate
+      // hop (Step G), bounded by all 9 guardrails (depth, candidate limit,
+      // cycle detection, deterministic ordering, registry cache).
+      // recursiveResolveChainChildRange only returns non-null when the range
+      // at the end of the chain covers fixVersion, so no extra semver check needed.
       for (const candidateVersion of candidates) {
-        const childRange = await resolveChainChildRange(
-          parentName, candidateVersion, chainVia, childName
+        const childRange = await recursiveResolveChainChildRange(
+          parentName, candidateVersion, chainVia, childName, fixVersion,
+          { visited: new Set(), depth: 0, maxDepth }
         );
         if (!childRange) continue;
 
-        let covers = false;
-        try { covers = semver.intersects(childRange, '>=' + fixVersion); } catch {}
-
-        if (covers) {
-          paths.push({
-            parent:               parentName,
-            parentAllowedRange:   allowedRange,
-            parentUpgradeVersion: candidateVersion,
-            childDeclaredRange:   childRange,
-            childFixVersion:      fixVersion,
-            chainVia:             chainVia,
-            isDev:                parent.isDev || false,
-            manifestVerified:     true,
-          });
-          break;
-        }
+        paths.push({
+          parent:               parentName,
+          parentAllowedRange:   allowedRange,
+          parentUpgradeVersion: candidateVersion,
+          childDeclaredRange:   childRange,
+          childFixVersion:      fixVersion,
+          chainVia:             chainVia,
+          isDev:                parent.isDev || false,
+          manifestVerified:     true,
+        });
+        break;
       }
     } else {
       // Direct parent: rootDep directly declares vulnerableChild
@@ -119,49 +195,17 @@ async function findParentUpgradePaths(item) {
 }
 
 /**
- * Walk an intermediate chain to find the range the final package in the chain
- * declares for `childName`.
- *
- * Example: resolveChainChildRange('webpack', '5.99.0', ['enhanced-resolve'], 'fast-uri')
- *   → fetches webpack@5.99.0 → gets enhanced-resolve range
- *   → fetches latest enhanced-resolve satisfying that range
- *   → returns the fast-uri range that version declares
- *
- * Returns the child range string, or null if the chain cannot be resolved.
- */
-async function resolveChainChildRange(rootName, rootVersion, intermediates, childName) {
-  let currentDeps = await getManifest(rootName, rootVersion);
-  if (!currentDeps) return null;
-
-  for (const intermediate of intermediates) {
-    const nextRange = currentDeps.dependencies[intermediate] || currentDeps.peerDependencies[intermediate];
-    if (!nextRange) return null;
-
-    // Find the latest published version of intermediate that satisfies nextRange
-    const allVersions = await getPublishedVersions(intermediate);
-    if (!allVersions) return null;
-
-    const latest = allVersions
-      .filter(v => semver.valid(v) && semver.satisfies(v, nextRange))
-      .sort((a, b) => semver.rcompare(a, b))[0];
-    if (!latest) return null;
-
-    currentDeps = await getManifest(intermediate, latest);
-    if (!currentDeps) return null;
-  }
-
-  return currentDeps.dependencies[childName] || currentDeps.peerDependencies[childName] || null;
-}
-
-/**
  * Run parent upgrade exploration for all MAJOR_BUMP Phase C items in a phased plan.
  * Mutates items in place: sets parentUpgradePaths and promotes phase C → B on success.
  * Logs progress dots to stdout.
  *
  * @param {object[]} phasedPlan  — mutated in place
  * @param {string}   ecosystem
+ * @param {string}   packageJsonPath
+ * @param {string}   lockPath
+ * @param {object}   opts        { maxDepth?: number, maxSimulations?: number }
  */
-async function exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockPath) {
+async function exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockPath, opts) {
   if (ecosystem !== 'npm') return;
 
   const candidates = phasedPlan.filter(
@@ -171,19 +215,28 @@ async function exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, loc
 
   if (candidates.length === 0) return;
 
+  const maxDepth       = (opts && opts.maxDepth)       || MAX_DEPTH;
+  const maxSimulations = (opts && opts.maxSimulations)  || MAX_SIMULATIONS;
+  // Shared simulation counter across all items — fail-open when limit reached (guardrail §7)
+  const simCount = { value: 0 };
+
   process.stdout.write('  Checking parent upgrade paths');
 
   for (const item of candidates) {
     item._parentExplorationRan = true; // stamped before await so manual-review.md always sees it
-    const paths = await findParentUpgradePaths(item);
+    const paths = await findParentUpgradePaths(item, { maxDepth });
     process.stdout.write('.');
 
     if (paths.length === 0) continue;
 
     // Attempt simulation-verification for each manifest-verified path.
     // Requires --package-json to be set; skipped (stays INFERRED) when unavailable.
+    // Simulation limit (guardrail §7): fail-open — paths stay INFERRED when limit hit.
     if (packageJsonPath) {
       for (const p of paths) {
+        if (simCount.value >= maxSimulations) break; // limit reached; remaining paths stay INFERRED
+        simCount.value++;
+
         const simResults = simulate(packageJsonPath, lockPath || null, [{
           name: p.parent,
           from: p.parentAllowedRange,
@@ -221,4 +274,4 @@ async function exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, loc
   process.stdout.write(' done\n');
 }
 
-module.exports = { findParentUpgradePaths, exploreParentUpgrades };
+module.exports = { findParentUpgradePaths, exploreParentUpgrades, recursiveResolveChainChildRange };

@@ -4,6 +4,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Step G: Recursive parent-chain exploration with guardrails
+
+**Before:** `parent-upgrade-explorer.js` followed pre-computed `chainVia` paths using LATEST intermediate version at each hop; no depth limit; no cycle detection; no simulation count cap.
+
+**Changes:**
+- `src/ecosystems/npm/parent-upgrade-explorer.js` — replaced `resolveChainChildRange` (linear, latest-only) with `recursiveResolveChainChildRange(currentName, currentVersion, chain, childName, fixVersion, ctx)`. New function explores MULTIPLE candidate versions at each intermediate hop, stopping only when a range covering `fixVersion` is found. Applies all 9 guardrails from REMEDIATION_CAPABILITY_ROADMAP §7: cycle detection (branch-scoped `visited` Set), depth limit (`ctx.maxDepth`, default 5), candidate limit (CANDIDATE_LIMIT=10 per level, semver-descending), simulation limit (shared `simCount`, default 20, fail-open), registry/manifest cache (from registry.js), deterministic ordering. Key correctness fix: the function only propagates a child range upward if it covers `fixVersion` (checked at the leaf), so exploration correctly continues past non-fix intermediates. Added `MAX_DEPTH=5`, `MAX_SIMULATIONS=20` module constants. `findParentUpgradePaths(item, opts)` accepts optional `opts.maxDepth`. `exploreParentUpgrades(phasedPlan, ecosystem, pkgJsonPath, lockPath, opts)` accepts `opts.maxDepth` and `opts.maxSimulations`; enforces simulation limit via shared `simCount`. Exports `recursiveResolveChainChildRange` for testing.
+- `mendfix.js` — added `--max-depth <n>` and `--max-simulations <n>` CLI flags (both optional, defaults in explorer); passed to `exploreParentUpgrades`.
+- New `tests/ecosystems/npm/parent-upgrade-explorer.test.js` — 28 tests covering all guardrails and the Step G core scenario (non-latest intermediate has the fix).
+
+**Next:** Phase 2 entry — create `src/providers/snyk.js` (Phase 2 entry criteria met).
+
 ## 2026-08-12 — V1.x Enhancements 6–11
 
 **Before:** Security delta not computed; blast radius not tracked; no Safety Gate halts on apply; decisionLabel only in Phase C report; dev-chain classification only fired when ALL entries were dev:true; no Renovate PR relationship analysis.

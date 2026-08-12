@@ -96,7 +96,7 @@ lockfile update + verification
 | `overrides.js` | `buildPhaseAOverrides`, `buildPhaseBOverrides`, `buildParentUpgradeMap`, `applyOverridesToPackageJson`, `writeOverridesPatch`, `detectDirectDeps`, `applyDirectUpgrades` | Build + apply npm overrides/direct dep bumps |
 | `installer.js` | `snapshotFiles`, `restoreFiles`, `runPackageLockUpdate`, `runMavenResolve`, `verifyFixVersions`, `saveManifest`, `detectManualChanges` | npm/mvn install, rollback, verify, manifest |
 | `registry.js` | `getPublishedVersions(name)`, `getManifest(name, ver)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | npm registry version checks + manifest fetch with per-run cache (Node 18+ fetch) |
-| `parent-upgrade-explorer.js` | `findParentUpgradePaths(item)` → `ParentUpgradePath[]`, `exploreParentUpgrades(phasedPlan, ecosystem)` | 2-level parent upgrade exploration. Manifest-verified (manifestVerified:true). Simulation wiring pending. |
+| `parent-upgrade-explorer.js` | `findParentUpgradePaths(item, opts?)` → `ParentUpgradePath[]`, `exploreParentUpgrades(phasedPlan, ecosystem, pkgJsonPath, lockPath, opts?)`, `recursiveResolveChainChildRange(name, ver, chain, childName, fixVersion, ctx)` | Recursive parent-chain exploration (Step G). Explores multiple candidate versions at each intermediate hop. All 9 guardrails: cycle detection, depth limit (5), candidate limit (10), simulation limit (20, shared). |
 | `simulator.js` | `simulate(basePackageJsonPath, baseLockPath, candidates, options?)` → `SimulationResult[]` | Isolated `npm install --package-lock-only` in temp dir. Per-run cache + 20-sim limit + 30s timeout guardrails. |
 
 ### src/ecosystems/maven/
