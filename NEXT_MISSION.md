@@ -7,7 +7,7 @@ Single source of truth for what to build next. Updated after each session.
 
 ## Phase 1 — ✅ COMPLETE (2026-08-12)
 
-All 26 Phase 1 scenarios done. 32/32 tests passing. Regression baseline A:5 B:0 C:3 confirmed.
+All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 C:3 confirmed.
 
 | Completed item | Date |
 |----------------|------|
@@ -25,53 +25,37 @@ All 26 Phase 1 scenarios done. 32/32 tests passing. Regression baseline A:5 B:0 
 
 - `registry.js` — added `getManifest(name, version)` with per-run cache (`_manifestCache`)
 - `parent-upgrade-explorer.js` — removed local `fetchJson`/`getVersionDeps`; uses `getManifest` from registry; applies `CANDIDATE_LIMIT = 10` per level; adds `manifestVerified: true` to returned path objects
-- All previous `getVersionDeps` calls now go through the shared cached registry function
 
-### Next: Step C — Isolated package-manager simulation
+### ~~Step C: Isolated package-manager simulation~~ ✅ DONE 2026-08-12
 
-**File to create:** `src/ecosystems/npm/simulator.js`
+- New `src/ecosystems/npm/simulator.js` — temp-dir npm install, lockfile inspection, hash cache, timeout, limit guardrails
+- Wired into `parent-upgrade-explorer.js` — stamps `simulationVerified: true` on confirmed paths
 
-```js
-// Returns SimulationResult[]
-simulate(basePackageJsonPath, baseLockPath, candidates, options)
+### ~~Step E: Multi-path comparison + Change Budget ranking~~ ✅ DONE 2026-08-12
 
-// SimulationResult shape:
-{
-  candidate: { name, from, to },
-  success: boolean,
-  resolvedVersions: Map<name, version>,
-  peerConflicts: string[],
-  timedOut: boolean
-}
-```
+- New `src/core/remediation-paths.js` — `buildPaths`, `rankPaths`, `comparePaths`, `enrichWithPaths`
+- Adds `recommendedPath`, `alternativePaths[]`, `decisionLabel` to every PhasedItem
+- Wired into `mendfix.js` after `enrichWithConfidence`; `decisionLabel` now shown in report + manual-review.md
+- 16 new tests; 48/48 total passing
 
-Implementation:
-1. Create temp directory
-2. Copy `package.json` + `package-lock.json` into temp dir
-3. Apply candidate version change to temp `package.json`
-4. Run `npm install --package-lock-only --legacy-peer-deps` with 30s timeout
-5. Parse resulting `package-lock.json` using existing `lock-parser.js`
-6. Return `resolvedVersions` map + `peerConflicts`
-7. Clean up temp dir unconditionally
+### Next: Step D — Security verification in simulated graph
 
-Apply all guardrails from `REMEDIATION_CAPABILITY_ROADMAP.md §7`:
-- Timeout per simulation (30s default)
-- Simulation limit per run (20 default) — fail-open to INFERRED on limit
-- Hash-based simulation cache: `hash(package.json state)` → `SimulationResult`
-- Clean temp directories unconditionally
+For each simulated `resolvedVersions` map, cross-reference against the current `LibraryEntry[]` finding set:
+- For each package in `resolvedVersions`: check if any finding has same name AND simulated version is still in vulnerable range
+- Surface: `newVulnerabilitiesIntroduced[]`, `existingVulnerabilitiesFixed[]`
+- Feed into path ranking: a candidate that fixes CVE-A but introduces CVE-B is not a valid recommendation
 
-After simulator.js exists: wire into `parent-upgrade-explorer.js` — for each manifest-verified candidate, simulate to promote from INFERRED → VERIFIED.
+**File:** extend `src/ecosystems/npm/simulator.js` or new `src/core/security-delta.js`
+**Dependency:** Step C (simulation already done)
 
 ---
 
-## Phase 1.x — After simulation is stable
+## Phase 1.x — After Step D: further enhancements
 
 See `REMEDIATION_CAPABILITY_ROADMAP.md §11` for:
-- Multi-path comparison + Change Budget ranking (`src/core/remediation-paths.js`)
-- Security verification in simulated graph
-- Dependency blast radius
+- Dependency blast radius (`src/ecosystems/npm/lock-parser.js` reverse-index)
 - Safety Gate pre-edit checklist
-- Decision label taxonomy
+- Mixed dev/runtime chain classification (Scenario 8 full)
 
 ---
 

@@ -4,6 +4,23 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Multi-path comparison + Change Budget ranking (Step E)
+
+**Before:** Each PhasedItem carried a single phase/justification. No structured representation of alternative remediation paths. No decision label taxonomy.
+
+**Changes:**
+- New `src/core/remediation-paths.js` — `buildPaths(item)` constructs typed path objects (PARENT_UPGRADE, DIRECT_OVERRIDE, NESTED_OVERRIDE, NO_FIX) from current item fields; `rankPaths(paths)` sorts by VERIFIED > INFERRED > MANUAL then Change Budget tier then SemVer distance; `comparePaths(item)` returns item enriched with `recommendedPath`, `alternativePaths[]`, `decisionLabel`. Exports `enrichWithPaths(phasedPlan)` for use in CLI path.
+- `mendfix.js` — added `enrichWithPaths` import; calls `phasedPlan = enrichWithPaths(phasedPlan)` after `enrichWithConfidence`. Every item in the output now carries structured path data and a decision label.
+- `mendfix.js buildManualReview` — added `decisionLabel` as first bullet under each item header.
+- `src/core/report.js` — added `decisionLabel` row to Phase C detail table.
+- 16 new tests in `tests/core/remediation-paths.test.js`; 48/48 total passing.
+
+**Key decision:** Classification (Phase A/B/C) is not changed by this module — it remains a label on existing evidence. `decisionLabel` adds the 6-label taxonomy (SAFE_ALIGNED / SAFE_PARENT_UPGRADE / CONTROLLED_OVERRIDE / NOT_FIXABLE / NON_RUNTIME_EXPOSURE / MANUAL_SECURITY_REVIEW) as a human-readable output enrichment field without touching the core phase engine.
+
+**Next:** Step D — Security verification in simulated graph (`src/core/security-delta.js`): cross-reference `resolvedVersions` from simulation against the active finding set to surface `newVulnerabilitiesIntroduced[]`.
+
+---
+
 ## 2026-08-12 — Parent Upgrade Explorer for MAJOR_BUMP Phase C items
 
 **Before:** MAJOR_BUMP Phase C items produced only a static hint in `manual-review.md` ("check if upgrading parent ships a patched version"). No automation backed it.

@@ -141,6 +141,7 @@ function generateReport(phasedPlan, options = {}) {
       lines.push(``);
       lines.push(`| Field | Value |`);
       lines.push(`|-------|-------|`);
+      lines.push(`| Decision | ${r.decisionLabel || 'MANUAL_SECURITY_REVIEW'} |`);
       lines.push(`| Upgrade type | ${r.upgradeType} |`);
       lines.push(`| Severity | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} (CVSS ${r.highestCvssScore}) |`);
       lines.push(`| CVEs | ${cves} |`);

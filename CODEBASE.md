@@ -71,7 +71,8 @@ lockfile update + verification
 |------|---------|---------|
 | `semver-engine.js` | `resolveFixVersion(entry)`, `buildResolutionPlan(entries)` → `ResolutionItem[]` | Deterministic SemVer resolution. NEVER use AI here. |
 | `phases.js` | `PHASE_META`, `classifyPhase(item, allItems)`, `applyPhases(plan, depTree?)` → `PhasedItem[]` | Phase A/B/C classification |
-| `confidence.js` | `enrichWithConfidence(phasedPlan, depTree)` → `PhasedItem[]` + `evidence`+`alternative` fields | Adds evidence text per item. **NOT yet called from mendfix.js main path.** |
+| `confidence.js` | `enrichWithConfidence(phasedPlan, depTree)` → `PhasedItem[]` + `evidence`+`alternative` fields | Adds evidence text per item |
+| `remediation-paths.js` | `buildPaths(item)`, `rankPaths(paths)`, `comparePaths(item)`, `enrichWithPaths(phasedPlan)`, `LABELS`, `BUDGET_TIERS` | Multi-path comparison + Change Budget ranking; adds `recommendedPath`, `alternativePaths[]`, `decisionLabel` to every PhasedItem |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
 | `git-commits.js` | `commitPhaseA(projectDir, items, ecosystem)`, `commitPhaseBC(projectDir, bItems, cItems)`, `commitFalsePositives(projectDir, items)` | Git auto-commit by confidence tier. All synchronous. commitPhaseBC/commitFalsePositives = opt-in after human review. |
@@ -142,8 +143,11 @@ ResolutionItem + {
   _parentExplorationRan?: boolean,
   rootParents?: [{ name, range, isDev, chainVia? }],
   depChain?: string[],
-  evidence?: string,      // set by confidence.js — NOT in mendfix.js path yet
-  alternative?: string    // set by confidence.js — NOT in mendfix.js path yet
+  evidence?: string,           // set by confidence.js
+  alternative?: string,        // set by confidence.js
+  recommendedPath?: Path,      // set by remediation-paths.js
+  alternativePaths?: Path[],   // set by remediation-paths.js
+  decisionLabel?: string,      // set by remediation-paths.js (LABELS value)
 }
 
 // DepTree — output of lock-parser.js / dep-tree.js
@@ -233,7 +237,7 @@ Baseline: **32/32 pass**
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 
-**Next:** V1.x simulation wiring complete. Next: Multi-path comparison + Change Budget ranking — new `src/core/remediation-paths.js`, `comparePaths(paths[])` ranks VERIFIED > INFERRED then by Change Budget tier; extend `report.js` to emit `alternativePaths` section.
+**Next:** Step D — Security verification in simulated graph: new `src/core/security-delta.js`, cross-references `resolvedVersions` from `simulator.js` against the active `LibraryEntry[]` finding set to surface `newVulnerabilitiesIntroduced[]`.
 
 ---
 

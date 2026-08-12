@@ -32,6 +32,7 @@ const { writePomPatch, applyPomPatch,
 const { generateReport }                                 = require('./src/core/report');
 const { generatePRDescription }                          = require('./src/core/pr-description');
 const { enrichWithConfidence }                           = require('./src/core/confidence');
+const { enrichWithPaths }                                = require('./src/core/remediation-paths');
 const { parseLockFile, getRootDeps, findDepChain }       = require('./src/ecosystems/npm/lock-parser');
 const { detectEcosystem }                                = require('./src/ecosystems/index');
 
@@ -438,6 +439,7 @@ async function main() {
   }
 
   phasedPlan = enrichWithConfidence(phasedPlan, depTree);
+  phasedPlan = enrichWithPaths(phasedPlan);
 
   const phaseA = phasedPlan.filter(r => r.phase === 'A');
   const phaseB = phasedPlan.filter(r => r.phase === 'B');
@@ -840,6 +842,7 @@ function buildManualReview(phaseCItems, ecosystem) {
 
     lines.push(`## \`${r.libraryName}\` — ${r.currentVersion} → ${fixDisplay}${fpTag}`);
     lines.push(``);
+    lines.push(`- **Decision:** ${r.decisionLabel || 'MANUAL_SECURITY_REVIEW'}`);
     lines.push(`- **Upgrade type:** ${r.upgradeType}`);
     lines.push(`- **Severity:** ${r.highestSeverity} (CVSS ${r.highestCvssScore})`);
     lines.push(`- **CVEs:** ${cves}`);
