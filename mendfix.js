@@ -56,7 +56,7 @@ function printUsage() {
   console.log(`
 Usage:
   mendfix analyze  --report <path> [options]          (dry run — no files changed)
-  mendfix apply    --report <path> [options]          (apply Phase A, write output)
+  mendfix apply    --report <path> [options]          (apply Phase A + optionally Phase B, write output)
   mendfix cleanup  --package-json <path> --lock-file <path>   (remove stale overrides)
   mendfix renovate --config <repos.json> [options]    (analyze/apply Renovate PRs across repos)
 
@@ -67,7 +67,8 @@ Required (analyze / apply):
   --report <path>            Mend vulnerability report (.json or .xlsx)
 
 Options:
-  --package-json <path>      (npm) Apply Phase A overrides directly to this file
+  --package-json <path>      (npm) Apply overrides/direct upgrades directly to this file
+  --apply-phase-b            (npm) Also apply Phase B overrides + parent bumps (default: Phase A only)
   --pom-xml <path>           (maven) Apply Phase A <dependencyManagement> entries to this file
   --lock-file <path>         (npm) package-lock.json for dep-tree features
                              Enables: consumer range validation, dev classification,
@@ -78,6 +79,7 @@ Options:
   --dry-run                  Print plan to stdout; write nothing to disk
   --commit                   (apply only) Auto-commit Phase A fixes after successful install
                              Phase B/C commits are opt-in after human review
+  --commit-phase-b           (apply only) Auto-commit Phase B fixes (requires --apply-phase-b)
   --verbose                  Print Safety Gate pre-edit checklist for every item
   --force                    Override Safety Gate halts (MANUAL confidence, MAJOR_BUMP paths,
                              peer conflicts). Use only after manual review.
@@ -96,6 +98,10 @@ Examples:
     --package-json ../ui-platform/package.json \\
     --lock-file    ../ui-platform/package-lock.json \\
     --verify-versions --commit
+  mendfix apply    --report npm-report.json \\
+    --package-json ../ui-platform/package.json \\
+    --lock-file    ../ui-platform/package-lock.json \\
+    --apply-phase-b --verify-versions --commit --commit-phase-b
   mendfix apply    --report maven-report.json \\
     --pom-xml ../dataplatform/pom.xml \\
     --verify-versions
@@ -362,6 +368,8 @@ async function main() {
   const verifyVersions  = args['verify-versions'] === true;
   const dryRun          = args['dry-run'] === true;
   const autoCommit      = args['commit'] === true;
+  const autoCommitPhaseB = args['commit-phase-b'] === true;
+  const applyPhaseB     = args['apply-phase-b'] === true;
   const verbose         = args['verbose'] === true;
   const forceApply      = args['force']   === true;
   const maxDepth        = args['max-depth']       ? parseInt(args['max-depth'], 10)       : undefined;
@@ -589,7 +597,7 @@ async function main() {
   if (ecosystem === 'maven') {
     applyFailed = await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, reportContent);
   } else {
-    applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions);
+    applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions, applyPhaseB);
   }
 
   if (applyFailed) {
@@ -608,7 +616,7 @@ async function main() {
   console.log(`  Wrote: ${prDescPath}`);
 
   // Scenarios 15/16: auto-commit Phase A after successful apply.
-  // Phase B/C commits are opt-in after human review — never triggered automatically here.
+  // Phase B commit is opt-in via --commit-phase-b (requires --apply-phase-b).
   if (autoCommit && phaseA.length > 0) {
     const { commitPhaseA } = require('./src/core/git-commits');
     const projectDir = packageJsonPath
@@ -625,8 +633,24 @@ async function main() {
     }
   }
 
+  if (autoCommitPhaseB && applyPhaseB && phaseB.length > 0) {
+    const { commitPhaseBC } = require('./src/core/git-commits');
+    const projectDir = packageJsonPath
+      ? path.dirname(packageJsonPath)
+      : pomXmlPath
+        ? path.dirname(pomXmlPath)
+        : process.cwd();
+    console.log('\nCommitting Phase B...');
+    const commitResult = commitPhaseBC(projectDir, phaseB, [], ecosystem);
+    if (commitResult.success) {
+      console.log(`  Committed Phase B fixes: ${commitResult.message.split('\n')[0]}`);
+    } else {
+      console.warn(`  Warning: git commit failed: ${commitResult.message}`);
+    }
+  }
+
   console.log('\nDone.');
-  printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, phaseB, phaseC);
+  printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, phaseB, phaseC, applyPhaseB);
 }
 
 // ---------------------------------------------------------------------------
@@ -707,7 +731,7 @@ async function writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomX
 // npm output writer
 // ---------------------------------------------------------------------------
 
-async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions) {
+async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions, applyPhaseB = false) {
   let directUpgrades     = [];
   let phaseAForOverrides = phaseA;
 
@@ -776,13 +800,19 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
     console.warn(`  WARN: ${packageJsonPath} not found — skipping auto-apply`);
     return;
   }
-  if (directUpgrades.length === 0 && Object.keys(phaseAOverrides).length === 0) {
-    console.log(`  No Phase A fixes to apply to ${packageJsonPath}`);
+
+  const hasPhaseBOverrides = applyPhaseB && Object.keys(phaseBOverrides).length > 0;
+  const hasPhaseBParents   = applyPhaseB && Object.keys(parentUpgradeMap).length > 0;
+  const hasAnyChanges = directUpgrades.length > 0 || Object.keys(phaseAOverrides).length > 0
+    || hasPhaseBOverrides || hasPhaseBParents;
+
+  if (!hasAnyChanges) {
+    console.log(`  No fixes to apply to ${packageJsonPath}`);
     return;
   }
 
-  // Idempotency check (Scenario 21)
-  if (isAlreadyApplied(packageJsonPath, phaseAOverrides, directUpgrades)) {
+  // Idempotency check (Scenario 21) — only when applying Phase A only
+  if (!applyPhaseB && isAlreadyApplied(packageJsonPath, phaseAOverrides, directUpgrades)) {
     console.log(`\n  Nothing to apply — current state matches the last manifest. Run cleanup if overrides are no longer needed.`);
     return;
   }
@@ -825,7 +855,47 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
     if (Object.keys(cleanOverrides).length > 0) {
       pkg.overrides = { ...(pkg.overrides || {}), ...cleanOverrides };
       for (const [k, v] of Object.entries(cleanOverrides)) {
-        console.log(`  Override    : ${k} → ${v}`);
+        console.log(`  Override A  : ${k} → ${v}`);
+      }
+    }
+
+    // Phase B: apply overrides + parent bumps when --apply-phase-b is set
+    const cleanPhaseBOverrides = { ...phaseBOverrides };
+    if (hasPhaseBOverrides) {
+      for (const pkgName of Object.keys(cleanPhaseBOverrides)) {
+        if (allDirectKeys.has(pkgName)) {
+          console.log(`  NOTE: ${pkgName} is a direct dep — removed from Phase B overrides to prevent npm conflict`);
+          delete cleanPhaseBOverrides[pkgName];
+        }
+      }
+      if (Object.keys(cleanPhaseBOverrides).length > 0) {
+        pkg.overrides = { ...(pkg.overrides || {}), ...cleanPhaseBOverrides };
+        for (const [k, v] of Object.entries(cleanPhaseBOverrides)) {
+          console.log(`  Override B  : ${k} → ${v}`);
+        }
+      }
+    }
+
+    if (hasPhaseBParents) {
+      for (const [parentName, info] of Object.entries(parentUpgradeMap)) {
+        const section = info.isDev ? 'devDependencies' : 'dependencies';
+        if (pkg[section] && pkg[section][parentName] !== undefined) {
+          const oldRange = pkg[section][parentName];
+          const newRange = `^${info.upgradeTo}`;
+          pkg[section][parentName] = newRange;
+          console.log(`  Parent bump : ${parentName}  ${oldRange} → ${newRange}  (fixes ${info.fixes} transitively)`);
+        } else {
+          // Fall back: check the other section (isDev might be wrong for monorepos)
+          const altSection = info.isDev ? 'dependencies' : 'devDependencies';
+          if (pkg[altSection] && pkg[altSection][parentName] !== undefined) {
+            const oldRange = pkg[altSection][parentName];
+            const newRange = `^${info.upgradeTo}`;
+            pkg[altSection][parentName] = newRange;
+            console.log(`  Parent bump : ${parentName}  ${oldRange} → ${newRange}  (fixes ${info.fixes} transitively, found in ${altSection})`);
+          } else {
+            console.log(`  WARN: ${parentName} not found in dependencies/devDependencies — skipping parent upgrade`);
+          }
+        }
       }
     }
 
@@ -845,10 +915,27 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
 
     console.log(`  OK`);
 
+    // Verify Phase A items
     const verifyItems = [
       ...directUpgrades,
       ...phaseAForOverrides.filter(i => cleanOverrides[i.libraryName]),
     ];
+
+    // Verify Phase B override items (non-parent-upgrade)
+    if (hasPhaseBOverrides) {
+      const phaseBForOverrides = phaseB.filter(i => !i.parentUpgradePaths);
+      verifyItems.push(...phaseBForOverrides.filter(i => cleanPhaseBOverrides[i.libraryName]));
+    }
+
+    // Verify Phase B parent upgrades by checking the child package in the lock
+    if (hasPhaseBParents) {
+      for (const [, info] of Object.entries(parentUpgradeMap)) {
+        if (info.fixes && info.fixVersion) {
+          verifyItems.push({ libraryName: info.fixes, recommendedVersion: info.fixVersion });
+        }
+      }
+    }
+
     if (fs.existsSync(installLockPath) && verifyItems.length > 0) {
       const failures = verifyFixVersions(installLockPath, verifyItems);
       if (failures.length > 0) {
@@ -866,7 +953,7 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
 
     const directMap = {};
     for (const u of directUpgrades) directMap[u.libraryName] = u.recommendedVersion;
-    saveManifest(packageJsonPath, cleanOverrides, directMap);
+    saveManifest(packageJsonPath, { ...cleanOverrides, ...cleanPhaseBOverrides }, directMap);
   } catch (err) {
     console.error(`  ERROR during apply: ${err.message}`);
     restoreFiles(snapshots);
@@ -881,9 +968,10 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
 // Next-steps summary
 // ---------------------------------------------------------------------------
 
-function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, phaseB, phaseC) {
+function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, phaseB, phaseC, appliedPhaseB = false) {
   const targetApplied = ecosystem === 'maven' ? pomXmlPath : packageJsonPath;
-  const hasNextSteps  = !targetApplied || phaseB.length > 0 || phaseC.length > 0;
+  const pendingPhaseB = phaseB.length > 0 && !appliedPhaseB;
+  const hasNextSteps  = !targetApplied || pendingPhaseB || phaseC.length > 0;
   if (!hasNextSteps) return;
 
   console.log('\nNext steps:');
@@ -901,17 +989,17 @@ function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, 
     }
   }
 
-  if (phaseB.length > 0) {
+  if (pendingPhaseB) {
     const hasParentUpgrades = phaseB.some(i => i.parentUpgradePaths);
     const hasOverrides      = phaseB.some(i => !i.parentUpgradePaths);
     if (hasOverrides) {
       const patchFile = ecosystem === 'maven'
         ? path.join(outDir, 'phase-b-pom-patch.xml')
         : path.join(outDir, 'phase-b-overrides.json');
-      console.log(`  ${step++}. Review ${patchFile} — test before applying`);
+      console.log(`  ${step++}. Review ${patchFile} — then re-run with --apply-phase-b to auto-apply`);
     }
     if (hasParentUpgrades && ecosystem !== 'maven') {
-      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-b-parent-upgrades.json')} — upgrade parent versions, then run npm install --package-lock-only`);
+      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-b-parent-upgrades.json')} — then re-run with --apply-phase-b to auto-apply parent bumps`);
     }
   }
 

@@ -4,6 +4,18 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Phase B auto-apply via --apply-phase-b flag
+
+**Before:** `mendfix apply` only auto-applied Phase A overrides/direct upgrades. Phase B files were written but never applied to package.json — users had to apply them manually.
+**Changes:**
+- Added `--apply-phase-b` flag: when set, Phase B overrides are merged into `pkg.overrides` and parent bumps are applied to `dependencies`/`devDependencies` (range becomes `^upgradeTo`) in the same write+install pass as Phase A
+- Added `--commit-phase-b` flag: auto-commits Phase B changes after apply (requires `--apply-phase-b`)
+- Verification extended to cover Phase B override items and parent-upgrade child packages
+- Next-steps output updated: tells users to re-run with `--apply-phase-b` instead of manually editing
+- Idempotency check skipped when `--apply-phase-b` is set (covers Phase A only anyway)
+- All 86 tests pass; baseline A:5 B:0 C:3 holds
+**Next:** Phase B apply with a report that actually has Phase B items to exercise the path end-to-end
+
 ## 2026-08-12 — Step G: Recursive parent-chain exploration with guardrails
 
 **Before:** `parent-upgrade-explorer.js` followed pre-computed `chainVia` paths using LATEST intermediate version at each hop; no depth limit; no cycle detection; no simulation count cap.
