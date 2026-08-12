@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-12
+Last updated: 2026-08-12 (Python + Go ecosystems)
 
 ---
 
@@ -95,7 +95,7 @@ lockfile update + verification
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `index.js` | `detectEcosystem(entries, override?)` → `'npm'\|'maven'` | Auto-detect ecosystem from LibraryEntry types |
+| `index.js` | `detectEcosystem(entries, override?)` → `'npm'\|'maven'\|'python'\|'go'` | Auto-detect ecosystem from LibraryEntry types (PYTHON_PACKAGE → python, GO_MODULE → go) |
 
 ### src/ecosystems/npm/
 
@@ -109,6 +109,26 @@ lockfile update + verification
 | `override-minimizer.js` | `minimizeOverrides(packageJsonPath, lockFilePath, opts?)` → `{removed, kept, skipped, limitHit}` | Override-set minimization (Item 13). Iteratively simulates removal of each flat-string override; marks it removable only when npm still resolves the fix version without it. Iterates in rounds until stable. Wired into mendfix cleanup --simulate. |
 | `simulator.js` | `simulate(...)`, `simulatePackage(pkgObject, lockPath, opts?)` → SimulationResult | simulatePackage added: takes a ready-made pkg object (not base+candidates), used by override-minimizer to test post-removal state. |
 | `simulator.js` | `simulate(basePackageJsonPath, baseLockPath, candidates, options?)` → `SimulationResult[]` | Isolated `npm install --package-lock-only` in temp dir. Per-run cache + 20-sim limit + 30s timeout guardrails. |
+
+### src/ecosystems/python/
+
+| File | Exports | Purpose |
+|------|---------|---------|
+| `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `detectLockFile(dir)` → `string\|null` | Parse poetry.lock, Pipfile.lock, requirements.txt (pinned lines only) → DepTree. poetry.lock builds parents/requires graph; others are flat. |
+| `writer.js` | `writeRequirementsPatch`, `applyPinsToRequirements`, `applyPinsToPyprojectToml`, `buildManualReview`, `saveManifest`, `detectManualChanges` | Write phase-specific requirements.txt patches; apply pins in-place to requirements.txt or pyproject.toml |
+| `registry.js` | `getPublishedVersions(name)`, `resolveToAvailableVersion(name, ver)`, `verifyPlanVersions(plan)` | PyPI version check (pypi.org/pypi/{name}/json) |
+| `installer.js` | `snapshotFiles`, `restoreFiles`, `runPipInstall(projectDir, reqPath)`, `verifyFixVersions(items, projectDir)` | pip install + verify installed versions via `pip show` |
+| `simulator.js` | `simulate(baseReqPath, candidates, opts?)` → `SimulationResult` | Isolated pip install in temp venv; returns resolvedVersions Map |
+
+### src/ecosystems/go/
+
+| File | Exports | Purpose |
+|------|---------|---------|
+| `lock-parser.js` | `parseLockFile(path)` → `DepTree`, `parseReplaceDirectives(goModPath)` → `Map` | Parse go.mod require block → DepTree; go.sum defers to adjacent go.mod. Replace directives applied to resolvedVersion. |
+| `writer.js` | `writeGoModPatch`, `applyReplaceDirectives`, `buildManualReview`, `saveManifest`, `detectManualChanges` | Write phase-specific go.mod replace-directive snippets; apply replace directives in-place |
+| `registry.js` | `getPublishedVersions(modulePath)`, `resolveToAvailableVersion(modulePath, ver)`, `verifyPlanVersions(plan)` | Go module proxy version check (proxy.golang.org/{module}/@v/list). Respects GOPROXY env var. |
+| `installer.js` | `snapshotFiles`, `restoreFiles`, `runGoModTidy(projectDir)`, `runGoModVerify(projectDir)`, `verifyFixVersions(items, projectDir)` | `go mod tidy` + `go mod verify` + version check via `go list -m all` |
+| `simulator.js` | `simulate(goModPath, candidates, opts?)` → `SimulationResult` | Apply replace directives in temp dir + `go mod download`; returns resolvedVersions Map |
 
 ### src/ecosystems/maven/
 
@@ -251,8 +271,10 @@ Baseline: **238/238 pass**
 | Scenario 18: pr-description.js | ✅ DONE 2026-08-12 |
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
+| Python ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
+| Go ecosystem (lock-parser, writer, registry, installer, simulator) | ✅ DONE 2026-08-12 |
 
-**Next:** All 9 providers shipped. The remaining work is ecosystem writers: Python (`src/ecosystems/python/`) and Go (`src/ecosystems/go/`) — lock parser, writer, registry, and installer per ecosystem.
+**Next:** Python and Go ecosystems shipped. All 4 ecosystems now at parity. Next work is simulator wiring into cleanup + override-minimizer equivalents for Python/Go, or intelligence layer (Phase 2).
 
 ---
 
@@ -265,7 +287,11 @@ Baseline: **238/238 pass**
 | `phase-b-parent-upgrades.json` | B (parent paths) | npm |
 | `phase-a-pom-patch.xml` | A | maven |
 | `phase-b-pom-patch.xml` | B | maven |
-| `manual-review.md` | C | both |
-| `remediation-report.md` | all | both |
-| `pr-description.md` | all | both |
-| `.mend-manifest.json` | — | both (idempotency) |
+| `phase-a-requirements.txt` | A | python |
+| `phase-b-requirements.txt` | B | python |
+| `phase-a-go-mod.txt` | A | go |
+| `phase-b-go-mod.txt` | B | go |
+| `manual-review.md` | C | all |
+| `remediation-report.md` | all | all |
+| `pr-description.md` | all | all |
+| `.mend-manifest.json` | — | all (idempotency) |

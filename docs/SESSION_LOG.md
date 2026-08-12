@@ -4,6 +4,26 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Python and Go ecosystems (4 ecosystems at parity)
+
+**Before:** npm and Maven ecosystems only. Python/Go entries from Trivy/Xray were parsed but dropped at the apply step (no writers).
+**Changes:**
+- `src/ecosystems/python/lock-parser.js` — `parseLockFile` detects poetry.lock, Pipfile.lock, requirements.txt. poetry.lock builds full requires/parents graph via two-pass reverse-index; other formats are flat. `detectLockFile(dir)` probes for all three.
+- `src/ecosystems/python/writer.js` — `writeRequirementsPatch` + `applyPinsToRequirements` for requirements.txt; `applyPinsToPyprojectToml` for pyproject.toml Poetry/PEP 621 styles. `detectManualChanges` guards against overwriting human edits.
+- `src/ecosystems/python/registry.js` — PyPI JSON API (`pypi.org/pypi/{name}/json`). Same resolution contract as npm/maven registries: exact match → adjusted same-major → exists:false.
+- `src/ecosystems/python/installer.js` — `runPipInstall` uses venv pip when detected (`venv/` or `.venv/`). `verifyFixVersions` runs `pip show` per package.
+- `src/ecosystems/python/simulator.js` — creates temp venv, applies candidate pins, runs `pip install`, returns `Map<name, version>` via `pip freeze`.
+- `src/ecosystems/go/lock-parser.js` — parses go.mod require block (single-line + block form). go.sum defers to adjacent go.mod. `replace` directives applied to `resolvedVersion` with `replaced: true` flag.
+- `src/ecosystems/go/writer.js` — `applyReplaceDirectives` adds/updates `replace` directives in-place. Preserves existing `replace (...)` blocks; appends if no block present. Phase patches written as `phase-a-go-mod.txt`.
+- `src/ecosystems/go/registry.js` — proxy.golang.org `/@v/list` endpoint. Respects `GOPROXY` env var. Module path capital-letter encoding (`!lowercase`).
+- `src/ecosystems/go/installer.js` — `runGoModTidy` + `runGoModVerify`; `verifyFixVersions` via `go list -m all`.
+- `src/ecosystems/go/simulator.js` — copies go.mod+go.sum to temp dir, applies replace directives, runs `go mod download` in isolated GOPATH.
+- `src/ecosystems/index.js` — `PYTHON_PACKAGE` → `'python'`, `GO_MODULE` → `'go'` added. Mixed-ecosystem error message updated.
+- `mendfix.js` — `--requirements-txt` and `--go-mod` flags; Python/Go branches in lock-file parse, registry verify, apply step; `writeOutputPython` + `writeOutputGo` functions; parent-upgrade exploration skipped for Python/Go; next-steps messages per ecosystem.
+**Next:** All 4 ecosystems at parity. Python/Go simulator not yet wired into cleanup/minimizer. Intelligence layer (Phase 2) is the next major milestone.
+
+---
+
 ## 2026-08-12 — GitLab + Xray providers (9 total)
 
 **Before:** 7 providers.

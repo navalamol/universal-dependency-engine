@@ -77,7 +77,9 @@ Options:
   --lock-file <path>         (npm) package-lock.json for dep-tree features
                              Enables: consumer range validation, dev classification,
                              parent upgrade recommendations
-  --ecosystem <npm|maven>    Override auto-detected ecosystem
+  --requirements-txt <path>  (python) Apply Phase A pins directly to this requirements file
+  --go-mod <path>            (go) Apply Phase A replace directives to this go.mod
+  --ecosystem <npm|maven|python|go>  Override auto-detected ecosystem
   --out-dir <path>           Output directory  [default: ./mend-output]
   --verify-versions          Check registry to confirm versions exist
   --dry-run                  Print plan to stdout; write nothing to disk
@@ -93,9 +95,11 @@ Options:
                              instead of static lockfile analysis. Slower but exact.
 
 Phase output files written to --out-dir:
-  npm:   phase-a-overrides.json / phase-b-overrides.json / manual-review.md
-  maven: phase-a-pom-patch.xml / phase-b-pom-patch.xml / manual-review.md
-         remediation-report.md  (all ecosystems)
+  npm:    phase-a-overrides.json / phase-b-overrides.json / manual-review.md
+  maven:  phase-a-pom-patch.xml / phase-b-pom-patch.xml / manual-review.md
+  python: phase-a-requirements.txt / phase-b-requirements.txt / manual-review.md
+  go:     phase-a-go-mod.txt / phase-b-go-mod.txt / manual-review.md
+          remediation-report.md  (all ecosystems)
 
 Examples:
   mendfix analyze  --report vuln-report.json
@@ -407,9 +411,11 @@ async function main() {
 
   const reportFile      = args.report;
   const providerFlag    = args['provider'] || null;
-  const packageJsonPath = args['package-json'] || null;
-  const pomXmlPath      = args['pom-xml'] || null;
-  const lockFilePath    = args['lock-file'] || null;
+  const packageJsonPath    = args['package-json'] || null;
+  const pomXmlPath         = args['pom-xml'] || null;
+  const lockFilePath       = args['lock-file'] || null;
+  const requirementsTxtPath = args['requirements-txt'] || null;
+  const goModPath          = args['go-mod'] || null;
   const outDir          = args['out-dir'] || path.join(path.dirname(path.resolve(reportFile)), 'mend-output');
   const verifyVersions  = args['verify-versions'] === true;
   const dryRun          = args['dry-run'] === true;
@@ -431,9 +437,11 @@ async function main() {
   console.log('='.repeat(16 + mode.length));
   console.log(`Report  : ${reportFile}`);
   if (providerFlag) console.log(`Provider: ${providerFlag} (forced)`);
-  if (packageJsonPath) console.log(`Target  : ${packageJsonPath}`);
-  if (pomXmlPath)      console.log(`POM     : ${pomXmlPath}`);
-  if (lockFilePath)    console.log(`Lock    : ${lockFilePath}`);
+  if (packageJsonPath)     console.log(`Target  : ${packageJsonPath}`);
+  if (pomXmlPath)          console.log(`POM     : ${pomXmlPath}`);
+  if (lockFilePath)        console.log(`Lock    : ${lockFilePath}`);
+  if (requirementsTxtPath) console.log(`Reqs    : ${requirementsTxtPath}`);
+  if (goModPath)           console.log(`go.mod  : ${goModPath}`);
   if (!dryRun)         console.log(`Out dir : ${outDir}`);
 
   // ── Step 1: Parse report ─────────────────────────────────────────────────
@@ -452,7 +460,10 @@ async function main() {
 
   const ecosystem = detectEcosystem(entries, args.ecosystem);
   console.log(`  Ecosystem: ${ecosystem}`);
-  if (verifyVersions) console.log(`  Registry: ${ecosystem === 'maven' ? 'Maven Central' : 'npm'} verification enabled`);
+  if (verifyVersions) {
+    const registryName = { maven: 'Maven Central', python: 'PyPI', go: 'Go module proxy' }[ecosystem] || 'npm';
+    console.log(`  Registry: ${registryName} verification enabled`);
+  }
 
   // ── Step 1.5: Parse lock file (npm only) ─────────────────────────────────
   let depTree  = null;
@@ -471,8 +482,7 @@ async function main() {
     } else {
       console.log('\n[1.5/5] Skipping lock file (pass --lock-file to enable dep-tree features)');
     }
-  } else {
-    // Maven — run mvn dependency:tree if a project directory can be inferred
+  } else if (ecosystem === 'maven') {
     const mavenProjectDir = pomXmlPath ? path.dirname(pomXmlPath) : null;
     if (mavenProjectDir) {
       console.log('\n[1.5/5] Building Maven dependency tree...');
@@ -486,6 +496,35 @@ async function main() {
     } else {
       console.log('\n[1.5/5] Skipping Maven dep-tree (pass --pom-xml to enable)');
     }
+  } else if (ecosystem === 'python') {
+    const { parseLockFile: parsePyLock, detectLockFile } = require('./src/ecosystems/python/lock-parser');
+    const lockCandidate = requirementsTxtPath ||
+      (goModPath ? null : detectLockFile(path.dirname(path.resolve(reportFile))));
+    if (lockCandidate && fs.existsSync(lockCandidate)) {
+      console.log('\n[1.5/5] Parsing Python lock file...');
+      try {
+        depTree = parsePyLock(lockCandidate);
+        console.log(`  ${depTree.size} unique packages in Python dependency tree`);
+      } catch (err) {
+        console.warn(`  WARN: ${err.message} — dep-tree features disabled`);
+      }
+    } else {
+      console.log('\n[1.5/5] Skipping Python lock file (pass --requirements-txt to enable)');
+    }
+  } else if (ecosystem === 'go') {
+    const lockCandidate = goModPath || null;
+    if (lockCandidate && fs.existsSync(lockCandidate)) {
+      console.log('\n[1.5/5] Parsing go.mod...');
+      try {
+        const { parseLockFile: parseGoLock } = require('./src/ecosystems/go/lock-parser');
+        depTree = parseGoLock(lockCandidate);
+        console.log(`  ${depTree.size} unique modules in Go dependency tree`);
+      } catch (err) {
+        console.warn(`  WARN: ${err.message} — dep-tree features disabled`);
+      }
+    } else {
+      console.log('\n[1.5/5] Skipping go.mod parsing (pass --go-mod to enable)');
+    }
   }
 
   // ── Step 2: Resolve fix versions ─────────────────────────────────────────
@@ -497,6 +536,14 @@ async function main() {
     if (ecosystem === 'maven') {
       console.log('\n[3/5] Verifying versions against Maven Central...');
       plan = await verifyMaven(plan);
+    } else if (ecosystem === 'python') {
+      console.log('\n[3/5] Verifying versions against PyPI...');
+      const { verifyPlanVersions: verifyPyPI } = require('./src/ecosystems/python/registry');
+      plan = await verifyPyPI(plan);
+    } else if (ecosystem === 'go') {
+      console.log('\n[3/5] Verifying versions against Go module proxy...');
+      const { verifyPlanVersions: verifyGo } = require('./src/ecosystems/go/registry');
+      plan = await verifyGo(plan);
     } else {
       console.log('\n[3/5] Verifying versions against npm registry...');
       plan = await verifyNpm(plan);
@@ -504,7 +551,8 @@ async function main() {
 
     for (const item of plan) {
       if (item.registryExists === false && item.phase !== 'C') {
-        console.log(`  ⚠  ${item.libraryName}: ${item.recommendedVersion} not found on ${ecosystem === 'maven' ? 'Maven Central' : 'npm'} — escalating to Phase C`);
+        const regName = { maven: 'Maven Central', python: 'PyPI', go: 'Go module proxy' }[ecosystem] || 'npm';
+        console.log(`  ⚠  ${item.libraryName}: ${item.recommendedVersion} not found on ${regName} — escalating to Phase C`);
         item.phase         = 'C';
         item.justification = `Recommended version ${item.recommendedVersion} is not published. No verified fix available in the ${semver.major(item.currentVersion)}.x range.`;
       }
@@ -557,13 +605,11 @@ async function main() {
       }
     }
 
-    // Parent upgrade exploration — for MAJOR_BUMP Phase C items, check whether
-    // upgrading a root parent within its already-allowed semver range would
-    // transitively pull in a safe version of the vulnerable child package.
-    // Only runs when --verify-versions is set (makes registry calls).
-    if (verifyVersions) {
+    // Parent upgrade exploration — npm only; Python/Go do not have the same
+    // transitive dependency graph model and the explorer is npm-specific.
+    if (verifyVersions && ecosystem === 'npm') {
       console.log('\n[4b/5] Exploring parent upgrade paths...');
-      await exploreParentUpgrades(phasedPlan, ecosystem, packageJsonPath, lockFilePath,
+      await exploreParentUpgrades(phasedPlan, 'npm', packageJsonPath, lockFilePath,
         { maxDepth, maxSimulations });
     }
   }
@@ -650,6 +696,10 @@ async function main() {
   let applyFailed;
   if (ecosystem === 'maven') {
     applyFailed = await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, reportContent);
+  } else if (ecosystem === 'python') {
+    applyFailed = await writeOutputPython(phasedPlan, phaseA, phaseB, phaseC, outDir, requirementsTxtPath, reportContent);
+  } else if (ecosystem === 'go') {
+    applyFailed = await writeOutputGo(phasedPlan, phaseA, phaseB, phaseC, outDir, goModPath, reportContent);
   } else {
     applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions, applyPhaseB);
   }
@@ -673,11 +723,11 @@ async function main() {
   // Phase B commit is opt-in via --commit-phase-b (requires --apply-phase-b).
   if (autoCommit && phaseA.length > 0) {
     const { commitPhaseA } = require('./src/core/git-commits');
-    const projectDir = packageJsonPath
-      ? path.dirname(packageJsonPath)
-      : pomXmlPath
-        ? path.dirname(pomXmlPath)
-        : process.cwd();
+    const projectDir = packageJsonPath ? path.dirname(packageJsonPath)
+      : pomXmlPath          ? path.dirname(pomXmlPath)
+      : requirementsTxtPath ? path.dirname(requirementsTxtPath)
+      : goModPath           ? path.dirname(goModPath)
+      : process.cwd();
     console.log('\nCommitting...');
     const commitResult = commitPhaseA(projectDir, phaseA, ecosystem);
     if (commitResult.success) {
@@ -689,11 +739,11 @@ async function main() {
 
   if (autoCommitPhaseB && applyPhaseB && phaseB.length > 0) {
     const { commitPhaseBC } = require('./src/core/git-commits');
-    const projectDir = packageJsonPath
-      ? path.dirname(packageJsonPath)
-      : pomXmlPath
-        ? path.dirname(pomXmlPath)
-        : process.cwd();
+    const projectDir = packageJsonPath ? path.dirname(packageJsonPath)
+      : pomXmlPath          ? path.dirname(pomXmlPath)
+      : requirementsTxtPath ? path.dirname(requirementsTxtPath)
+      : goModPath           ? path.dirname(goModPath)
+      : process.cwd();
     console.log('\nCommitting Phase B...');
     const commitResult = commitPhaseBC(projectDir, phaseB, [], ecosystem);
     if (commitResult.success) {
@@ -704,7 +754,7 @@ async function main() {
   }
 
   console.log('\nDone.');
-  printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, phaseB, phaseC, applyPhaseB);
+  printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirementsTxtPath, goModPath, phaseA, phaseB, phaseC, applyPhaseB);
 }
 
 // ---------------------------------------------------------------------------
@@ -1047,11 +1097,161 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
 }
 
 // ---------------------------------------------------------------------------
+// Python output writer
+// ---------------------------------------------------------------------------
+
+async function writeOutputPython(phasedPlan, phaseA, phaseB, phaseC, outDir, requirementsTxtPath, reportContent) {
+  const {
+    writeRequirementsPatch, applyPinsToRequirements,
+    buildManualReview, saveManifest, detectManualChanges,
+  } = require('./src/ecosystems/python/writer');
+
+  const pA = writeRequirementsPatch(phasedPlan, outDir, 'A');
+  if (pA) console.log(`  Wrote: ${pA}`);
+
+  const pB = writeRequirementsPatch(phasedPlan, outDir, 'B');
+  if (pB) console.log(`  Wrote: ${pB}`);
+
+  if (phaseC.length > 0) {
+    const p = path.join(outDir, 'manual-review.md');
+    fs.writeFileSync(p, buildManualReview(phaseC));
+    console.log(`  Wrote: ${p}`);
+  }
+
+  const reportPath = path.join(outDir, 'remediation-report.md');
+  fs.writeFileSync(reportPath, reportContent);
+  console.log(`  Wrote: ${reportPath}`);
+
+  if (!requirementsTxtPath || !fs.existsSync(requirementsTxtPath)) return false;
+  if (phaseA.length === 0) {
+    console.log(`  No Phase A fixes to apply to ${requirementsTxtPath}`);
+    return false;
+  }
+
+  const conflicts   = detectManualChanges(requirementsTxtPath, phaseA);
+  const cleanPhaseA = phaseA.filter(i => !conflicts.find(c => c.pkgName === i.libraryName));
+
+  if (conflicts.length > 0) {
+    console.log(`\n  ⚠  Skipping manually-changed entries (preserving your edits):`);
+    for (const c of conflicts) console.log(`     ${c.pkgName}: expected ${c.lastToolVersion}, currently ${c.currentVersion}`);
+  }
+  if (cleanPhaseA.length === 0) {
+    console.log(`  All Phase A entries were manually changed — nothing applied.`);
+    return false;
+  }
+
+  try {
+    applyPinsToRequirements(requirementsTxtPath, cleanPhaseA);
+    for (const item of cleanPhaseA) console.log(`  Applied: ${item.libraryName} → ${item.recommendedVersion}`);
+    console.log(`\n  Updated: ${requirementsTxtPath}`);
+
+    const { runPipInstall, verifyFixVersions: verifyPip } = require('./src/ecosystems/python/installer');
+    console.log(`\n  Running: pip install -r ${path.basename(requirementsTxtPath)}`);
+    const result = runPipInstall(path.dirname(requirementsTxtPath), requirementsTxtPath);
+    if (!result.success) {
+      console.warn(`  WARNING: pip install failed — ${(result.error || '').slice(0, 300)}`);
+    } else {
+      console.log(`  OK — dependencies installed`);
+      const mismatches = verifyPip(cleanPhaseA, path.dirname(requirementsTxtPath));
+      if (mismatches.length > 0) {
+        console.warn(`  ⚠  Version mismatches after install:`);
+        for (const m of mismatches) console.warn(`     ${m.name}: expected ${m.expected}, got ${m.actual}`);
+      } else {
+        console.log(`  Verified: ${cleanPhaseA.length} package(s) at fix version`);
+      }
+    }
+    saveManifest(outDir, cleanPhaseA);
+  } catch (err) {
+    console.error(`  ERROR during apply: ${err.message}`);
+    process.exitCode = 1;
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Go output writer
+// ---------------------------------------------------------------------------
+
+async function writeOutputGo(phasedPlan, phaseA, phaseB, phaseC, outDir, goModPath, reportContent) {
+  const {
+    writeGoModPatch, applyReplaceDirectives,
+    buildManualReview, saveManifest, detectManualChanges,
+  } = require('./src/ecosystems/go/writer');
+
+  const pA = writeGoModPatch(phasedPlan, outDir, 'A');
+  if (pA) console.log(`  Wrote: ${pA}`);
+
+  const pB = writeGoModPatch(phasedPlan, outDir, 'B');
+  if (pB) console.log(`  Wrote: ${pB}`);
+
+  if (phaseC.length > 0) {
+    const p = path.join(outDir, 'manual-review.md');
+    fs.writeFileSync(p, buildManualReview(phaseC));
+    console.log(`  Wrote: ${p}`);
+  }
+
+  const reportPath = path.join(outDir, 'remediation-report.md');
+  fs.writeFileSync(reportPath, reportContent);
+  console.log(`  Wrote: ${reportPath}`);
+
+  if (!goModPath || !fs.existsSync(goModPath)) return false;
+  if (phaseA.length === 0) {
+    console.log(`  No Phase A fixes to apply to ${goModPath}`);
+    return false;
+  }
+
+  const conflicts   = detectManualChanges(goModPath, phaseA);
+  const cleanPhaseA = phaseA.filter(i => !conflicts.find(c => c.pkgName === i.libraryName));
+
+  if (conflicts.length > 0) {
+    console.log(`\n  ⚠  Skipping manually-changed entries (preserving your edits):`);
+    for (const c of conflicts) console.log(`     ${c.pkgName}: expected ${c.lastToolVersion}, currently ${c.currentVersion}`);
+  }
+  if (cleanPhaseA.length === 0) {
+    console.log(`  All Phase A entries were manually changed — nothing applied.`);
+    return false;
+  }
+
+  try {
+    applyReplaceDirectives(goModPath, cleanPhaseA);
+    for (const item of cleanPhaseA) console.log(`  Applied: ${item.libraryName} → ${item.recommendedVersion}`);
+    console.log(`\n  Updated: ${goModPath}`);
+
+    const { runGoModTidy, runGoModVerify, verifyFixVersions: verifyGo } = require('./src/ecosystems/go/installer');
+    const projectDir = path.dirname(goModPath);
+    console.log(`\n  Running: go mod tidy`);
+    const tidyResult = runGoModTidy(projectDir);
+    if (!tidyResult.success) {
+      console.warn(`  WARNING: go mod tidy failed — ${(tidyResult.error || '').slice(0, 300)}`);
+    } else {
+      console.log(`  OK — go mod tidy succeeded`);
+      const mismatches = verifyGo(cleanPhaseA, projectDir);
+      if (mismatches.length > 0) {
+        console.warn(`  ⚠  Version mismatches after tidy:`);
+        for (const m of mismatches) console.warn(`     ${m.name}: expected ${m.expected}, got ${m.actual}`);
+      } else {
+        console.log(`  Verified: ${cleanPhaseA.length} module(s) at fix version`);
+      }
+    }
+    saveManifest(outDir, cleanPhaseA);
+  } catch (err) {
+    console.error(`  ERROR during apply: ${err.message}`);
+    process.exitCode = 1;
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Next-steps summary
 // ---------------------------------------------------------------------------
 
-function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, phaseB, phaseC, appliedPhaseB = false) {
-  const targetApplied = ecosystem === 'maven' ? pomXmlPath : packageJsonPath;
+function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, requirementsTxtPath, goModPath, phaseA, phaseB, phaseC, appliedPhaseB = false) {
+  const targetApplied = ecosystem === 'maven' ? pomXmlPath
+    : ecosystem === 'python' ? requirementsTxtPath
+    : ecosystem === 'go'     ? goModPath
+    : packageJsonPath;
   const pendingPhaseB = phaseB.length > 0 && !appliedPhaseB;
   const hasNextSteps  = !targetApplied || pendingPhaseB || phaseC.length > 0;
   if (!hasNextSteps) return;
@@ -1064,6 +1264,14 @@ function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, 
       console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-pom-patch.xml')}`);
       console.log(`  ${step++}. Add the <dependencyManagement> entries to your pom.xml`);
       console.log(`  ${step++}. Run: mvn dependency:resolve`);
+    } else if (ecosystem === 'python') {
+      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-requirements.txt')}`);
+      console.log(`  ${step++}. Merge Phase A pins into your requirements file`);
+      console.log(`  ${step++}. Run: pip install -r requirements.txt`);
+    } else if (ecosystem === 'go') {
+      console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-go-mod.txt')}`);
+      console.log(`  ${step++}. Add the replace directives to your go.mod`);
+      console.log(`  ${step++}. Run: go mod tidy`);
     } else {
       console.log(`  ${step++}. Review ${path.join(outDir, 'phase-a-overrides.json')}`);
       console.log(`  ${step++}. Merge Phase A overrides into your project's package.json`);
@@ -1077,10 +1285,14 @@ function printNextSteps(ecosystem, outDir, packageJsonPath, pomXmlPath, phaseA, 
     if (hasOverrides) {
       const patchFile = ecosystem === 'maven'
         ? path.join(outDir, 'phase-b-pom-patch.xml')
-        : path.join(outDir, 'phase-b-overrides.json');
+        : ecosystem === 'python'
+          ? path.join(outDir, 'phase-b-requirements.txt')
+          : ecosystem === 'go'
+            ? path.join(outDir, 'phase-b-go-mod.txt')
+            : path.join(outDir, 'phase-b-overrides.json');
       console.log(`  ${step++}. Review ${patchFile} — then re-run with --apply-phase-b to auto-apply`);
     }
-    if (hasParentUpgrades && ecosystem !== 'maven') {
+    if (hasParentUpgrades && ecosystem === 'npm') {
       console.log(`  ${step++}. Review ${path.join(outDir, 'phase-b-parent-upgrades.json')} — then re-run with --apply-phase-b to auto-apply parent bumps`);
     }
   }
