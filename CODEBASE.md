@@ -63,6 +63,7 @@ lockfile update + verification
 |------|---------|---------|
 | `index.js` | `detectProvider(filePath)`, `getParser(provider)` | Auto-detect report format; return parser module |
 | `mend.js` | `parseReport(filePath)` → `LibraryEntry[]` | Parse Mend JSON + Excel reports |
+| `snyk.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isSnykFormat(data)` → `bool` | Parse Snyk JSON reports (standard + all-projects shapes) |
 | `github.js` | `fetchRenovatePRs(org,repo,token)`, `postComment(...)`, `closePR(...)` | GitHub API for Renovate PR workflow |
 
 ### src/core/

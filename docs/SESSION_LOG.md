@@ -4,6 +4,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — Phase 2 entry: Snyk provider
+
+**Before:** Only Mend JSON/Excel supported. `providers/index.js` had no Snyk detection; all JSON fell through to mend parser.
+**Changes:**
+- New `src/providers/snyk.js` — `parseReport(filePath)` handles 3 Snyk output shapes (standard `snyk test --json`, `--all-projects`, flat array); `isSnykFormat(data)` for auto-detection. Groups vulnerabilities by `packageName@version`, deduplicates CVE ids, prefers real CVE ids over Snyk advisory IDs, normalises severity to uppercase.
+- `src/providers/index.js` — Snyk detection wired before Mend fallback; Snyk registered in `PROVIDERS` map.
+- New test fixtures: `tests/fixtures/snyk-report-standard.json`, `tests/fixtures/snyk-report-all-projects.json`
+- New `tests/providers/snyk.test.js` — 20 tests covering detection, shape variants, CVE dedup, edge cases.
+- 106/106 tests pass; baseline A:5 B:0 C:3 confirmed.
+**Next:** Dependabot provider (`src/providers/dependabot.js`), then npm-audit provider.
+
 ## 2026-08-12 — Phase B auto-apply via --apply-phase-b flag
 
 **Before:** `mendfix apply` only auto-applied Phase A overrides/direct upgrades. Phase B files were written but never applied to package.json — users had to apply them manually.

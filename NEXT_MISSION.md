@@ -62,9 +62,25 @@ All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 
 
 ---
 
-## Next: Phase 2 entry — Universal Finding Engine
+## Phase 2 — Universal Finding Engine (in progress)
 
-**All Phase 1 + Phase 1.x criteria met as of 2026-08-12.**
+### ✅ Step 1: Snyk provider — DONE 2026-08-12
+
+- `src/providers/snyk.js` — `parseReport(filePath)` + `isSnykFormat(data)`
+- Supports 3 Snyk output shapes: standard `snyk test --json`, `--all-projects`, flat array
+- `src/providers/index.js` — Snyk detection wired before Mend fallback
+- 20 new tests in `tests/providers/snyk.test.js`; 106/106 total passing; baseline A:5 B:0 C:3 confirmed
+
+### Next: Dependabot provider
+
+- Create `src/providers/dependabot.js` implementing `parse(filePath) → LibraryEntry[]`
+- Dependabot alert JSON format: `{ number, state, security_advisory, security_vulnerability, ... }`
+- Register in `index.js`; detection: `data[0].security_advisory` or `data.security_advisory`
+
+### Then: npm-audit provider
+
+- `src/providers/npm-audit.js` — parse `npm audit --json` output
+- Format: `{ vulnerabilities: { [name]: { severity, via[], fixAvailable, ... } } }`
 
 ---
 
