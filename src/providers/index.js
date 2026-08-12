@@ -3,24 +3,28 @@
 const path = require('path');
 const fs   = require('fs');
 
-const snyk      = require('./snyk');
-const npmAudit  = require('./npm-audit');
+const snyk       = require('./snyk');
+const npmAudit   = require('./npm-audit');
 const dependabot = require('./dependabot');
-const owasp     = require('./owasp');
+const owasp      = require('./owasp');
+const osv        = require('./osv');
+const trivy      = require('./trivy');
 
 /**
  * Auto-detect vulnerability report provider from file format.
  *
- * Detection order (most specific first to avoid false matches):
- *   1. .xlsx / .xls           → mend
- *   2. npm audit JSON          → npm-audit   (auditReportVersion or advisories+metadata)
- *   3. Dependabot alerts JSON  → dependabot  (array of {security_advisory, dependency})
- *   4. OWASP Dep-Check JSON    → owasp       (reportSchema + dependencies[])
- *   5. Snyk JSON               → snyk        (packageManager or vulnerabilities with fixedIn)
- *   6. Mend vulnerabilities[]  → mend
- *   7. default                 → mend
+ * Detection order (most-specific fingerprint first):
+ *   1. .xlsx / .xls             → mend
+ *   2. Trivy JSON               → trivy      (SchemaVersion: number, Results: array)
+ *   3. npm audit JSON           → npm-audit  (auditReportVersion or advisories+metadata)
+ *   4. Dependabot alerts JSON   → dependabot (array of {security_advisory, dependency})
+ *   5. OWASP Dep-Check JSON     → owasp      (reportSchema + dependencies[])
+ *   6. OSV JSON                 → osv        (results[].packages or vulns[].affected)
+ *   7. Snyk JSON                → snyk       (packageManager or vulnerabilities with fixedIn)
+ *   8. Mend vulnerabilities[]   → mend
+ *   9. default                  → mend
  *
- * Pass provider name explicitly via --provider to skip detection.
+ * Pass --provider <name> to the CLI to skip detection entirely.
  */
 function detectProvider(filePath) {
   const ext = path.extname(filePath).toLowerCase();
@@ -31,10 +35,12 @@ function detectProvider(filePath) {
     try { data = JSON.parse(fs.readFileSync(filePath, 'utf8')); }
     catch { return 'mend'; }
 
-    if (npmAudit.isNpmAuditFormat(data))    return 'npm-audit';
+    if (trivy.isTrivyFormat(data))        return 'trivy';
+    if (npmAudit.isNpmAuditFormat(data))  return 'npm-audit';
     if (dependabot.isDependabotFormat(data)) return 'dependabot';
-    if (owasp.isOwaspFormat(data))           return 'owasp';
-    if (snyk.isSnykFormat(data))             return 'snyk';
+    if (owasp.isOwaspFormat(data))        return 'owasp';
+    if (osv.isOsvFormat(data))            return 'osv';
+    if (snyk.isSnykFormat(data))          return 'snyk';
     if (Array.isArray(data.vulnerabilities)) return 'mend';
   }
 
@@ -47,9 +53,11 @@ const PROVIDERS = {
   'npm-audit':  npmAudit,
   dependabot,
   owasp,
+  osv,
+  trivy,
 };
 
-/** Return the provider names supported for --provider flag help text. */
+/** Provider names exposed for --provider flag validation and help text. */
 const PROVIDER_NAMES = Object.keys(PROVIDERS);
 
 function getParser(provider) {

@@ -4,6 +4,16 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — OSV and Trivy providers (7 total)
+
+**Before:** 5 providers (Mend, Snyk, npm-audit, Dependabot, OWASP).
+**Changes:**
+- `src/providers/osv.js` — supports two shapes: osv-scanner JSON (`results[].packages` — version embedded) and OSV API bulk (`vulns[]` — cross-references lock file). Fix versions from SEMVER/ECOSYSTEM range events. CVE ID preference: CVE-* > GHSA-* > raw OSV id. Score from `database_specific.cvss3_score` or `database_specific.cvss.score`.
+- `src/providers/trivy.js` — Trivy JSON schema v2. Embeds `InstalledVersion` and `FixedVersion` — cleanest provider, no lock file needed. Multi-ecosystem: npm, Maven (MAVEN_ARTIFACT), Go (GO_MODULE), Python (PYTHON_PACKAGE), with unknown fallback to NODE_PACKAGED_MODULE so ecosystem layer can filter. FixedVersion handles comma-separated multi-version strings ("4.17.21, 5.0.0"). CVSS score prefers nvd V3Score.
+- `src/providers/index.js` — Trivy added first in detection order (SchemaVersion is unambiguous); OSV added after OWASP. PROVIDER_NAMES now 7.
+- 74 new tests across 2 new test files; 8 new fixtures. 208/208 pass.
+**Next:** GitLab and JFrog Xray providers (remaining gaps). Python/Go ecosystem writers.
+
 ## 2026-08-12 — Top-5 provider expansion: npm-audit, Dependabot, OWASP
 
 **Before:** Two providers (Mend + Snyk). All other industry formats unsupported.
