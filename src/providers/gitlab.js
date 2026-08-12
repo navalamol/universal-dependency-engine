@@ -1,0 +1,203 @@
+'use strict';
+
+const fs = require('fs');
+const semver = require('semver');
+
+/**
+ * Parse a GitLab Dependency Scanning JSON report into LibraryEntry[].
+ *
+ * Input: GitLab CI artifact from the `gemnasium` or `dependency_scanning` job.
+ *   `gl-dependency-scanning-report.json` — GitLab Security Report format v15+
+ *
+ * Shape:
+ *   {
+ *     version: "15.0.4",
+ *     vulnerabilities: [
+ *       {
+ *         id: "uuid",
+ *         severity: "High",
+ *         cve: "CVE-2021-23337",         // legacy top-level cve field
+ *         location: {
+ *           file: "package.json",
+ *           dependency: { package: { name: "lodash" }, version: "4.17.15" }
+ *         },
+ *         identifiers: [{ type: "cve", value: "CVE-2021-23337" }, ...],
+ *         solution: "Upgrade lodash to version 4.17.21 or above.",
+ *         cvss_v3: { base_score: 7.2 }   // present on newer reports
+ *       }
+ *     ],
+ *     remediations: [                     // top-level remediation map (newer format)
+ *       { fixes: [{ id: "vuln-uuid" }], summary: "Upgrade lodash from 4.17.15 to 4.17.21" }
+ *     ]
+ *   }
+ *
+ * Fix version sources (tried in order):
+ *   1. remediations[].summary "from X to Y" parse
+ *   2. solution field "version X.Y.Z" parse
+ *   3. identifiers[] type "remediation" or "fixed_version"
+ */
+function parseReport(filePath) {
+  const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+  const vulns        = raw.vulnerabilities || [];
+  const remediations = buildRemediationMap(raw.remediations || []);
+  const byKey        = new Map();
+
+  for (const vuln of vulns) {
+    const loc = vuln.location || {};
+    const dep = loc.dependency || {};
+    const pkg = dep.package || {};
+
+    const name    = pkg.name || vuln.packageName || '';
+    const version = dep.version || vuln.packageVersion || '';
+    if (!name || !version) continue;
+
+    const ecosystem = inferEcosystem(loc.file || '');
+    if (ecosystem && ecosystem !== 'npm' && ecosystem !== 'maven') continue;
+
+    const resolvedVersion = semver.valid(version) ||
+      semver.valid(semver.coerce(version)) ||
+      null;
+    if (!resolvedVersion) continue;
+
+    const cveId      = extractCveId(vuln);
+    const severity   = normalizeSeverity(vuln.severity);
+    const score      = extractScore(vuln);
+    const fixVersions = extractFixVersions(vuln, remediations);
+
+    const isMaven  = ecosystem === 'maven';
+    const key      = `${name}@${resolvedVersion}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        libraryKey:     key,
+        libraryName:    name,
+        groupId:        null,
+        libraryType:    isMaven ? 'MAVEN_ARTIFACT' : 'NODE_PACKAGED_MODULE',
+        currentVersion: resolvedVersion,
+        filename:       `${name}-${resolvedVersion}${isMaven ? '.jar' : '.tgz'}`,
+        dependencyFile: loc.file || (isMaven ? 'pom.xml' : 'package.json'),
+        cves:           [],
+      });
+    }
+
+    byKey.get(key).cves.push({ id: cveId, severity, score, fixVersions });
+  }
+
+  for (const entry of byKey.values()) {
+    const seen = new Set();
+    entry.cves = entry.cves.filter(c => {
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }
+
+  return [...byKey.values()].filter(e => e.cves.length > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a map of vulnerability-uuid → fixVersion from the top-level
+ * remediations array ("Upgrade lodash from 4.17.15 to 4.17.21").
+ */
+function buildRemediationMap(remediations) {
+  const map = new Map(); // vuln id → fixVersion string
+  for (const r of remediations) {
+    const fixVer = extractVersionFromSummary(r.summary || '');
+    if (!fixVer) continue;
+    for (const fix of (r.fixes || [])) {
+      if (fix.id) map.set(fix.id, fixVer);
+    }
+  }
+  return map;
+}
+
+function extractVersionFromSummary(summary) {
+  // "Upgrade X from 4.17.15 to 4.17.21" → 4.17.21
+  const toMatch = summary.match(/\bto\s+([\d.]+)/i);
+  if (toMatch) return semver.valid(semver.coerce(toMatch[1])) || null;
+  return null;
+}
+
+function extractFixVersions(vuln, remediationMap) {
+  const fixSet = new Set();
+
+  // 1. Top-level remediation map
+  const fromMap = remediationMap.get(vuln.id);
+  if (fromMap) fixSet.add(fromMap);
+
+  // 2. solution field: "Upgrade X to version Y or above."
+  const solution = vuln.solution || '';
+  const solMatch = solution.match(/version\s+([\d.]+)/i);
+  if (solMatch) {
+    const v = semver.valid(semver.coerce(solMatch[1]));
+    if (v) fixSet.add(v);
+  }
+
+  // 3. identifiers of type "remediation" or "fixed_version"
+  for (const id of (vuln.identifiers || [])) {
+    if (['remediation', 'fixed_version', 'patch'].includes((id.type || '').toLowerCase())) {
+      const v = semver.valid(semver.coerce(String(id.value)));
+      if (v) fixSet.add(v);
+    }
+  }
+
+  return [...fixSet];
+}
+
+function extractCveId(vuln) {
+  // Check identifiers array first (most reliable)
+  for (const id of (vuln.identifiers || [])) {
+    if ((id.type || '').toLowerCase() === 'cve') return (id.value || id.name || '').toUpperCase();
+  }
+  // Legacy top-level cve field
+  if (vuln.cve) return vuln.cve.toUpperCase();
+  // Fall back to GitLab vuln id
+  return `GITLAB-${(vuln.id || 'UNKNOWN').slice(0, 8).toUpperCase()}`;
+}
+
+function normalizeSeverity(raw) {
+  const map = { critical: 'CRITICAL', high: 'HIGH', medium: 'MEDIUM', low: 'LOW', info: 'LOW', unknown: 'UNKNOWN' };
+  return map[(raw || '').toLowerCase()] || 'UNKNOWN';
+}
+
+function extractScore(vuln) {
+  if (vuln.cvss_v3 && vuln.cvss_v3.base_score != null) return parseFloat(vuln.cvss_v3.base_score);
+  if (vuln.cvss_v2 && vuln.cvss_v2.base_score != null) return parseFloat(vuln.cvss_v2.base_score);
+  // identifiers may carry a CVSS score as value
+  for (const id of (vuln.identifiers || [])) {
+    if ((id.type || '').toLowerCase().includes('cvss') && !isNaN(parseFloat(id.value))) {
+      return parseFloat(id.value);
+    }
+  }
+  return 0;
+}
+
+function inferEcosystem(filePath) {
+  const f = filePath.toLowerCase();
+  if (f.endsWith('pom.xml') || f.endsWith('.gradle')) return 'maven';
+  if (f.endsWith('go.mod') || f.endsWith('go.sum')) return 'go';
+  if (f.endsWith('requirements.txt') || f.endsWith('pipfile') || f.endsWith('setup.py')) return 'python';
+  // package.json, package-lock.json, yarn.lock, Gemfile, Cargo.toml — default to npm for JS
+  return 'npm';
+}
+
+// ---------------------------------------------------------------------------
+// Format detection (called from providers/index.js)
+// ---------------------------------------------------------------------------
+
+/**
+ * Return true when the parsed JSON looks like a GitLab Security Report.
+ * Signature: { version: string, vulnerabilities: [{ location: { dependency } }] }
+ */
+function isGitlabFormat(data) {
+  if (typeof data.version !== 'string') return false;
+  if (!Array.isArray(data.vulnerabilities) || !data.vulnerabilities.length) return false;
+  const sample = data.vulnerabilities[0];
+  return Boolean(sample.location && sample.location.dependency);
+}
+
+module.exports = { parseReport, isGitlabFormat };

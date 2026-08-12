@@ -61,7 +61,7 @@ lockfile update + verification
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `index.js` | `detectProvider(filePath)`, `getParser(provider)`, `PROVIDER_NAMES` | Auto-detect report format; return parser module. 7 providers: mend, snyk, npm-audit, dependabot, owasp, osv, trivy |
+| `index.js` | `detectProvider(filePath)`, `getParser(provider)`, `PROVIDER_NAMES` | Auto-detect report format; return parser module. 9 providers: mend, snyk, npm-audit, dependabot, owasp, osv, trivy, gitlab, xray |
 | `mend.js` | `parseReport(filePath)` → `LibraryEntry[]` | Parse Mend JSON + Excel reports |
 | `snyk.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isSnykFormat(data)` → `bool` | Parse Snyk JSON reports (standard + all-projects shapes) |
 | `npm-audit.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isNpmAuditFormat(data)` → `bool` | Parse `npm audit --json` output (v1 npm 6 advisories shape + v2 npm 7+ vulnerabilities shape). Cross-references package-lock.json for installed versions in v2. |
@@ -69,6 +69,8 @@ lockfile update + verification
 | `owasp.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isOwaspFormat(data)` → `bool` | Parse OWASP Dependency-Check JSON report (schema 1.1). Extracts name+version from purl `pkg:npm/…@version`; fix versions from `versionEndExcluding`; supports both npm and Maven artifacts. |
 | `osv.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isOsvFormat(data)` → `bool` | Parse OSV-format reports: osv-scanner JSON (`results[].packages`) and OSV API bulk (`vulns[]`). osv-scanner shape embeds installed version; bulk shape cross-references lock file. Fix versions from SEMVER/ECOSYSTEM range events. CVE ID preferred over GHSA over raw OSV id. |
 | `trivy.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isTrivyFormat(data)` → `bool` | Parse Trivy JSON (SchemaVersion 2). Embeds both InstalledVersion and FixedVersion — no lock file needed. Multi-ecosystem: npm, Maven, Go (GO_MODULE), Python (PYTHON_PACKAGE) all parsed; unknown ecosystem types pass through with NODE_PACKAGED_MODULE fallback. FixedVersion can be comma-separated multi-version string. |
+| `gitlab.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isGitlabFormat(data)` → `bool` | Parse GitLab Dependency Scanning JSON (gl-dependency-scanning-report.json, v15+). Ecosystem inferred from location.file (pom.xml → maven, else npm). Fix version from: top-level remediations map → solution field → identifiers type=remediation. CVE from identifiers type=cve. |
+| `xray.js` | `parseReport(filePath)` → `LibraryEntry[]`, `isXrayFormat(data)` → `bool` | Parse JFrog Xray JSON. Installed version embedded in component_id purl: npm://name:ver, gav://group:artifact:ver, pypi://name:ver, go://module@ver. Fix versions from components[].fixed_versions[]. No lock file needed. |
 | `github.js` | `fetchRenovatePRs(org,repo,token)`, `postComment(...)`, `closePR(...)` | GitHub API for Renovate PR workflow |
 
 ### src/core/
@@ -234,9 +236,10 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/integration/regression-mend-report.test.js` | End-to-end: parse → resolve → phase → report. Baseline: A:5 B:0 C:3 |
 | `tests/providers/providers-new.test.js` | npm-audit (v1+v2), dependabot, owasp parsers + format detection + detectProvider routing |
 | `tests/providers/providers-osv-trivy.test.js` | osv (scanner + bulk shapes), trivy (npm/maven/go/python results) + detectProvider routing |
+| `tests/providers/providers-gitlab-xray.test.js` | gitlab (npm+maven, solution/remediations fix parsing), xray (npm+maven+component_id edge cases) |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **208/208 pass**
+Baseline: **238/238 pass**
 
 ---
 
@@ -249,7 +252,7 @@ Baseline: **208/208 pass**
 | Maven dep-tree.js | ✅ DONE 2026-08-12 |
 | Scenario 14: `enrichWithConfidence` into mendfix CLI path | ✅ DONE 2026-08-12 |
 
-**Next:** 7 industry providers shipped (Mend, Snyk, npm-audit, Dependabot, OWASP, OSV, Trivy). GitLab and JFrog Xray providers are the remaining gap. Python/Go ecosystem writers are the next major expansion.
+**Next:** All 9 providers shipped. The remaining work is ecosystem writers: Python (`src/ecosystems/python/`) and Go (`src/ecosystems/go/`) — lock parser, writer, registry, and installer per ecosystem.
 
 ---
 

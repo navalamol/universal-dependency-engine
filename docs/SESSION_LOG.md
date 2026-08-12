@@ -4,6 +4,16 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-12 — GitLab + Xray providers (9 total)
+
+**Before:** 7 providers.
+**Changes:**
+- `src/providers/gitlab.js` — GitLab Dependency Scanning report (v15+ JSON). Ecosystem inferred from location.file. Fix version resolved in priority order: top-level remediations map → solution text regex → identifiers type=remediation. CVE from identifiers type=cve, then legacy top-level `cve` field.
+- `src/providers/xray.js` — JFrog Xray JSON. component_id purl parsed: `npm://name:ver`, `gav://group:artifact:ver`, `pypi://name:ver`, `go://module@ver`. Installed version embedded — no lock file needed. Handles trailing colons in npm scheme. Fix versions from fixed_versions[] directly.
+- `src/providers/index.js` — Xray added after Trivy (both use numeric schema fields but shape is distinct); GitLab after OSV (version string collision with Mend avoided by requiring location.dependency). PROVIDER_NAMES = 9.
+- 30 new tests. 238/238 pass.
+**Next:** Python and Go ecosystem writers.
+
 ## 2026-08-12 — OSV and Trivy providers (7 total)
 
 **Before:** 5 providers (Mend, Snyk, npm-audit, Dependabot, OWASP).

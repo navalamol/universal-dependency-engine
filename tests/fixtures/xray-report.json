@@ -1,0 +1,63 @@
+{
+  "total_count": 3,
+  "data": [
+    {
+      "severity": "High",
+      "summary": "Command Injection in lodash",
+      "issue_id": "XRAY-123456",
+      "cves": [
+        {
+          "cve": "CVE-2021-23337",
+          "cvss_v3_score": "7.2",
+          "cvss_v3_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+        }
+      ],
+      "components": [
+        {
+          "component_id": "npm://lodash:4.17.15",
+          "package_type": "npm",
+          "fixed_versions": ["4.17.21"],
+          "infected_versions": ["[0.0.0,4.17.21)"]
+        }
+      ]
+    },
+    {
+      "severity": "Critical",
+      "summary": "Prototype Pollution in minimist",
+      "issue_id": "XRAY-789012",
+      "cves": [
+        {
+          "cve": "CVE-2020-7598",
+          "cvss_v3_score": "9.8"
+        }
+      ],
+      "components": [
+        {
+          "component_id": "npm://minimist:1.2.0",
+          "package_type": "npm",
+          "fixed_versions": ["1.2.6"],
+          "infected_versions": ["[0,1.2.6)"]
+        }
+      ]
+    },
+    {
+      "severity": "Medium",
+      "summary": "Path traversal in commons-io",
+      "issue_id": "XRAY-345678",
+      "cves": [
+        {
+          "cve": "CVE-2021-29425",
+          "cvss_v3_score": "5.3"
+        }
+      ],
+      "components": [
+        {
+          "component_id": "gav://org.apache.commons:commons-lang3:3.9.0",
+          "package_type": "maven",
+          "fixed_versions": ["3.12.0"],
+          "infected_versions": ["[0,3.12.0)"]
+        }
+      ]
+    }
+  ]
+}

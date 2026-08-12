@@ -1,0 +1,65 @@
+{
+  "version": "15.0.4",
+  "vulnerabilities": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "cve": "CVE-2021-23337",
+      "severity": "High",
+      "confidence": "High",
+      "scanner": { "id": "gemnasium", "name": "Gemnasium" },
+      "location": {
+        "file": "package.json",
+        "dependency": {
+          "package": { "name": "lodash" },
+          "version": "4.17.15"
+        }
+      },
+      "identifiers": [
+        { "type": "cve", "name": "CVE-2021-23337", "value": "CVE-2021-23337" },
+        { "type": "gemnasium", "name": "Gemnasium-lodash-123", "value": "lodash-123" }
+      ],
+      "solution": "Upgrade lodash to version 4.17.21 or above.",
+      "cvss_v3": { "base_score": 7.2 }
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "severity": "Critical",
+      "scanner": { "id": "gemnasium", "name": "Gemnasium" },
+      "location": {
+        "file": "package.json",
+        "dependency": {
+          "package": { "name": "minimist" },
+          "version": "1.2.0"
+        }
+      },
+      "identifiers": [
+        { "type": "cve", "name": "CVE-2020-7598", "value": "CVE-2020-7598" }
+      ],
+      "solution": "Upgrade minimist to version 1.2.6 or above.",
+      "cvss_v3": { "base_score": 9.8 }
+    },
+    {
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "severity": "Medium",
+      "scanner": { "id": "gemnasium", "name": "Gemnasium" },
+      "location": {
+        "file": "pom.xml",
+        "dependency": {
+          "package": { "name": "commons-lang3" },
+          "version": "3.9"
+        }
+      },
+      "identifiers": [
+        { "type": "cve", "name": "CVE-2021-29425", "value": "CVE-2021-29425" }
+      ],
+      "solution": "Upgrade commons-lang3 to version 3.12.0 or above.",
+      "cvss_v3": { "base_score": 5.3 }
+    }
+  ],
+  "remediations": [
+    {
+      "fixes": [{ "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }],
+      "summary": "Upgrade lodash from 4.17.15 to 4.17.21"
+    }
+  ]
+}

@@ -253,14 +253,14 @@ describe('detectProvider for trivy', () => {
 });
 
 // ============================================================================
-// PROVIDER_NAMES — now 7 providers
+// PROVIDER_NAMES — now 9 providers
 // ============================================================================
 
-describe('PROVIDER_NAMES (all 7)', () => {
-  test('exports all 7 provider names', () => {
+describe('PROVIDER_NAMES (all 9)', () => {
+  test('exports all 9 provider names', () => {
     expect(PROVIDER_NAMES).toEqual(
-      expect.arrayContaining(['mend', 'snyk', 'npm-audit', 'dependabot', 'owasp', 'osv', 'trivy'])
+      expect.arrayContaining(['mend', 'snyk', 'npm-audit', 'dependabot', 'owasp', 'osv', 'trivy', 'gitlab', 'xray'])
     );
-    expect(PROVIDER_NAMES.length).toBe(7);
+    expect(PROVIDER_NAMES.length).toBe(9);
   });
 });

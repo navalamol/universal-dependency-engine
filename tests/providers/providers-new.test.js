@@ -270,11 +270,11 @@ describe('detectProvider for owasp', () => {
 // ============================================================================
 
 describe('PROVIDER_NAMES', () => {
-  test('exports all 7 provider names', () => {
+  test('exports all 9 provider names', () => {
     expect(PROVIDER_NAMES).toEqual(
-      expect.arrayContaining(['mend', 'snyk', 'npm-audit', 'dependabot', 'owasp', 'osv', 'trivy'])
+      expect.arrayContaining(['mend', 'snyk', 'npm-audit', 'dependabot', 'owasp', 'osv', 'trivy', 'gitlab', 'xray'])
     );
-    expect(PROVIDER_NAMES.length).toBe(7);
+    expect(PROVIDER_NAMES.length).toBe(9);
   });
 });
 
