@@ -1,0 +1,43 @@
+{
+  "name": "mendfix-vscode",
+  "displayName": "MendFix",
+  "description": "Automated vulnerability remediation from Mend, Snyk, Dependabot and more",
+  "version": "0.1.0",
+  "publisher": "mendfix",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["security", "vulnerabilities", "mend", "snyk", "dependabot", "npm", "maven"],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mendfix.openPanel",
+        "title": "MendFix: Open Panel"
+      },
+      {
+        "command": "mendfix.analyzeReport",
+        "title": "MendFix: Analyze Vulnerability Report"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "mendfix.analyzeReport",
+          "when": "resourceExtname == .json",
+          "group": "mendfix"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vsce:package": "vsce package",
+    "vsce:publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^2.22.0"
+  }
+}
