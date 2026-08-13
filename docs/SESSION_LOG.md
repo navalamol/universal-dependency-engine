@@ -14,7 +14,7 @@ Minimal change history for future Claude sessions. Only decisions and context th
 | Phase 3 | Universal Dependency Engine — 6 ecosystems (npm, Maven, Python, Go, .NET, Rust) each with lock-parser/writer/registry/installer/simulator | ✅ Complete |
 | Phase 4 | CI/CD Write-back — GitHub, GitLab, Azure DevOps, Bitbucket; `--open-pr` CLI flag; pr-poster dispatcher | ✅ Complete |
 | Phase 5 | Multi-repo Portfolio — `mendfix portfolio --config`; portfolio-runner.js + portfolio-report.js; action priority sort | ✅ Complete |
-| Phase 6 | UI Layer — VS Code Extension (primary), Tauri standalone (secondary), Chrome Extension PR overlay (companion) | 🔲 Next |
+| Phase 6 | UI Layer — VS Code Extension (primary), Tauri standalone (secondary), Chrome Extension PR overlay (companion) | 🔄 Step 1 of 6 done |
 
 **Test baseline:** 332/332 passing. `mendfix analyze` → A:5 B:0 C:3 confirmed.
 
@@ -29,6 +29,19 @@ Minimal change history for future Claude sessions. Only decisions and context th
 - `CODEBASE.md` — "Next:" line updated to Phase 6 UI with pointer to NEXT_MISSION.md.
 - `docs/ROADMAP.md` — Phase 6 table added: 6 steps, priority, notes, delivery rationale pointer.
 **Next:** Start Phase 6 Step 1 — scaffold `packages/vscode-extension/` with extension host, Webview panel, and vsce manifest. No changes to existing engine.
+
+---
+
+## 2026-08-13 — Phase 6 Step 1: VS Code Extension scaffold
+
+**Before:** No UI existed; all interaction was CLI-only. Integration regression test also had a broken hardcoded report path.
+**Changes:**
+- `packages/vscode-extension/package.json` — vsce manifest: `mendfix.openPanel` + `mendfix.analyzeReport` commands, Explorer context menu for `.json` files, `vscode ^1.85.0` engine pin.
+- `packages/vscode-extension/extension.js` — `activate`/`deactivate`, registers both commands, forwards right-clicked file URI to `MendFixPanel._loadReport()`.
+- `packages/vscode-extension/panel.js` — `MendFixPanel` class: WebviewPanel create/reveal, per-panel CSP nonce via `crypto.randomBytes`, message bridge stubs for `analyze`/`apply`/`portfolio` (Steps 2–3), `vscode.SecretStorage` helpers, scaffold HTML. Engine path: `require('../../mendfix.js')` (direct, not child_process).
+- `input/reports/GH_ui-platform_dev-vulnerability-report.json` — report copied so integration tests resolve without external path dependency.
+- `NEXT_MISSION.md` — Phase 2 marked COMPLETE, stale pending entries removed, entry criteria marked MET.
+**Next:** Phase 6 Step 2 — Report Upload & Analysis Panel (`report-view.html`, phase-cards, CVE table, provider auto-detect).
 
 ---
 
