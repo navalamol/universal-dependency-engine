@@ -56,12 +56,90 @@
         "mendfix.outDir": {
           "type": "string",
           "default": "./mendfix-output",
-          "description": "Directory for remediation output files (overrides, reports, graph-diff)."
+          "description": "Directory for remediation output files (overrides, reports, graph-diff). Maps to CLI --out-dir."
         },
         "mendfix.verifyVersions": {
           "type": "boolean",
           "default": false,
-          "description": "Check npm registry for version existence before recommending. Slower but more accurate."
+          "description": "Query the npm/Maven registry to confirm recommended versions exist before displaying them. Adds 2–5s per analysis. Maps to CLI --verify-versions."
+        },
+        "mendfix.packageJson": {
+          "type": "string",
+          "default": "",
+          "description": "(npm) Path to the package.json to patch with overrides. When set, the panel pre-fills the Repo target picker. Maps to CLI --package-json."
+        },
+        "mendfix.lockFile": {
+          "type": "string",
+          "default": "",
+          "description": "(npm) Path to package-lock.json. Enables dep-tree features: consumer range validation, dev/runtime chain classification, parent upgrade recommendations. Maps to CLI --lock-file."
+        },
+        "mendfix.pomXml": {
+          "type": "string",
+          "default": "",
+          "description": "(Maven) Path to pom.xml to patch with <dependencyManagement> entries. Maps to CLI --pom-xml."
+        },
+        "mendfix.ecosystem": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "npm", "maven", "python", "go", "dotnet", "rust"],
+          "enumDescriptions": [
+            "Auto-detect from report library types",
+            "npm — package.json + package-lock.json",
+            "Maven — pom.xml",
+            "Python — requirements.txt",
+            "Go — go.mod",
+            ".NET — Directory.Packages.props / .csproj",
+            "Rust — Cargo.toml"
+          ],
+          "description": "Override ecosystem detection. Maps to CLI --ecosystem."
+        },
+        "mendfix.applyPhaseB": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also apply Phase B overrides (multiple same-major versions or forced overrides). Review the generated phase-b-overrides.json before applying. Maps to CLI --apply-phase-b."
+        },
+        "mendfix.autoCommit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-commit Phase A fixes after a successful install. The working tree must be clean before apply. Maps to CLI --commit."
+        },
+        "mendfix.autoCommitPhaseB": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-commit Phase B fixes. Requires mendfix.applyPhaseB to also be enabled. Maps to CLI --commit-phase-b."
+        },
+        "mendfix.dryRun": {
+          "type": "boolean",
+          "default": false,
+          "description": "Print the remediation plan only — write nothing to disk and run no installs. Maps to CLI --dry-run."
+        },
+        "mendfix.verbose": {
+          "type": "boolean",
+          "default": false,
+          "description": "Print the Safety Gate pre-edit checklist for every item during apply. Maps to CLI --verbose."
+        },
+        "mendfix.openPr": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open a PR/MR on the CI/CD platform after a successful apply. Requires mendfix.platform and a stored platform token. Maps to CLI --open-pr."
+        },
+        "mendfix.platform": {
+          "type": "string",
+          "default": "",
+          "enum": ["", "github", "gitlab", "azuredevops", "bitbucket"],
+          "enumDescriptions": [
+            "Not configured",
+            "GitHub — requires GITHUB_TOKEN stored in SecretStorage",
+            "GitLab — requires GITLAB_TOKEN stored in SecretStorage",
+            "Azure DevOps — requires AZURE_DEVOPS_TOKEN stored in SecretStorage",
+            "Bitbucket — requires BITBUCKET_TOKEN stored in SecretStorage"
+          ],
+          "description": "CI/CD platform for --open-pr. Platform tokens are stored securely via VS Code SecretStorage, not in settings. Maps to CLI --platform."
+        },
+        "mendfix.prBase": {
+          "type": "string",
+          "default": "main",
+          "description": "Target/base branch for the opened PR. Maps to CLI --pr-base."
         }
       }
     }

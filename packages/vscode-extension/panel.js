@@ -7,8 +7,7 @@ const path = require('path');
 const PROVIDERS_PATH   = path.join(__dirname, '../../src/providers/index.js');
 const SEMVER_PATH      = path.join(__dirname, '../../src/core/semver-engine.js');
 const PHASES_PATH      = path.join(__dirname, '../../src/core/phases.js');
-
-console.log(PROVIDERS_PATH, path, __dirname)
+const REGISTRY_PATH    = path.join(__dirname, '../../src/ecosystems/npm/registry.js');
 
 class MendFixViewProvider {
   static viewType = 'mendfix.panel';
@@ -29,7 +28,8 @@ class MendFixViewProvider {
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          // Webview finished loading — deliver any pending file from right-click
+          // Send workspace settings so UI pre-fills, then deliver any pending right-click file
+          this._sendInit();
           if (this._pendingFile) {
             this._view.webview.postMessage({ type: 'filePicked', path: this._pendingFile });
             this._pendingFile = undefined;
@@ -38,11 +38,17 @@ class MendFixViewProvider {
         case 'browse':
           await this._handleBrowse();
           break;
+        case 'browsePkg':
+          await this._handleBrowseFile('packageJson', ['package.json'], 'Select package.json');
+          break;
+        case 'browseLock':
+          await this._handleBrowseFile('lockFile', ['package-lock.json'], 'Select package-lock.json');
+          break;
         case 'analyze':
           await this._handleAnalyze(msg.reportPath, msg.verifyVersions);
           break;
         case 'openSettings':
-          vscode.commands.executeCommand('workbench.action.openSettings', 'mendfix');
+          vscode.commands.executeCommand('workbench.action.openSettings', '@ext:mendfix.mendfix-vscode');
           break;
       }
     });
@@ -61,6 +67,30 @@ class MendFixViewProvider {
   // Message handlers
   // ---------------------------------------------------------------------------
 
+  /** Post current workspace settings to webview so UI fields pre-fill. */
+  _sendInit() {
+    const cfg = vscode.workspace.getConfiguration('mendfix');
+    this._view.webview.postMessage({
+      type: 'init',
+      settings: {
+        packageJson:      cfg.get('packageJson', ''),
+        lockFile:         cfg.get('lockFile', ''),
+        pomXml:           cfg.get('pomXml', ''),
+        ecosystem:        cfg.get('ecosystem', 'auto'),
+        applyPhaseB:      cfg.get('applyPhaseB', false),
+        autoCommit:       cfg.get('autoCommit', false),
+        autoCommitPhaseB: cfg.get('autoCommitPhaseB', false),
+        dryRun:           cfg.get('dryRun', false),
+        verbose:          cfg.get('verbose', false),
+        openPr:           cfg.get('openPr', false),
+        platform:         cfg.get('platform', ''),
+        prBase:           cfg.get('prBase', 'main'),
+        outDir:           cfg.get('outDir', './mendfix-output'),
+        verifyVersions:   cfg.get('verifyVersions', false),
+      },
+    });
+  }
+
   async _handleBrowse() {
     const uris = await vscode.window.showOpenDialog({
       canSelectMany: false,
@@ -69,6 +99,18 @@ class MendFixViewProvider {
     });
     if (uris && uris[0]) {
       this._view.webview.postMessage({ type: 'filePicked', path: uris[0].fsPath });
+    }
+  }
+
+  /** Generic file picker for repo target fields (packageJson, lockFile). */
+  async _handleBrowseFile(field, fileNames, label) {
+    const uris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      filters: { [label]: fileNames },
+      openLabel: label,
+    });
+    if (uris && uris[0]) {
+      this._view.webview.postMessage({ type: 'fieldPicked', field, path: uris[0].fsPath });
     }
   }
 
@@ -84,7 +126,14 @@ class MendFixViewProvider {
       const provider = detectProvider(reportPath);
       const parser   = getParser(provider);
       const entries  = parser.parseReport(reportPath);
-      const plan        = buildResolutionPlan(entries);
+      let plan       = buildResolutionPlan(entries);
+
+      // Registry verification is a separate post-build step (mirrors mendfix.js line 713)
+      if (verifyVersions) {
+        const { verifyPlanVersions } = require(REGISTRY_PATH);
+        plan = await verifyPlanVersions(plan);
+      }
+
       const phasedItems = applyPhases(plan, null);
 
       const phaseA = phasedItems.filter(i => i.phase === 'A');
@@ -316,6 +365,35 @@ class MendFixViewProvider {
     .sev-low      { background: rgba(100,180,100,0.2); color: var(--vscode-testing-iconPassed, #3fb950); }
     .sev-unknown  { background: rgba(128,128,128,0.2); color: var(--vscode-descriptionForeground); }
 
+    /* ── Repo target section ─────────────────────────────────── */
+    .collapsible-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--vscode-descriptionForeground);
+      padding: 4px 0;
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, rgba(128,128,128,0.2)));
+      margin-bottom: 6px;
+      user-select: none;
+    }
+    .collapsible-header:hover { color: var(--vscode-foreground); }
+    .chevron { font-style: normal; transition: transform 0.15s; display: inline-block; }
+    .chevron.open { transform: rotate(90deg); }
+
+    select {
+      width: 100%;
+      background: var(--vscode-dropdown-background);
+      color: var(--vscode-dropdown-foreground);
+      border: 1px solid var(--vscode-dropdown-border, transparent);
+      border-radius: 2px;
+      padding: 3px 6px;
+      font-size: 0.88em;
+      font-family: inherit;
+    }
+
     .settings-link {
       font-size: 0.8em;
       color: var(--vscode-textLink-foreground);
@@ -332,7 +410,7 @@ class MendFixViewProvider {
 </head>
 <body>
 
-  <!-- File picker -->
+  <!-- Report file picker -->
   <div class="section">
     <div class="label">Vulnerability report</div>
     <div class="file-row">
@@ -341,7 +419,7 @@ class MendFixViewProvider {
     </div>
   </div>
 
-  <!-- Options -->
+  <!-- Verify versions -->
   <div class="section">
     <label class="checkbox-label">
       <input type="checkbox" id="verifyVersions">
@@ -351,6 +429,63 @@ class MendFixViewProvider {
 
   <!-- Action -->
   <button id="analyzeBtn" class="primary-btn" disabled>Analyze</button>
+
+  <!-- ── Repo target (collapsible) ─────────────────────────── -->
+  <div class="collapsible-header" id="repoHeader">
+    <span class="chevron" id="repoChevron">&#9654;</span> Repo target
+  </div>
+  <div id="repoBody" class="hidden">
+
+    <!-- package.json -->
+    <div class="section">
+      <div class="label">package.json <span style="opacity:0.6">(npm)</span></div>
+      <div class="file-row">
+        <span id="pkgName" class="file-name">Not set</span>
+        <button id="browsePkgBtn" class="secondary">Browse</button>
+      </div>
+    </div>
+
+    <!-- lock file -->
+    <div class="section">
+      <div class="label">package-lock.json <span style="opacity:0.6">(enables dep-tree)</span></div>
+      <div class="file-row">
+        <span id="lockName" class="file-name">Not set</span>
+        <button id="browseLockBtn" class="secondary">Browse</button>
+      </div>
+    </div>
+
+    <!-- Ecosystem -->
+    <div class="section">
+      <div class="label">Ecosystem</div>
+      <select id="ecosystem">
+        <option value="auto">Auto-detect</option>
+        <option value="npm">npm</option>
+        <option value="maven">Maven</option>
+        <option value="python">Python</option>
+        <option value="go">Go</option>
+        <option value="dotnet">.NET</option>
+        <option value="rust">Rust</option>
+      </select>
+    </div>
+
+    <!-- Apply Phase B -->
+    <div class="section">
+      <label class="checkbox-label">
+        <input type="checkbox" id="applyPhaseB">
+        Apply Phase B (review first)
+      </label>
+    </div>
+
+    <!-- Dry run -->
+    <div class="section">
+      <label class="checkbox-label">
+        <input type="checkbox" id="dryRun">
+        Dry run (analyze only, no writes)
+      </label>
+    </div>
+
+  </div>
+  <!-- end repo target -->
 
   <!-- Status -->
   <div id="status" class="status hidden">
@@ -384,11 +519,13 @@ class MendFixViewProvider {
     <div id="libList"></div>
   </div>
 
-  <a class="settings-link hidden" id="settingsLink">⚙ MendFix settings</a>
+  <a class="settings-link" id="settingsLink">⚙ MendFix settings</a>
 
   <script>
     const vscode = acquireVsCodeApi();
     let selectedPath = '';
+    let pkgPath  = '';
+    let lockPath = '';
 
     const browseBtn    = document.getElementById('browseBtn');
     const analyzeBtn   = document.getElementById('analyzeBtn');
@@ -396,13 +533,28 @@ class MendFixViewProvider {
     const statusEl     = document.getElementById('status');
     const resultsEl    = document.getElementById('results');
     const settingsLink = document.getElementById('settingsLink');
+    const repoHeader   = document.getElementById('repoHeader');
+    const repoBody     = document.getElementById('repoBody');
+    const repoChevron  = document.getElementById('repoChevron');
+
+    // Collapsible repo target
+    repoHeader.addEventListener('click', () => {
+      const open = !repoBody.classList.contains('hidden');
+      if (open) { hide(repoBody); repoChevron.classList.remove('open'); }
+      else      { show(repoBody); repoChevron.classList.add('open'); }
+    });
 
     browseBtn.addEventListener('click', () => vscode.postMessage({ type: 'browse' }));
+    document.getElementById('browsePkgBtn').addEventListener('click',
+      () => vscode.postMessage({ type: 'browsePkg' }));
+    document.getElementById('browseLockBtn').addEventListener('click',
+      () => vscode.postMessage({ type: 'browseLock' }));
+
     analyzeBtn.addEventListener('click', () => {
       if (!selectedPath) return;
       vscode.postMessage({
         type: 'analyze',
-        reportPath: selectedPath,
+        reportPath:     selectedPath,
         verifyVersions: document.getElementById('verifyVersions').checked,
       });
     });
@@ -415,6 +567,34 @@ class MendFixViewProvider {
       analyzeBtn.disabled = false;
       hide(statusEl);
       hide(resultsEl);
+    }
+
+    function setField(field, fsPath) {
+      if (field === 'packageJson') {
+        pkgPath = fsPath;
+        const el = document.getElementById('pkgName');
+        el.textContent = fsPath.split(/[\\/]/).pop();
+        el.title = fsPath;
+      } else if (field === 'lockFile') {
+        lockPath = fsPath;
+        const el = document.getElementById('lockName');
+        el.textContent = fsPath.split(/[\\/]/).pop();
+        el.title = fsPath;
+      }
+    }
+
+    function applyInit(s) {
+      if (s.packageJson)  setField('packageJson', s.packageJson);
+      if (s.lockFile)     setField('lockFile', s.lockFile);
+      if (s.ecosystem)    document.getElementById('ecosystem').value = s.ecosystem;
+      if (s.applyPhaseB)  document.getElementById('applyPhaseB').checked = s.applyPhaseB;
+      if (s.dryRun)       document.getElementById('dryRun').checked = s.dryRun;
+      if (s.verifyVersions) document.getElementById('verifyVersions').checked = s.verifyVersions;
+      // Auto-expand repo section if any repo target is already set
+      if (s.packageJson || s.lockFile) {
+        show(repoBody);
+        repoChevron.classList.add('open');
+      }
     }
 
     function show(el) { el.classList.remove('hidden'); }
@@ -454,10 +634,9 @@ class MendFixViewProvider {
     window.addEventListener('message', (event) => {
       const msg = event.data;
 
-      if (msg.type === 'filePicked') {
-        setFile(msg.path);
-        return;
-      }
+      if (msg.type === 'init')        { applyInit(msg.settings); return; }
+      if (msg.type === 'filePicked')  { setFile(msg.path); return; }
+      if (msg.type === 'fieldPicked') { setField(msg.field, msg.path); return; }
 
       if (msg.type === 'thinking') {
         analyzeBtn.disabled = true;
@@ -472,8 +651,8 @@ class MendFixViewProvider {
         analyzeBtn.disabled = false;
         hide(statusEl);
         const d = msg.data;
-        document.getElementById('libCount').textContent  = d.totalLibraries;
-        document.getElementById('cveCount').textContent  = d.totalCVEs;
+        document.getElementById('libCount').textContent    = d.totalLibraries;
+        document.getElementById('cveCount').textContent    = d.totalCVEs;
         document.getElementById('phaseACount').textContent = d.phaseA.length;
         document.getElementById('phaseBCount').textContent = d.phaseB.length;
         document.getElementById('phaseCCount').textContent = d.phaseC.length;
@@ -482,7 +661,6 @@ class MendFixViewProvider {
           renderLibSection('Phase B — Review first', d.phaseB) +
           renderLibSection('Phase C — Manual review', d.phaseC);
         show(resultsEl);
-        show(settingsLink);
         return;
       }
 

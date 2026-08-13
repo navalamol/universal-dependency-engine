@@ -499,6 +499,9 @@
 
     <div class="nav-group">
       <span class="nav-group-label">For Contributors</span>
+      <a class="nav-link" href="#whatchanged">What Changed &amp; Why</a>
+      <a class="nav-link" href="#applyworkflow">Apply Workflow</a>
+      <a class="nav-link" href="#allflags">All Settings / Flags</a>
       <a class="nav-link" href="#architecture">Architecture</a>
       <a class="nav-link" href="#devsetup">Dev Setup</a>
       <a class="nav-link" href="#roadmap">Roadmap</a>
@@ -1033,6 +1036,268 @@ npm test</code></pre>
           The engine (<code>src/core/</code>, <code>src/providers/</code>,
           <code>src/ecosystems/</code>) is frozen — no changes in any Phase 6 step.
           UI, integrations, and automation build on top of the existing deterministic capabilities.
+        </div>
+      </div>
+    </section>
+
+    <!-- What changed and why -->
+    <section class="doc-section" id="whatchanged">
+      <h2>What Changed &amp; Why (scaffold → rework)</h2>
+
+      <p>
+        The original scaffold used the wrong VS Code panel API. The rework corrected three distinct
+        problems. Each is explained below so future contributors understand the decisions.
+      </p>
+
+      <h3>1. WebviewPanel → WebviewViewProvider</h3>
+      <p>
+        The scaffold created a <code>WebviewPanel</code> — a floating tab in the editor area that
+        VS Code only shows when code explicitly calls <code>createWebviewPanel()</code>. There was
+        no Activity Bar icon, no persistent sidebar location, and the panel vanished when the user
+        switched tabs. The correct API for a persistent sidebar tool is
+        <code>WebviewViewProvider</code>, registered against a view declared in
+        <code>contributes.views</code>. VS Code then manages the panel's lifecycle: it appears as
+        the shield icon in the Activity Bar, persists across tab switches, and reopens
+        automatically after a window reload.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Scaffold (wrong)</th><th>Rework (correct)</th></tr></thead>
+          <tbody>
+            <tr><td><code>vscode.window.createWebviewPanel()</code></td><td><code>window.registerWebviewViewProvider()</code></td></tr>
+            <tr><td>No Activity Bar icon</td><td>Shield icon via <code>contributes.viewsContainers.activitybar</code></td></tr>
+            <tr><td>Tab panel, disappears on tab switch</td><td>Sidebar panel, always accessible</td></tr>
+            <tr><td>No <code>contributes.views</code> declaration</td><td>View declared with <code>type: "webview"</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>2. Wrong provider API: <code>parseReport</code> → <code>detectProvider + getParser</code></h3>
+      <p>
+        The scaffold called <code>require('src/providers/index.js').parseReport(path)</code>.
+        This function does not exist. <code>src/providers/index.js</code> exports
+        <code>{ detectProvider, getParser, PROVIDER_NAMES }</code> — the two-step auto-detection
+        API. <code>parseReport</code> lives on each individual provider module (e.g.
+        <code>mend.parseReport</code>, <code>snyk.parseReport</code>) and is accessed via
+        <code>getParser(provider).parseReport(path)</code>. The fix:
+      </p>
+      <pre><code><span class="syntax-comment">// Wrong (scaffold)</span>
+const { parseReport } = require(PROVIDERS_PATH);  <span class="syntax-comment">// ❌ undefined</span>
+
+<span class="syntax-comment">// Correct (rework)</span>
+const { detectProvider, getParser } = require(PROVIDERS_PATH);
+const provider = detectProvider(reportPath);       <span class="syntax-comment">// auto-detect: mend/snyk/npm-audit/…</span>
+const entries  = getParser(provider).parseReport(reportPath);</code></pre>
+
+      <h3>3. <code>verifyVersions</code> was received but not forwarded</h3>
+      <p>
+        The panel accepted the <code>verifyVersions</code> checkbox value from the webview but
+        never passed it to the engine. Registry verification in <code>mendfix.js</code> is a
+        separate step that runs <em>after</em> <code>buildResolutionPlan()</code> by calling
+        <code>verifyPlanVersions(plan)</code> from <code>src/ecosystems/npm/registry.js</code>.
+        The panel now replicates this:
+      </p>
+      <pre><code>let plan = buildResolutionPlan(entries);
+if (verifyVersions) {
+  const { verifyPlanVersions } = require(REGISTRY_PATH);
+  plan = await verifyPlanVersions(plan);           <span class="syntax-comment">// stamps registryExists on each item</span>
+}
+const phasedItems = applyPhases(plan, null);</code></pre>
+    </section>
+
+    <!-- Apply workflow -->
+    <section class="doc-section" id="applyworkflow">
+      <h2>Apply Workflow (Phase 6 Step 3)</h2>
+
+      <p>
+        Analyze is a read-only operation — it never writes files or runs installs. The Apply flow
+        (arriving in Step 3) takes the analyzed results and actually patches the repo. Here is the
+        complete end-to-end flow so you can understand what settings to configure and what to expect.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Analyze → confirm Phase A/B/C split</div>
+            <p>Run Analyze first. Verify Phase A contains the libraries you expect and Phase C
+            items have been acknowledged. Apply will refuse to run if no Phase A items exist.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Set Repo target (package.json + lock file)</div>
+            <p>Expand the <strong>Repo target</strong> section. Browse to the
+            <code>package.json</code> of the target repository and its
+            <code>package-lock.json</code>. These are required for npm apply. Maven requires
+            <code>pom.xml</code> (configured in settings: <code>mendfix.pomXml</code>).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Click Apply Phase A</div>
+            <p>The extension host calls the engine apply path — no shell, direct
+            <code>require()</code>:</p>
+            <ul style="margin:6px 0 0 16px;font-size:0.9em;line-height:1.7">
+              <li><code>src/ecosystems/npm/overrides.js</code> — writes <code>overrides</code> block into <code>package.json</code></li>
+              <li><code>src/ecosystems/npm/installer.js</code> — runs <code>npm install</code>, verifies lockfile resolves correctly, rolls back on failure</li>
+              <li><code>src/core/graph-diff.js</code> — captures before/after lockfile diff, writes <code>graph-diff.md</code></li>
+              <li>If <strong>Auto-commit</strong>: <code>src/core/git-commits.js</code> commits the changes</li>
+              <li>If <strong>Open PR</strong>: platform-specific poster opens a PR/MR via the CI/CD API</li>
+            </ul>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Progress stream</div>
+            <p>
+              The extension host streams progress lines to the webview via
+              <code>{ type: 'applyProgress', line }</code> messages. The panel displays them
+              in a scrolling log area. On completion: <code>{ type: 'applyResult', written, committed, prUrl }</code>.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Review output files</div>
+            <p>
+              Output is written to <code>mendfix.outDir</code> (default <code>./mendfix-output/</code>):
+              <code>remediation-report.md</code>, <code>graph-diff.md</code>,
+              <code>phase-a-overrides.json</code>. Phase B and C outputs are written for review
+              but not applied unless <strong>Apply Phase B</strong> is enabled.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>Before Apply:</strong> ensure the working tree is clean (no uncommitted changes).
+          The engine checks this before writing. If <strong>Auto-commit</strong> is enabled, the
+          commit will include only the MendFix-generated changes — a dirty tree will cause the
+          commit step to abort and roll back.
+        </div>
+      </div>
+    </section>
+
+    <!-- All settings / flags -->
+    <section class="doc-section" id="allflags">
+      <h2>All Settings &amp; Their CLI Equivalents</h2>
+
+      <p>
+        Every VS Code setting maps 1:1 to a CLI flag. The table below is the complete reference.
+        Settings are workspace-scoped (per-repo), never user-scoped — each repository has its
+        own values. Platform tokens are <em>not</em> in settings; they are stored securely via
+        <code>vscode.SecretStorage</code> and never written to <code>settings.json</code>.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Setting</th><th>CLI flag</th><th>Default</th><th>When to set</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>mendfix.outDir</code></td>
+              <td><code>--out-dir</code></td>
+              <td><code>./mendfix-output</code></td>
+              <td>Always — controls where output files are written.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.verifyVersions</code></td>
+              <td><code>--verify-versions</code></td>
+              <td><code>false</code></td>
+              <td>Enable when you need to confirm recommended versions actually exist in the registry. Adds ~2–5s.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.packageJson</code></td>
+              <td><code>--package-json</code></td>
+              <td><em>empty</em></td>
+              <td>npm repos. Path to the <code>package.json</code> to patch with overrides. Required for npm Apply.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.lockFile</code></td>
+              <td><code>--lock-file</code></td>
+              <td><em>empty</em></td>
+              <td>npm repos. Enables dep-tree features: dev/runtime classification, parent upgrade recommendations, consumer range validation.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.pomXml</code></td>
+              <td><code>--pom-xml</code></td>
+              <td><em>empty</em></td>
+              <td>Maven repos. Path to <code>pom.xml</code> for <code>&lt;dependencyManagement&gt;</code> patches.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.ecosystem</code></td>
+              <td><code>--ecosystem</code></td>
+              <td><code>auto</code></td>
+              <td>Override auto-detection only when the report has mixed library types or detection is wrong.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.applyPhaseB</code></td>
+              <td><code>--apply-phase-b</code></td>
+              <td><code>false</code></td>
+              <td>Enable after manually reviewing <code>phase-b-overrides.json</code>. Phase B overrides cover multi-version scenarios — review before applying.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.autoCommit</code></td>
+              <td><code>--commit</code></td>
+              <td><code>false</code></td>
+              <td>Auto-commit Phase A fixes. Requires a clean working tree. The commit message is auto-generated from the CVE summary.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.autoCommitPhaseB</code></td>
+              <td><code>--commit-phase-b</code></td>
+              <td><code>false</code></td>
+              <td>Auto-commit Phase B fixes. Requires <code>mendfix.applyPhaseB</code> to also be enabled.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.dryRun</code></td>
+              <td><code>--dry-run</code></td>
+              <td><code>false</code></td>
+              <td>Show the remediation plan in the panel without writing any files or running npm install. Safe to enable permanently during exploration.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.verbose</code></td>
+              <td><code>--verbose</code></td>
+              <td><code>false</code></td>
+              <td>Print the Safety Gate pre-edit checklist for every item during apply. Useful for auditing what the engine checked before writing.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.openPr</code></td>
+              <td><code>--open-pr</code></td>
+              <td><code>false</code></td>
+              <td>Open a PR/MR on the CI/CD platform after a successful apply. Requires <code>mendfix.platform</code> and a stored token.</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.platform</code></td>
+              <td><code>--platform</code></td>
+              <td><em>empty</em></td>
+              <td>Set to <code>github</code>, <code>gitlab</code>, <code>azuredevops</code>, or <code>bitbucket</code>. The corresponding token must be stored via the panel's token prompt (SecretStorage).</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.prBase</code></td>
+              <td><code>--pr-base</code></td>
+              <td><code>main</code></td>
+              <td>Target branch for the opened PR. Change to <code>develop</code> or your repo's default if it differs.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ</span>
+        <div class="callout-body">
+          <strong>Platform tokens</strong> (GitHub, GitLab, Azure DevOps, Bitbucket) are never
+          stored in <code>settings.json</code>. They are entered once via a secure input prompt
+          in the panel and stored in <code>vscode.SecretStorage</code> — encrypted by the OS
+          credential store, never written to disk in plaintext.
         </div>
       </div>
     </section>
