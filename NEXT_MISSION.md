@@ -129,6 +129,41 @@ All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 
 
 ---
 
+## Phase 6 — UI Layer (next major phase)
+
+### Delivery decision
+
+| Vehicle | Decision | Reason |
+|---------|----------|--------|
+| **VS Code Extension** | ✅ Primary | Devs already there; full Node.js host API; Webview panel; marketplace; workspace auto-detected |
+| **Tauri standalone app** | ✅ Secondary | IDE-independent; ~10 MB (vs Electron 150 MB); shares 100% of frontend from extension |
+| **Chrome Extension** | ✅ Companion (Step 6) | PR overlay badges only — cannot run shell commands or access filesystem |
+| **Electron** | ❌ Rejected | Same capability as Tauri at 15× larger install size |
+
+The extension wraps the existing CLI engine — no changes to `src/core/`, providers, or ecosystems.
+The Webview (HTML/CSS/JS) communicates with the extension host (Node.js) via VS Code message-passing API.
+Phase C items remain read-only in the UI — no auto-apply path exposed.
+
+### Build sequence
+
+| Step | Title | Files | Priority |
+|------|-------|-------|----------|
+| 1 | VS Code Extension Scaffold | `packages/vscode-extension/extension.js`, `panel.js`, `package.json` (vsce) | P1 |
+| 2 | Report Upload & Analysis Panel | `report-view.html`, phase-cards, CVE table, provider auto-detect from file | P1 |
+| 3 | Apply, Commit & PR Controls | apply flow, SecretStorage tokens, progress stream, rollback UI | P1 |
+| 4 | Visual Settings & Portfolio Builder | settings form, portfolio.json builder, vsce publish | P2 |
+| 5 | Tauri Standalone App (stretch) | Tauri sidecar, shared frontend from Steps 2–3, OS packaging, auto-update | P3 |
+| 6 | Chrome Extension — PR Overlay (companion) | MV3 extension, GitHub/GitLab PR badges, local API bridge | P3 |
+
+### Key architecture rules for Step 1
+- Extension host (Node.js) owns all file I/O, `npm install`, `git` calls — same as the CLI
+- Webview owns all UI rendering — posts messages to host, receives structured results
+- Secrets (platform tokens) stored via `vscode.SecretStorage` — never in webview state
+- `mendfix analyze` / `apply` / `portfolio` run via direct `require()` from the host, not child_process
+- Test: existing 332 tests must still pass unchanged after scaffolding
+
+---
+
 ## Phase 1 → Phase 1.x entry: Remediation Path Explorer (preserved)
 
 **Phase 1 is complete (all conditions met as of 2026-08-12):**

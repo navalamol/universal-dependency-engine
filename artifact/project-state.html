@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal Dependency Engine</title>
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg:           #F6F8FA;
+  --surface:      #FFFFFF;
+  --surface-2:    #F0F3F6;
+  --border:       #D0D7DE;
+  --border-sub:   #E8ECF0;
+  --tx-1:         #1C2128;
+  --tx-2:         #57606A;
+  --tx-3:         #8C949D;
+  --green:        #1A7F37;
+  --green-bg:     #DAFBE1;
+  --amber:        #9A6700;
+  --amber-bg:     #FFF8C5;
+  --red:          #CF222E;
+  --red-bg:       #FFEBE9;
+  --blue:         #0969DA;
+  --blue-bg:      #DDF4FF;
+  --accent:       #1A7F37;
+  --mono:         ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --sans:         -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:         #0D1117;
+    --surface:    #161B22;
+    --surface-2:  #21262D;
+    --border:     #30363D;
+    --border-sub: #21262D;
+    --tx-1:       #E6EDF3;
+    --tx-2:       #8D96A0;
+    --tx-3:       #6E7681;
+    --green:      #3FB950;
+    --green-bg:   #0D3320;
+    --amber:      #D29922;
+    --amber-bg:   #2E2008;
+    --red:        #F85149;
+    --red-bg:     #2E0D0B;
+    --blue:       #58A6FF;
+    --blue-bg:    #051D40;
+    --accent:     #3FB950;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:         #0D1117;
+  --surface:    #161B22;
+  --surface-2:  #21262D;
+  --border:     #30363D;
+  --border-sub: #21262D;
+  --tx-1:       #E6EDF3;
+  --tx-2:       #8D96A0;
+  --tx-3:       #6E7681;
+  --green:      #3FB950;
+  --green-bg:   #0D3320;
+  --amber:      #D29922;
+  --amber-bg:   #2E2008;
+  --red:        #F85149;
+  --red-bg:     #2E0D0B;
+  --blue:       #58A6FF;
+  --blue-bg:    #051D40;
+  --accent:     #3FB950;
+}
+
+/* ── BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--tx-1);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+}
+a { color: var(--blue); text-decoration: none; }
+
+/* ── LAYOUT ── */
+.wrap { max-width: 1060px; margin: 0 auto; padding: 40px 24px 100px; }
+
+/* ── HEADER ── */
+.hdr { border-bottom: 1px solid var(--border); padding-bottom: 32px; margin-bottom: 48px; }
+.hdr-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px;
+}
+.hdr h1 {
+  font-size: 26px; font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.2;
+  text-wrap: balance; margin-bottom: 8px;
+}
+.hdr-sub { color: var(--tx-2); font-size: 14px; max-width: 500px; }
+.hdr-pills { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px;
+  font-family: var(--mono); font-size: 11px; white-space: nowrap;
+  color: var(--tx-2);
+}
+.pill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-g { background: var(--green); }
+.dot-a { background: var(--amber); }
+.dot-b { background: var(--blue); }
+
+/* ── SECTIONS ── */
+.sec { margin-bottom: 52px; }
+.sec-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--tx-3); margin-bottom: 14px;
+}
+h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; margin-bottom: 4px; }
+.sec-desc { color: var(--tx-2); font-size: 13px; margin-bottom: 18px; }
+hr.div { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+
+/* ── PIPELINE ── */
+.pipeline { display: flex; gap: 0; overflow-x: auto; padding-bottom: 8px; align-items: stretch; }
+.pipe-node {
+  flex: 1; min-width: 130px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 12px;
+  position: relative;
+}
+.pipe-node + .pipe-node { margin-left: 14px; }
+.pipe-node::after {
+  content: '›';
+  position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
+  color: var(--tx-3); font-size: 20px; font-weight: 300;
+  z-index: 1; pointer-events: none;
+}
+.pipe-node:last-child::after { display: none; }
+.pipe-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  color: var(--tx-1); margin-bottom: 8px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.pipe-items { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.pipe-items li {
+  font-size: 10px; color: var(--tx-2);
+  padding: 2px 6px; background: var(--surface-2);
+  border-radius: 3px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.pipe-items li.hi { color: var(--accent); font-weight: 600; }
+
+/* ── PHASE MODEL ── */
+.phase-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.phase-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px;
+  border-top: 3px solid transparent;
+}
+.phase-card.pa { border-top-color: var(--green); }
+.phase-card.pb { border-top-color: var(--amber); }
+.phase-card.pc { border-top-color: var(--red); }
+.ph-badge {
+  display: inline-block; font-family: var(--mono);
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+}
+.pa .ph-badge { background: var(--green-bg); color: var(--green); }
+.pb .ph-badge { background: var(--amber-bg); color: var(--amber); }
+.pc .ph-badge { background: var(--red-bg);   color: var(--red);   }
+.phase-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+.phase-card p  { font-size: 12px; color: var(--tx-2); line-height: 1.5; }
+.phase-rule {
+  margin-top: 10px; font-family: var(--mono); font-size: 10px;
+  padding: 4px 8px; background: var(--surface-2); border-radius: 4px;
+  color: var(--tx-3); line-height: 1.5;
+}
+
+/* ── STATS ── */
+.stats-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 0; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; text-align: center;
+}
+.stat-num {
+  font-family: var(--mono); font-size: 26px; font-weight: 700;
+  color: var(--accent); font-variant-numeric: tabular-nums;
+  line-height: 1; margin-bottom: 4px;
+}
+.stat-lbl { font-size: 10px; color: var(--tx-3); font-weight: 500; }
+
+/* ── ROADMAP ── */
+.roadmap { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.rm-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 14px 14px 16px;
+  border-left: 3px solid var(--border);
+}
+.rm-item.done  { border-left-color: var(--green); }
+.rm-item.curr  { border-left-color: var(--blue);  background: var(--blue-bg); }
+.rm-item.next2 { border-left-color: var(--amber); }
+.rm-item.plan  { border-left-color: var(--border); opacity: .65; }
+.rm-phase { font-family: var(--mono); font-size: 10px; color: var(--tx-3); margin-bottom: 3px; font-weight: 600; }
+.rm-item h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.rm-item p  { font-size: 11px; color: var(--tx-2); line-height: 1.4; }
+.rm-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 8px; font-family: var(--mono); font-size: 10px;
+  font-weight: 700; padding: 2px 7px; border-radius: 3px;
+}
+.tag-done  { background: var(--green-bg); color: var(--green); }
+.tag-curr  { background: var(--blue-bg);  color: var(--blue);  }
+.tag-next  { background: var(--amber-bg); color: var(--amber); }
+.tag-plan  { background: var(--surface-2); color: var(--tx-3); }
+
+/* ── COVERAGE ── */
+.cov-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.cov-block h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.badge-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.bdg {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 4px; font-size: 11px;
+  font-weight: 600; border: 1px solid var(--border);
+  background: var(--surface); color: var(--tx-2);
+}
+.bdg.g { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+.bdg-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* ── UI DELIVERY SECTION ── */
+.ui-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 28px; }
+.ui-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px;
+}
+.ui-card.rec {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+.ui-card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ui-card h3 { font-size: 14px; font-weight: 700; }
+.rec-lbl {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 3px;
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid var(--green);
+}
+.ui-card > p { font-size: 12px; color: var(--tx-2); line-height: 1.5; margin-bottom: 10px; }
+.pc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pc-col { font-size: 11px; }
+.pc-label { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 4px; }
+.pc-col.p .pc-label { color: var(--green); }
+.pc-col.c .pc-label { color: var(--red); }
+.pc-col ul { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.pc-col.p li::before { content: '+'; color: var(--green); font-weight: 700; margin-right: 4px; }
+.pc-col.c li::before { content: '−'; color: var(--red);   font-weight: 700; margin-right: 4px; }
+.pc-col li { color: var(--tx-2); line-height: 1.4; }
+
+/* ── WIREFRAME MOCKUP ── */
+.wf-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+.wf-titlebar {
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+  padding: 8px 14px; display: flex; align-items: center; gap: 10px;
+}
+.wf-circles { display: flex; gap: 5px; }
+.wf-circles span { width: 10px; height: 10px; border-radius: 50%; }
+.wf-c1 { background: #FF5F56; }
+.wf-c2 { background: #FFBD2E; }
+.wf-c3 { background: #27C93F; }
+.wf-tab-bar { display: flex; gap: 2px; margin-left: 10px; }
+.wf-tab {
+  font-size: 11px; padding: 3px 10px;
+  border-radius: 4px 4px 0 0;
+  color: var(--tx-3); font-family: var(--mono);
+}
+.wf-tab.active { background: var(--surface); color: var(--tx-1); font-weight: 600; }
+.wf-body { display: grid; grid-template-columns: 180px 1fr; }
+.wf-side {
+  border-right: 1px solid var(--border);
+  padding: 10px 8px; display: flex; flex-direction: column; gap: 2px;
+}
+.wf-side-lbl {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--tx-3); padding: 6px 8px 4px;
+}
+.wf-nav-item {
+  padding: 6px 8px; border-radius: 5px; font-size: 11px; color: var(--tx-2); display: flex; align-items: center; gap: 6px;
+}
+.wf-nav-item.act { background: var(--green-bg); color: var(--green); font-weight: 700; }
+.wf-nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.wf-main { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.wf-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wf-btn {
+  padding: 5px 12px; border-radius: 5px; font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--tx-2);
+  cursor: pointer;
+}
+.wf-btn.pri { background: var(--green); color: #fff; border-color: var(--green); }
+.wf-btn.sec { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+.wf-summary { display: flex; gap: 8px; }
+.wf-smini {
+  flex: 1; background: var(--surface-2); border-radius: 6px;
+  padding: 8px 10px; text-align: center;
+}
+.wf-smini-n { font-family: var(--mono); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.wf-smini-l { font-size: 10px; color: var(--tx-3); }
+.wf-smini.g .wf-smini-n { color: var(--green); }
+.wf-smini.a .wf-smini-n { color: var(--amber); }
+.wf-smini.r .wf-smini-n { color: var(--red);   }
+.wf-tbl { width: 100%; border-collapse: collapse; }
+.wf-tbl th {
+  text-align: left; padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--tx-3);
+}
+.wf-tbl td {
+  padding: 6px 8px; border-bottom: 1px solid var(--border-sub);
+  font-size: 11px; color: var(--tx-2); vertical-align: middle;
+}
+.wf-tbl tr:last-child td { border-bottom: none; }
+.wf-ph {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  font-weight: 700; padding: 1px 6px; border-radius: 3px;
+}
+.wf-ph.a { background: var(--green-bg); color: var(--green); }
+.wf-ph.b { background: var(--amber-bg); color: var(--amber); }
+.wf-ph.c { background: var(--red-bg);   color: var(--red);   }
+.wf-sev {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  font-family: var(--mono); padding: 1px 5px; border-radius: 3px;
+}
+.wf-sev.cr { background: var(--red-bg); color: var(--red); }
+.wf-sev.hi { background: var(--amber-bg); color: var(--amber); }
+.wf-sev.me { background: var(--blue-bg); color: var(--blue); }
+.wf-ver { font-family: var(--mono); font-size: 10px; }
+.wf-ver .old { color: var(--red); text-decoration: line-through; margin-right: 4px; }
+.wf-ver .new { color: var(--green); }
+
+/* ── NEXT-PLAN STEPS ── */
+.plan-steps { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+.plan-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px;
+}
+.plan-card.pri-1 { border-top: 3px solid var(--green); }
+.plan-card.pri-2 { border-top: 3px solid var(--blue); }
+.plan-card.pri-3 { border-top: 3px solid var(--amber); }
+.plan-card.pri-4 { border-top: 3px solid var(--border); }
+.plan-n { font-family: var(--mono); font-size: 10px; color: var(--tx-3); margin-bottom: 4px; }
+.plan-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+.plan-card p  { font-size: 12px; color: var(--tx-2); line-height: 1.5; }
+.plan-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.plan-tag {
+  font-family: var(--mono); font-size: 10px; padding: 2px 7px;
+  border-radius: 3px; background: var(--surface-2); color: var(--tx-3);
+  border: 1px solid var(--border);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 780px) {
+  .roadmap     { grid-template-columns: 1fr 1fr; }
+  .phase-row   { grid-template-columns: 1fr; }
+  .cov-wrap    { grid-template-columns: 1fr; }
+  .stats-row   { grid-template-columns: repeat(3,1fr); }
+  .ui-grid     { grid-template-columns: 1fr; }
+  .plan-steps  { grid-template-columns: 1fr; }
+  .wf-body     { grid-template-columns: 1fr; }
+  .wf-side     { display: none; }
+  .hdr-top     { flex-direction: column; }
+  .hdr-pills   { align-items: flex-start; flex-direction: row; }
+}
+@media (max-width: 500px) {
+  .roadmap  { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── HEADER ── -->
+  <header class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="eyebrow">mend-autofixer · universal-dependency-engine</div>
+        <h1>State of the Build<br>& What Comes Next</h1>
+        <p class="hdr-sub">A deterministic vulnerability remediation engine — auto-fixing ~90–95% of CVEs across 6 ecosystems, 9 security providers, and 4 CI/CD platforms.</p>
+      </div>
+      <div class="hdr-pills">
+        <div class="pill"><span class="pill-dot dot-g"></span>332 / 332 tests passing</div>
+        <div class="pill"><span class="pill-dot dot-g"></span>Phases 1–5 complete</div>
+        <div class="pill"><span class="pill-dot dot-b"></span>Phase 6 — UI next</div>
+        <div class="pill"><span class="pill-dot dot-a"></span>Baseline A:5 B:0 C:3 ✓</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── DATA PIPELINE ── -->
+  <section class="sec">
+    <div class="sec-label">Architecture</div>
+    <h2>Data Pipeline</h2>
+    <p class="sec-desc">Provider → Core → Ecosystem → CI/CD. Core has zero imports from providers or ecosystems — the isolation is permanent and load-bearing.</p>
+    <div class="pipeline">
+      <div class="pipe-node">
+        <div class="pipe-title">Providers (9)</div>
+        <ul class="pipe-items">
+          <li class="hi">Mend</li>
+          <li class="hi">Snyk</li>
+          <li>npm audit</li>
+          <li>Dependabot</li>
+          <li>Trivy</li>
+          <li>OWASP DC</li>
+          <li>OSV</li>
+          <li>GitLab DS</li>
+          <li>JFrog Xray</li>
+        </ul>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-title">Core Engine</div>
+        <ul class="pipe-items">
+          <li class="hi">semver-engine.js</li>
+          <li class="hi">phases.js</li>
+          <li>confidence.js</li>
+          <li>remediation-paths.js</li>
+          <li>security-delta.js</li>
+          <li>graph-diff.js</li>
+          <li>pr-description.js</li>
+          <li>git-commits.js</li>
+        </ul>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-title">Ecosystems (6)</div>
+        <ul class="pipe-items">
+          <li class="hi">npm</li>
+          <li class="hi">Maven</li>
+          <li>Python</li>
+          <li>Go</li>
+          <li>.NET</li>
+          <li>Rust</li>
+          <li>simulator.js ×6</li>
+          <li>registry.js ×6</li>
+        </ul>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-title">CI/CD (4)</div>
+        <ul class="pipe-items">
+          <li class="hi">GitHub</li>
+          <li>GitLab</li>
+          <li>Azure DevOps</li>
+          <li>Bitbucket</li>
+          <li>pr-poster.js</li>
+          <li>renovate-apply.js</li>
+        </ul>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-title">Portfolio</div>
+        <ul class="pipe-items">
+          <li class="hi">portfolio-runner.js</li>
+          <li>portfolio-report.js</li>
+          <li>mendfix portfolio</li>
+          <li>Multi-repo CVE view</li>
+          <li>Action priority sort</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3-PHASE MODEL ── -->
+  <section class="sec">
+    <div class="sec-label">Core Model</div>
+    <h2>3-Phase Confidence Classification</h2>
+    <p class="sec-desc">Every CVE is classified before any file is touched. Hard rules — never overridden by heuristics or AI.</p>
+    <div class="phase-row">
+      <div class="phase-card pa">
+        <div class="ph-badge">Phase A</div>
+        <h3>Auto-apply · 95–100%</h3>
+        <p>Same-major patch or minor bump. Single version in the dep tree. Written to <code>phase-a-overrides.json</code> and applied automatically.</p>
+        <div class="phase-rule">SAFE upgrade · Single version<br>→ auto-commit on --commit flag</div>
+      </div>
+      <div class="phase-card pb">
+        <div class="ph-badge">Phase B</div>
+        <h3>Review first · 60–95%</h3>
+        <p>Multiple same-major versions in the tree. A forced override is written, but the operator must review before applying.</p>
+        <div class="phase-rule">Multi-version same-major<br>→ disjoint parents may allow nested override</div>
+      </div>
+      <div class="phase-card pc">
+        <div class="ph-badge">Phase C</div>
+        <h3>Manual review · &lt;60%</h3>
+        <p>MAJOR_BUMP, NO_FIX, or multi-major conflict. Moves to <code>manual-review.md</code> with justification. Never auto-applied — ever.</p>
+        <div class="phase-rule">MAJOR_BUMP → Phase C always<br>No @^major selectors — ever</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── STATS ── -->
+  <section class="sec">
+    <div class="sec-label">By the numbers</div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num">332</div>
+        <div class="stat-lbl">Tests passing</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">6</div>
+        <div class="stat-lbl">Ecosystems</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">9</div>
+        <div class="stat-lbl">Security providers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">4</div>
+        <div class="stat-lbl">CI/CD platforms</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">26</div>
+        <div class="stat-lbl">Phase 1 scenarios</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ── 9-PHASE ROADMAP ── -->
+  <section class="sec">
+    <div class="sec-label">9-Phase Roadmap</div>
+    <h2>Dependency Intelligence OS</h2>
+    <p class="sec-desc">Each phase builds permanently on the interfaces established by the last. The provider/core/ecosystem separation is what makes each layer cheap.</p>
+    <div class="roadmap">
+      <div class="rm-item done">
+        <div class="rm-phase">Phase 1 + 1.x</div>
+        <h3>Mend Auto-Fixer</h3>
+        <p>npm + Maven. 26 scenarios. Remediation path explorer — manifest inspection, simulation, multi-path ranking.</p>
+        <span class="rm-tag tag-done">✓ Complete</span>
+      </div>
+      <div class="rm-item done">
+        <div class="rm-phase">Phase 2</div>
+        <h3>Universal Finding Engine</h3>
+        <p>Snyk, npm audit, Dependabot, OWASP, OSV, Trivy, GitLab, Xray. All 9 providers feeding one pipeline.</p>
+        <span class="rm-tag tag-done">✓ Complete</span>
+      </div>
+      <div class="rm-item done">
+        <div class="rm-phase">Phase 3</div>
+        <h3>Universal Dependency Engine</h3>
+        <p>Python · Go · .NET · Rust added. Each with lock-parser, writer, registry, installer, simulator.</p>
+        <span class="rm-tag tag-done">✓ Complete</span>
+      </div>
+      <div class="rm-item done">
+        <div class="rm-phase">Phase 4</div>
+        <h3>Repository &amp; CI/CD Write-back</h3>
+        <p>GitHub · GitLab · Azure DevOps · Bitbucket. <code>--open-pr</code> flag. pr-poster dispatcher. 49 new tests.</p>
+        <span class="rm-tag tag-done">✓ Complete</span>
+      </div>
+      <div class="rm-item done">
+        <div class="rm-phase">Phase 5</div>
+        <h3>Remediation Orchestration</h3>
+        <p>Multi-repo portfolio mode. <code>mendfix portfolio --config</code>. Override minimization, security delta, blast radius.</p>
+        <span class="rm-tag tag-done">✓ Complete</span>
+      </div>
+      <div class="rm-item curr">
+        <div class="rm-phase">Phase 6 ← NOW</div>
+        <h3>UI Layer</h3>
+        <p>Visual configuration, report viewer, apply/commit controls — no terminal knowledge required. Delivery: see plan below.</p>
+        <span class="rm-tag tag-curr">⬡ Next build</span>
+      </div>
+      <div class="rm-item next2">
+        <div class="rm-phase">Phase 7</div>
+        <h3>Dependency Knowledge Graph</h3>
+        <p>Historical remediation outcomes. Regression-aware recommendations. Org-specific patterns stored and queried.</p>
+        <span class="rm-tag tag-next">Upcoming</span>
+      </div>
+      <div class="rm-item plan">
+        <div class="rm-phase">Phase 8</div>
+        <h3>Dependency Intelligence</h3>
+        <p>Compatibility evidence, historical prediction, remediation scoring, dependency health signals across the portfolio.</p>
+        <span class="rm-tag tag-plan">Planned</span>
+      </div>
+      <div class="rm-item plan">
+        <div class="rm-phase">Phase 9</div>
+        <h3>LLM Intelligence OS</h3>
+        <p>Changelog + GitHub analysis, natural language reasoning. AI assists — never replaces — deterministic resolution.</p>
+        <span class="rm-tag tag-plan">Planned</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── COVERAGE ── -->
+  <section class="sec">
+    <div class="sec-label">Coverage matrix</div>
+    <h2>Ecosystem &amp; Provider Support</h2>
+    <div class="cov-wrap">
+      <div class="cov-block">
+        <h3>Ecosystems — lock-parser · writer · registry · installer · simulator</h3>
+        <div class="badge-grid">
+          <span class="bdg g"><span class="bdg-dot"></span>npm</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Maven</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Python</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Go</span>
+          <span class="bdg g"><span class="bdg-dot"></span>.NET / NuGet</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Rust / Cargo</span>
+        </div>
+      </div>
+      <div class="cov-block">
+        <h3>Security Providers — parseReport → LibraryEntry[]</h3>
+        <div class="badge-grid">
+          <span class="bdg g"><span class="bdg-dot"></span>Mend</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Snyk</span>
+          <span class="bdg g"><span class="bdg-dot"></span>npm audit</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Dependabot</span>
+          <span class="bdg g"><span class="bdg-dot"></span>OWASP DC</span>
+          <span class="bdg g"><span class="bdg-dot"></span>OSV</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Trivy</span>
+          <span class="bdg g"><span class="bdg-dot"></span>GitLab DS</span>
+          <span class="bdg g"><span class="bdg-dot"></span>JFrog Xray</span>
+        </div>
+      </div>
+      <div class="cov-block">
+        <h3>CI/CD Write-back — createPR / createMR</h3>
+        <div class="badge-grid">
+          <span class="bdg g"><span class="bdg-dot"></span>GitHub</span>
+          <span class="bdg g"><span class="bdg-dot"></span>GitLab</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Azure DevOps</span>
+          <span class="bdg g"><span class="bdg-dot"></span>Bitbucket Cloud</span>
+        </div>
+      </div>
+      <div class="cov-block">
+        <h3>CLI Subcommands</h3>
+        <div class="badge-grid">
+          <span class="bdg g"><span class="bdg-dot"></span>mendfix analyze</span>
+          <span class="bdg g"><span class="bdg-dot"></span>mendfix apply</span>
+          <span class="bdg g"><span class="bdg-dot"></span>mendfix cleanup</span>
+          <span class="bdg g"><span class="bdg-dot"></span>mendfix renovate</span>
+          <span class="bdg g"><span class="bdg-dot"></span>mendfix portfolio</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ── UI DELIVERY PLAN ── -->
+  <section class="sec">
+    <div class="sec-label">Phase 6 — UI Plan</div>
+    <h2>Delivery Vehicle Decision</h2>
+    <p class="sec-desc">The goal: full configuration and report review in a visual UI — zero terminal knowledge required. The right delivery vehicle determines what users can actually do.</p>
+
+    <div class="ui-grid">
+
+      <!-- VS Code Extension — recommended -->
+      <div class="ui-card rec">
+        <div class="ui-card-hdr">
+          <h3>VS Code Extension</h3>
+          <span class="rec-lbl">RECOMMENDED</span>
+        </div>
+        <p>Developers are already in VS Code when they need to remediate vulnerabilities. An extension adds a dedicated panel — report upload, live analysis, one-click apply — with zero installation beyond the marketplace. Full Node.js API access means it can run <code>npm install</code>, read workspace files, and open a terminal for advanced flows. The workspace is already the context.</p>
+        <div class="pc-row">
+          <div class="pc-col p">
+            <div class="pc-label">PROS</div>
+            <ul>
+              <li>75M+ VS Code users, zero extra install</li>
+              <li>Full Node.js + filesystem access in extension host</li>
+              <li>Workspace context auto-detected (open project = target)</li>
+              <li>Webview panel for rich HTML/CSS/JS UI</li>
+              <li>Marketplace for discovery &amp; auto-updates</li>
+              <li>Works alongside the existing CLI</li>
+            </ul>
+          </div>
+          <div class="pc-col c">
+            <div class="pc-label">CONS</div>
+            <ul>
+              <li>Requires VS Code (excludes JetBrains, vim users)</li>
+              <li>Webview sandboxed (no direct DOM of editor)</li>
+              <li>Extension manifest overhead</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tauri -->
+      <div class="ui-card">
+        <div class="ui-card-hdr">
+          <h3>Tauri Desktop App</h3>
+        </div>
+        <p>A standalone GUI app using the system webview — no bundled Chromium. Tauri bundles a Rust backend that can spawn processes and touch the filesystem, with a web-tech frontend. ~10 MB install vs Electron's ~150 MB. Best for enterprise / security teams who want a dedicated tool not tied to an IDE.</p>
+        <div class="pc-row">
+          <div class="pc-col p">
+            <div class="pc-label">PROS</div>
+            <ul>
+              <li>IDE-independent, works for any team</li>
+              <li>~10 MB install (vs Electron 150 MB)</li>
+              <li>Full filesystem + shell process access</li>
+              <li>Native menus, tray icon, OS integration</li>
+              <li>Strong candidate for Phase 2 of UI rollout</li>
+            </ul>
+          </div>
+          <div class="pc-col c">
+            <div class="pc-label">CONS</div>
+            <ul>
+              <li>Requires Rust toolchain to build</li>
+              <li>System webview inconsistencies across OS</li>
+              <li>No marketplace — manual distribution</li>
+              <li>More complex dev setup than an extension</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Electron -->
+      <div class="ui-card">
+        <div class="ui-card-hdr">
+          <h3>Electron App</h3>
+        </div>
+        <p>Proven, largest ecosystem, ships Chromium so the UI is pixel-consistent everywhere. VS Code itself runs on Electron. More familiar for a Node.js codebase. But large install size and slower startup.</p>
+        <div class="pc-row">
+          <div class="pc-col p">
+            <div class="pc-label">PROS</div>
+            <ul>
+              <li>Node.js codebase reuse is trivial</li>
+              <li>Largest community + tooling (Forge, Builder)</li>
+              <li>Fully consistent rendering, all platforms</li>
+              <li>Auto-update ecosystem (electron-updater)</li>
+            </ul>
+          </div>
+          <div class="pc-col c">
+            <div class="pc-label">CONS</div>
+            <ul>
+              <li>~150 MB install, slow cold start</li>
+              <li>High RAM baseline (~200 MB idle)</li>
+              <li>No marketplace — user must download/install</li>
+              <li>Known security surface (Node integration)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chrome Extension -->
+      <div class="ui-card">
+        <div class="ui-card-hdr">
+          <h3>Chrome Extension</h3>
+        </div>
+        <p>Good for overlaying data on GitHub / GitLab PR pages — e.g. showing Phase A/B/C badges on a PR. Not a viable primary delivery: Chrome extensions cannot run shell commands, cannot read the local filesystem (except drag-and-drop), and cannot run npm install. A useful Phase 3 companion, not a foundation.</p>
+        <div class="pc-row">
+          <div class="pc-col p">
+            <div class="pc-label">PROS</div>
+            <ul>
+              <li>Overlay CVE data on GitHub / GitLab PRs</li>
+              <li>Zero install friction in browser</li>
+              <li>Good companion feature (Phase 3 add-on)</li>
+            </ul>
+          </div>
+          <div class="pc-col c">
+            <div class="pc-label">CONS</div>
+            <ul>
+              <li>Cannot run shell commands or npm install</li>
+              <li>No real filesystem access</li>
+              <li>Cannot be the primary delivery vehicle</li>
+              <li>Manifest V3 restrictions tighten this further</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Wireframe Mockup -->
+    <div class="sec-label" style="margin-top: 28px;">UI Concept — VS Code Extension Panel</div>
+    <div class="wf-wrap">
+      <div class="wf-titlebar">
+        <div class="wf-circles">
+          <span class="wf-c1"></span>
+          <span class="wf-c2"></span>
+          <span class="wf-c3"></span>
+        </div>
+        <div class="wf-tab-bar">
+          <div class="wf-tab active">MendFix</div>
+          <div class="wf-tab">Report</div>
+          <div class="wf-tab">Settings</div>
+        </div>
+      </div>
+      <div class="wf-body">
+        <div class="wf-side">
+          <div class="wf-side-lbl">REPORTS</div>
+          <div class="wf-nav-item act"><span class="wf-nav-dot"></span>ui-platform (22 CVEs)</div>
+          <div class="wf-nav-item"><span class="wf-nav-dot"></span>api-gateway (11 CVEs)</div>
+          <div class="wf-nav-item"><span class="wf-nav-dot"></span>auth-service (7 CVEs)</div>
+          <div class="wf-side-lbl" style="margin-top:8px">ECOSYSTEM</div>
+          <div class="wf-nav-item">npm (auto-detected)</div>
+          <div class="wf-nav-item">lock: package-lock.json</div>
+          <div class="wf-side-lbl" style="margin-top:8px">ACTIONS</div>
+          <div class="wf-nav-item">Analyze</div>
+          <div class="wf-nav-item">Apply Phase A</div>
+          <div class="wf-nav-item">Open PR</div>
+        </div>
+        <div class="wf-main">
+          <div class="wf-toolbar">
+            <button class="wf-btn pri">▶ Apply Phase A (5)</button>
+            <button class="wf-btn sec">Open PR</button>
+            <button class="wf-btn">Commit</button>
+            <button class="wf-btn">Cleanup</button>
+            <span style="margin-left:auto;font-size:11px;color:var(--tx-3);font-family:var(--mono)">8 libs · 22 CVEs · A:5 B:0 C:3</span>
+          </div>
+          <div class="wf-summary">
+            <div class="wf-smini g"><div class="wf-smini-n">5</div><div class="wf-smini-l">Phase A · auto-apply</div></div>
+            <div class="wf-smini a"><div class="wf-smini-n">0</div><div class="wf-smini-l">Phase B · review</div></div>
+            <div class="wf-smini r"><div class="wf-smini-n">3</div><div class="wf-smini-l">Phase C · manual</div></div>
+          </div>
+          <table class="wf-tbl">
+            <thead>
+              <tr>
+                <th>Package</th>
+                <th>Severity</th>
+                <th>Version</th>
+                <th>Phase</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>follow-redirects</td>
+                <td><span class="wf-sev cr">CRITICAL</span></td>
+                <td><span class="wf-ver"><span class="old">1.14.8</span><span class="new">1.15.6</span></span></td>
+                <td><span class="wf-ph a">A</span></td>
+                <td>SAFE · same-major patch</td>
+              </tr>
+              <tr>
+                <td>semver</td>
+                <td><span class="wf-sev hi">HIGH</span></td>
+                <td><span class="wf-ver"><span class="old">5.7.1</span><span class="new">5.7.2</span></span></td>
+                <td><span class="wf-ph a">A</span></td>
+                <td>SAFE · single version</td>
+              </tr>
+              <tr>
+                <td>word-wrap</td>
+                <td><span class="wf-sev me">MEDIUM</span></td>
+                <td><span class="wf-ver"><span class="old">1.2.3</span><span class="new">1.2.4</span></span></td>
+                <td><span class="wf-ph a">A</span></td>
+                <td>SAFE · patch bump</td>
+              </tr>
+              <tr>
+                <td>nanoid</td>
+                <td><span class="wf-sev hi">HIGH</span></td>
+                <td><span class="wf-ver"><span class="old">3.1.23</span><span class="new">5.0.7</span></span></td>
+                <td><span class="wf-ph c">C</span></td>
+                <td>MAJOR_BUMP · manual review</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <!-- ── NEXT PLAN ── -->
+  <section class="sec">
+    <div class="sec-label">Phase 6 — Build Plan</div>
+    <h2>UI Implementation Roadmap</h2>
+    <p class="sec-desc">Four build stages. The VS Code extension wraps the existing CLI engine — no core logic changes. New surface, same pipeline.</p>
+
+    <div class="plan-steps">
+
+      <div class="plan-card pri-1">
+        <div class="plan-n">Step 1 · Foundation</div>
+        <h3>VS Code Extension Scaffold</h3>
+        <p>Create <code>packages/vscode-extension/</code> with extension manifest, activation events, and a Webview panel. Wire up the existing <code>mendfix.js</code> engine via Node.js child_process or direct require. Establish the message-passing contract between the webview (HTML/JS) and the extension host (Node.js).</p>
+        <div class="plan-pills">
+          <span class="plan-tag">extension.js</span>
+          <span class="plan-tag">panel.js</span>
+          <span class="plan-tag">package.json (vsce)</span>
+          <span class="plan-tag">webview bridge</span>
+        </div>
+      </div>
+
+      <div class="plan-card pri-1">
+        <div class="plan-n">Step 2 · Core UI</div>
+        <h3>Report Upload &amp; Analysis Panel</h3>
+        <p>File picker for vulnerability reports (auto-detects provider from filename). Ecosystem auto-detection from workspace. Phase A/B/C breakdown view. The analysis panel shows exactly what <code>mendfix analyze</code> outputs — cards per library, phase badge, confidence, evidence, recommended action.</p>
+        <div class="plan-pills">
+          <span class="plan-tag">report-view.html</span>
+          <span class="plan-tag">phase-cards</span>
+          <span class="plan-tag">CVE table</span>
+          <span class="plan-tag">provider auto-detect</span>
+        </div>
+      </div>
+
+      <div class="plan-card pri-2">
+        <div class="plan-n">Step 3 · Apply Controls</div>
+        <h3>One-click Apply, Commit &amp; PR</h3>
+        <p>Buttons that invoke the apply/commit/pr pipeline with progress feedback streamed into the panel. Platform selector (GitHub/GitLab/AzDO/Bitbucket) with token input stored in VS Code SecretStorage. Rollback UI if install fails. Phase C items stay read-only in the panel — no accidental auto-apply.</p>
+        <div class="plan-pills">
+          <span class="plan-tag">apply flow</span>
+          <span class="plan-tag">SecretStorage tokens</span>
+          <span class="plan-tag">progress stream</span>
+          <span class="plan-tag">rollback UI</span>
+        </div>
+      </div>
+
+      <div class="plan-card pri-2">
+        <div class="plan-n">Step 4 · Configuration</div>
+        <h3>Visual Settings &amp; Portfolio Config</h3>
+        <p>A form-based settings view replacing all CLI flags — output directory, registry verify toggle, depth/simulation limits, PR defaults. Portfolio mode builder: add repos by browsing, set ecosystem per-repo, run multi-repo analysis from the panel. Export the resulting <code>portfolio.json</code> or run directly.</p>
+        <div class="plan-pills">
+          <span class="plan-tag">settings form</span>
+          <span class="plan-tag">portfolio builder</span>
+          <span class="plan-tag">portfolio.json export</span>
+          <span class="plan-tag">vsce publish</span>
+        </div>
+      </div>
+
+      <div class="plan-card pri-3">
+        <div class="plan-n">Step 5 · Stretch</div>
+        <h3>Tauri Standalone App</h3>
+        <p>For users not on VS Code — enterprise security teams, ops engineers. Build the same Webview UI as a Tauri app backed by the same Node.js engine (via sidecar). ~10 MB install, no bundled Chromium. Shares 100% of the frontend code from Step 2–3. Same features, different shell.</p>
+        <div class="plan-pills">
+          <span class="plan-tag">Tauri sidecar</span>
+          <span class="plan-tag">shared frontend</span>
+          <span class="plan-tag">OS packaging</span>
+          <span class="plan-tag">auto-update</span>
+        </div>
+      </div>
+
+      <div class="plan-card pri-3">
+        <div class="plan-n">Step 6 · Companion</div>
+        <h3>Chrome Extension (PR Overlay)</h3>
+        <p>A browser extension that reads open Dependabot / Renovate PRs on GitHub/GitLab and overlays Phase A/B/C badges inline. Read-only — no apply. Calls a lightweight local server (started by the VS Code extension or Tauri app) to get analysis results for the current PR's packages. Lowest priority but high visibility.</p>
+        <div class="plan-pills">
+          <span class="plan-tag">MV3 extension</span>
+          <span class="plan-tag">GitHub PR overlay</span>
+          <span class="plan-tag">local API bridge</span>
+          <span class="plan-tag">Phase A/B/C badges</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

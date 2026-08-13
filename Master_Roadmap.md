@@ -27,22 +27,30 @@ Remediation Orchestration
 Find → Explore → Simulate → Verify → Compare → Recommend → Apply
 Override minimization · security delta · blast radius · portfolio optimization
 Deterministic first — AI only after this layer is mature
+✅ COMPLETE 2026-08-12
         ↓
 PHASE 6
+UI Layer — Visual Configuration & Report Viewer
+Primary: VS Code Extension (Webview panel, marketplace distribution)
+Secondary: Tauri standalone app (~10 MB, IDE-independent, shared frontend)
+Companion: Chrome Extension (GitHub/GitLab PR overlay badges, read-only)
+Zero terminal knowledge required — full configure / analyze / apply / PR from the UI
+        ↓
+PHASE 7
 Dependency Knowledge Graph
 Historical dependency + remediation outcomes
 Regression-aware recommendations · organization-specific patterns
         ↓
-PHASE 7
+PHASE 8
 Dependency Intelligence
 Compatibility + historical evidence + prediction
 Remediation scoring · dependency health signals
         ↓
-PHASE 8
+PHASE 9
 LLM Intelligence
 Changelog/GitHub analysis + reasoning + natural language
 AI assists — never replaces — deterministic resolution
         ↓
-PHASE 9
+PHASE 9 (OS)
 Dependency Intelligence OS
 Organization-wide proactive dependency intelligence

@@ -51,6 +51,23 @@ Tracks feature completion across sessions. See `NEXT_MISSION.md` for what to bui
 
 ---
 
+---
+
+## Phase 6 — UI Layer
+
+| Step | Feature | Priority | Notes |
+|------|---------|----------|-------|
+| 1 | VS Code Extension scaffold | P1 | `packages/vscode-extension/` — extension host + Webview panel + vsce manifest |
+| 2 | Report upload & analysis panel | P1 | File picker, provider auto-detect, phase A/B/C cards, CVE table, confidence display |
+| 3 | Apply / Commit / PR controls | P1 | One-click apply, SecretStorage tokens, progress stream, rollback UI, Phase C read-only |
+| 4 | Settings form & portfolio builder | P2 | Visual config for all CLI flags; portfolio.json builder; vsce publish to marketplace |
+| 5 | Tauri standalone app | P3 | Sidecar wraps same engine; shares 100% of Webview frontend; ~10 MB install |
+| 6 | Chrome Extension PR overlay | P3 | MV3; GitHub/GitLab PR badge overlay; read-only; bridges to local VS Code/Tauri server |
+
+Delivery rationale logged in `NEXT_MISSION.md` Phase 6 section and `Master_Roadmap.md`.
+
+---
+
 ## Deferred / Won't do
 
 | Item | Reason |

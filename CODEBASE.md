@@ -310,7 +310,7 @@ Baseline: **332/332 pass**
 | Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 | Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 5 complete — `mendfix portfolio --config portfolio.json` analyzes vulnerabilities across multiple repos and generates a consolidated `portfolio-report.md` with severity breakdown, phase distribution, and prioritized action order. 332/332 tests pass.
+**Next:** Phase 6 — UI Layer. VS Code Extension (primary): Webview panel wrapping the existing engine with report upload, analysis view, one-click apply/commit/PR controls, settings form, and portfolio builder. No changes to `src/core/`, providers, or ecosystems. See `NEXT_MISSION.md` for the 6-step build sequence.
 
 ---
 

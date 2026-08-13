@@ -4,6 +4,18 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-13 — Phase 6 planning: UI Layer delivery decision
+
+**Before:** No UI plan existed; all interaction was CLI-only.
+**Changes:**
+- `NEXT_MISSION.md` — added Phase 6 section: delivery decision table (VS Code Extension primary, Tauri secondary, Chrome Extension companion, Electron rejected), 6-step build sequence with files and priority, architecture rules for Step 1 (host owns I/O, Webview owns rendering, SecretStorage for tokens, direct require not child_process).
+- `Master_Roadmap.md` — Phase 5 marked ✅ COMPLETE; Phase 6 expanded with UI detail; former Phase 6 (Knowledge Graph) renumbered to Phase 7, Phase 7 (Intelligence) to Phase 8, etc.
+- `CODEBASE.md` — "Next:" line updated to Phase 6 UI with pointer to NEXT_MISSION.md.
+- `docs/ROADMAP.md` — Phase 6 table added: 6 steps, priority, notes, delivery rationale pointer.
+**Next:** Start Phase 6 Step 1 — scaffold `packages/vscode-extension/` with extension host, Webview panel, and vsce manifest. No changes to existing engine.
+
+---
+
 ## 2026-08-12 — Phase 5 complete: Multi-repo portfolio mode
 
 **Before:** `mendfix` operated on a single repo per invocation; no way to get a cross-portfolio CVE view.
