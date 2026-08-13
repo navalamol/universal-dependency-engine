@@ -1,19 +1,27 @@
 'use strict';
 
 const vscode = require('vscode');
-const { MendFixPanel } = require('./panel');
+const { MendFixViewProvider } = require('./panel');
 
 function activate(context) {
+  const provider = new MendFixViewProvider(context);
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(MendFixViewProvider.viewType, provider)
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('mendfix.openPanel', () => {
-      MendFixPanel.createOrShow(context);
-    }),
+      vscode.commands.executeCommand('mendfix.panel.focus');
+    })
+  );
 
+  context.subscriptions.push(
     vscode.commands.registerCommand('mendfix.analyzeReport', (uri) => {
-      const panel = MendFixPanel.createOrShow(context);
-      if (uri) {
-        MendFixPanel.currentPanel._loadReport(uri.fsPath);
+      if (uri && uri.fsPath) {
+        provider.loadFile(uri.fsPath);
       }
+      vscode.commands.executeCommand('mendfix.panel.focus');
     })
   );
 }

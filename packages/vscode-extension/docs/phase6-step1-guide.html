@@ -1,0 +1,1059 @@
+<title>MendFix Extension Guide</title>
+<style>
+  /* ── Tokens ─────────────────────────────────────────────────────── */
+  :root {
+    --bg:          #ffffff;
+    --surface:     #f6f8fa;
+    --border:      #d0d7de;
+    --text:        #1f2328;
+    --text-muted:  #656d76;
+    --accent:      #1a7f37;
+    --accent-bg:   rgba(26,127,55,0.1);
+    --warn:        #9a6700;
+    --warn-bg:     rgba(154,103,0,0.1);
+    --danger:      #cf222e;
+    --danger-bg:   rgba(207,34,46,0.1);
+    --code-bg:     #f6f8fa;
+    --code-border: #d0d7de;
+    --link:        #0969da;
+    --nav-bg:      #ffffff;
+    --shadow:      rgba(31,35,40,0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:          #0d1117;
+      --surface:     #161b22;
+      --border:      #30363d;
+      --text:        #e6edf3;
+      --text-muted:  #8b949e;
+      --accent:      #3fb950;
+      --accent-bg:   rgba(63,185,80,0.1);
+      --warn:        #d29922;
+      --warn-bg:     rgba(210,153,34,0.1);
+      --danger:      #f85149;
+      --danger-bg:   rgba(248,81,73,0.1);
+      --code-bg:     #161b22;
+      --code-border: #30363d;
+      --link:        #58a6ff;
+      --nav-bg:      #0d1117;
+      --shadow:      rgba(0,0,0,0.4);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:          #0d1117;
+    --surface:     #161b22;
+    --border:      #30363d;
+    --text:        #e6edf3;
+    --text-muted:  #8b949e;
+    --accent:      #3fb950;
+    --accent-bg:   rgba(63,185,80,0.1);
+    --warn:        #d29922;
+    --warn-bg:     rgba(210,153,34,0.1);
+    --danger:      #f85149;
+    --danger-bg:   rgba(248,81,73,0.1);
+    --code-bg:     #161b22;
+    --code-border: #30363d;
+    --link:        #58a6ff;
+    --nav-bg:      #0d1117;
+    --shadow:      rgba(0,0,0,0.4);
+  }
+
+  /* ── Reset & Base ───────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 0;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  @media (max-width: 740px) {
+    .layout { grid-template-columns: 1fr; }
+    .nav-rail { display: none; }
+  }
+
+  /* ── Nav Rail ───────────────────────────────────────────────────── */
+  .nav-rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 40px 0 40px 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 24px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .nav-brand svg { flex-shrink: 0; }
+
+  .nav-brand-text {
+    font-size: 0.92em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-brand-sub {
+    font-size: 0.72em;
+    color: var(--text-muted);
+    font-weight: 400;
+    display: block;
+  }
+
+  .nav-group { margin-bottom: 16px; }
+
+  .nav-group-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: 0 0 6px 0;
+    display: block;
+  }
+
+  .nav-link {
+    display: block;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 3px 0 3px 10px;
+    border-left: 2px solid transparent;
+    transition: color 0.1s, border-color 0.1s;
+  }
+
+  .nav-link:hover { color: var(--text); border-left-color: var(--border); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+
+  /* ── Main content ───────────────────────────────────────────────── */
+  main {
+    padding: 40px 0 80px 48px;
+    min-width: 0;
+  }
+
+  /* ── Page header ────────────────────────────────────────────────── */
+  .page-header {
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-size: 2em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .page-desc {
+    font-size: 1.05em;
+    color: var(--text-muted);
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .badge {
+    font-size: 0.75em;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: var(--surface);
+  }
+
+  .badge.green { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+
+  /* ── Sections ───────────────────────────────────────────────────── */
+  .doc-section {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+
+  h2 {
+    font-size: 1.3em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-size: 1em;
+    font-weight: 700;
+    color: var(--text);
+    margin: 24px 0 10px;
+  }
+
+  p { margin-bottom: 14px; color: var(--text); }
+  p:last-child { margin-bottom: 0; }
+
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Steps ──────────────────────────────────────────────────────── */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 0 16px;
+    padding-bottom: 28px;
+    position: relative;
+  }
+
+  .step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.8em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-body { padding-top: 4px; }
+  .step-title { font-weight: 600; margin-bottom: 6px; }
+
+  /* ── Code ───────────────────────────────────────────────────────── */
+  pre, code {
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.88em;
+  }
+
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--text);
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 1em;
+  }
+
+  .syntax-comment { color: var(--text-muted); }
+  .syntax-key     { color: var(--link); }
+  .syntax-string  { color: var(--accent); }
+  .syntax-kw      { color: #ff7b72; }
+
+  /* ── Phase pills ────────────────────────────────────────────────── */
+  .phase-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  @media (max-width: 500px) { .phase-grid { grid-template-columns: 1fr; } }
+
+  .phase-card {
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid transparent;
+  }
+
+  .phase-card.a { background: var(--accent-bg); border-color: var(--accent); }
+  .phase-card.b { background: var(--warn-bg);   border-color: var(--warn);   }
+  .phase-card.c { background: var(--danger-bg); border-color: var(--danger); }
+
+  .phase-label {
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .phase-card.a .phase-label { color: var(--accent); }
+  .phase-card.b .phase-label { color: var(--warn);   }
+  .phase-card.c .phase-label { color: var(--danger); }
+
+  .phase-title { font-weight: 700; font-size: 1em; margin-bottom: 4px; }
+  .phase-desc  { font-size: 0.85em; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── Callouts ───────────────────────────────────────────────────── */
+  .callout {
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 10px;
+    align-items: start;
+    font-size: 0.9em;
+    border: 1px solid transparent;
+  }
+
+  .callout.tip    { background: var(--accent-bg); border-color: var(--accent); }
+  .callout.warn   { background: var(--warn-bg);   border-color: var(--warn);   }
+  .callout.info   { background: var(--surface);   border-color: var(--border); }
+
+  .callout-icon { font-size: 0.9em; line-height: 1.7; }
+  .callout-body { line-height: 1.6; }
+  .callout-body strong { color: var(--text); }
+
+  /* ── Tables ─────────────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin: 14px 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th {
+    text-align: left;
+    font-size: 0.78em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface); }
+
+  /* ── Architecture diagram ───────────────────────────────────────── */
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+
+  .arch-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 8px;
+  }
+
+  .arch-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.82em;
+    font-weight: 600;
+    text-align: center;
+    min-width: 130px;
+    flex-shrink: 0;
+  }
+
+  .arch-box.accent { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  .arch-box.muted  { color: var(--text-muted); }
+
+  .arch-arrow {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 6px;
+    font-size: 0.72em;
+    color: var(--text-muted);
+    min-width: 60px;
+  }
+
+  .arch-arrow .line {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    position: relative;
+    margin: 6px 0 2px;
+  }
+
+  .arch-arrow .line::after {
+    content: '▶';
+    position: absolute;
+    right: -4px;
+    top: -6px;
+    font-size: 10px;
+    color: var(--border);
+  }
+</style>
+
+<div class="layout">
+
+  <!-- ── Nav rail ───────────────────────────────────────────────── -->
+  <nav class="nav-rail" aria-label="Page navigation">
+    <a class="nav-brand" href="#top">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+           style="color:var(--accent)">
+        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+        <polyline points="9 12 11 14 15 10"/>
+      </svg>
+      <span>
+        <span class="nav-brand-text">MendFix</span>
+        <span class="nav-brand-sub">Extension Guide</span>
+      </span>
+    </a>
+
+    <div class="nav-group">
+      <span class="nav-group-label">Getting Started</span>
+      <a class="nav-link active" href="#overview">Overview</a>
+      <a class="nav-link" href="#install">Installation</a>
+      <a class="nav-link" href="#quickstart">Quick Start</a>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-group-label">Using the Extension</span>
+      <a class="nav-link" href="#panel">The Panel</a>
+      <a class="nav-link" href="#analyze">Analyzing a Report</a>
+      <a class="nav-link" href="#results">Reading Results</a>
+      <a class="nav-link" href="#phases">Phase A / B / C</a>
+      <a class="nav-link" href="#settings">Settings</a>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-group-label">For Contributors</span>
+      <a class="nav-link" href="#architecture">Architecture</a>
+      <a class="nav-link" href="#devsetup">Dev Setup</a>
+      <a class="nav-link" href="#roadmap">Roadmap</a>
+    </div>
+  </nav>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <main id="top">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="eyebrow">Phase 6 — Step 1</div>
+      <h1>MendFix VS Code Extension</h1>
+      <p class="page-desc">
+        Analyze vulnerability reports from Mend, Snyk, Dependabot, and nine other providers
+        directly inside VS Code — without leaving your editor.
+      </p>
+      <div class="badge-row">
+        <span class="badge green">v0.1.0</span>
+        <span class="badge">VS Code ^1.85</span>
+        <span class="badge">Node.js ^18</span>
+        <span class="badge">Plain JS — no build step</span>
+      </div>
+    </div>
+
+    <!-- Overview -->
+    <section class="doc-section" id="overview">
+      <h2>Overview</h2>
+      <p>
+        MendFix is a Node.js CLI engine that reads vulnerability reports and automatically
+        remediates ~90–95% of CVEs via <code>npm overrides</code> or Maven
+        <code>dependencyManagement</code> patches. This VS Code extension wraps that engine
+        in a sidebar panel so you can analyze reports, see phase-classified results, and
+        (in Step 2+) apply remediations — all without opening a terminal.
+      </p>
+
+      <div class="phase-grid">
+        <div class="phase-card a">
+          <div class="phase-label">Phase A</div>
+          <div class="phase-title">95–100% confidence</div>
+          <div class="phase-desc">Same-major patch/minor. Safe to auto-apply. Output: <code>phase-a-overrides.json</code></div>
+        </div>
+        <div class="phase-card b">
+          <div class="phase-label">Phase B</div>
+          <div class="phase-title">60–95% confidence</div>
+          <div class="phase-desc">Multiple same-major versions or forced override. Review before applying.</div>
+        </div>
+        <div class="phase-card c">
+          <div class="phase-label">Phase C</div>
+          <div class="phase-title">&lt;60% confidence</div>
+          <div class="phase-desc">Major version bump, no fix, or multi-major conflict. Manual review required.</div>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <span class="callout-icon">✓</span>
+        <div class="callout-body">
+          <strong>Nine providers supported:</strong> Mend, Snyk, npm-audit, Dependabot, OWASP, OSV,
+          Trivy, GitLab, and Xray. Drop any of their JSON outputs onto the panel — provider detection
+          is automatic.
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section class="doc-section" id="install">
+      <h2>Installation</h2>
+
+      <h3>Option A — Open the extension folder in VS Code (development mode)</h3>
+      <p>
+        This is the fastest path. No packaging needed. Open the
+        <code>packages/vscode-extension</code> folder directly in VS Code and press
+        <kbd>F5</kbd> — VS Code launches an Extension Development Host with MendFix loaded.
+      </p>
+      <pre><code><span class="syntax-comment"># from the project root</span>
+code packages/vscode-extension</code></pre>
+      <p>Then press <kbd>F5</kbd> (or run <strong>Run MendFix Extension</strong> from the
+      Run &amp; Debug panel). A new VS Code window opens with the extension active.</p>
+
+      <h3>Option B — Install from .vsix</h3>
+      <p>Package the extension and install it into your regular VS Code instance:</p>
+      <pre><code>cd packages/vscode-extension
+npm install          <span class="syntax-comment"># installs @vscode/vsce (dev dep only)</span>
+npx vsce package     <span class="syntax-comment"># produces mendfix-vscode-0.1.0.vsix</span></code></pre>
+      <p>Then in VS Code: <strong>Extensions → … → Install from VSIX…</strong></p>
+
+      <div class="callout warn">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>Important for Option B:</strong> The extension requires the MendFix engine to be
+          present at <code>../../mendfix.js</code> relative to the extension folder (i.e., the project
+          root). The engine is not bundled into the .vsix. Install the .vsix only from within the
+          project checkout, not as a standalone tool.
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick start -->
+    <section class="doc-section" id="quickstart">
+      <h2>Quick Start</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Open the MendFix panel</div>
+            <p>Click the <strong>shield icon</strong> in the Activity Bar (left sidebar).
+            The MendFix panel opens. Alternatively, run the command
+            <code>MendFix: Open Panel</code> from the Command Palette
+            (<kbd>Ctrl+Shift+P</kbd> / <kbd>⌘⇧P</kbd>).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Select a vulnerability report</div>
+            <p>Click <strong>Browse</strong> and select a JSON report from Mend, Snyk,
+            Dependabot, npm-audit, or any supported provider. Or right-click any
+            <code>.json</code> file in the Explorer and choose
+            <strong>MendFix: Analyze Vulnerability Report</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Click Analyze</div>
+            <p>MendFix parses the report, runs the SemVer resolution engine, and classifies
+            each library into Phase A, B, or C. Results appear in the panel within seconds.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Read the results</div>
+            <p>The summary cards show library counts per phase. The library list below shows
+            each library's current version, recommended version, CVE count, and highest
+            severity. Phase A items are safe to auto-apply in Step 2.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel -->
+    <section class="doc-section" id="panel">
+      <h2>The MendFix Panel</h2>
+
+      <p>
+        The panel lives in the VS Code Activity Bar sidebar. It uses VS Code's
+        <code>WebviewViewProvider</code> API, which means it's always available at the
+        click of the shield icon — no tab management, no floating windows.
+      </p>
+
+      <h3>Controls</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Control</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Browse</strong></td>
+              <td>Opens a file picker filtered to <code>.json</code> files. Picks the vulnerability report to analyze.</td>
+            </tr>
+            <tr>
+              <td><strong>Verify registry versions</strong></td>
+              <td>When checked, MendFix queries the npm registry to confirm recommended versions exist before displaying them. Slower but more accurate for offline-first environments.</td>
+            </tr>
+            <tr>
+              <td><strong>Analyze</strong></td>
+              <td>Runs the full analysis pipeline: parse → resolve → phase-classify. Enabled once a file is selected.</td>
+            </tr>
+            <tr>
+              <td><strong>⚙ MendFix settings</strong></td>
+              <td>Opens VS Code Settings filtered to the <code>mendfix.*</code> namespace. Appears after the first successful analysis.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Right-click shortcut</h3>
+      <p>
+        Right-clicking any <code>.json</code> file in the Explorer sidebar shows
+        <strong>MendFix: Analyze Vulnerability Report</strong>. This pre-loads the file path
+        into the panel and focuses it — one click instead of three.
+      </p>
+    </section>
+
+    <!-- Analyze -->
+    <section class="doc-section" id="analyze">
+      <h2>Analyzing a Report</h2>
+
+      <p>
+        The analyze pipeline runs entirely in the VS Code Extension Host process
+        (Node.js). No network calls are made unless you check
+        <strong>Verify registry versions</strong>. Nothing is written to disk during analysis —
+        output files are generated only when you click Apply (Step 3).
+      </p>
+
+      <h3>Supported report formats</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Provider</th><th>How to generate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Mend</strong></td><td>Export from the Mend portal as JSON</td></tr>
+            <tr><td><strong>Snyk</strong></td><td><code>snyk test --json &gt; report.json</code></td></tr>
+            <tr><td><strong>npm-audit</strong></td><td><code>npm audit --json &gt; report.json</code></td></tr>
+            <tr><td><strong>Dependabot</strong></td><td>GitHub → Security → Dependabot alerts → Export</td></tr>
+            <tr><td><strong>OWASP</strong></td><td>Dependency-Check JSON report mode</td></tr>
+            <tr><td><strong>OSV</strong></td><td><code>osv-scanner --json &gt; report.json</code></td></tr>
+            <tr><td><strong>Trivy</strong></td><td><code>trivy fs --format json &gt; report.json</code></td></tr>
+            <tr><td><strong>GitLab</strong></td><td>GitLab Dependency Scanning artifact</td></tr>
+            <tr><td><strong>Xray</strong></td><td>JFrog Xray JSON export</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ</span>
+        <div class="callout-body">
+          Provider detection is automatic — MendFix inspects the JSON structure and selects the
+          correct parser. You do not need to specify which tool generated the report.
+        </div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="doc-section" id="results">
+      <h2>Reading Results</h2>
+
+      <h3>Summary row</h3>
+      <p>
+        Shows total libraries (unique packages with vulnerabilities) and total CVEs across all
+        phases. A library with 12 CVEs counts as 1 library.
+      </p>
+
+      <h3>Phase cards</h3>
+      <p>Three cards — A, B, C — show the library count in each phase at a glance.
+      Click the library list below to see per-library detail.</p>
+
+      <h3>Library list</h3>
+      <p>Each row shows:</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Library name</strong></td><td>npm package name or Maven groupId:artifactId</td></tr>
+            <tr><td><strong>Version arrow</strong></td><td>Current version → recommended fix version. Dash if no fix is available.</td></tr>
+            <tr><td><strong>CVE count</strong></td><td>Number of CVEs affecting this library version</td></tr>
+            <tr><td><strong>Severity badge</strong></td><td>Highest severity across all CVEs for this library: CRITICAL / HIGH / MEDIUM / LOW</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Phases -->
+    <section class="doc-section" id="phases">
+      <h2>Understanding Phase A / B / C</h2>
+
+      <p>
+        Every library in the results is classified into one of three phases. The classification
+        is deterministic — it uses the <code>semver</code> package, never an LLM.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Phase</th><th>Condition</th><th>Action</th><th>Output file</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color:var(--accent);font-weight:700">A</td>
+              <td>Same-major patch/minor upgrade, single version in the dependency tree</td>
+              <td>Safe to auto-apply without review</td>
+              <td><code>phase-a-overrides.json</code></td>
+            </tr>
+            <tr>
+              <td style="color:var(--warn);font-weight:700">B</td>
+              <td>Multiple same-major versions present, or parent upgrade is preferred path</td>
+              <td>Review the override before applying</td>
+              <td><code>phase-b-overrides.json</code></td>
+            </tr>
+            <tr>
+              <td style="color:var(--danger);font-weight:700">C</td>
+              <td>Major version bump required, no fix exists, or multi-major version conflict</td>
+              <td>Manual remediation with justification</td>
+              <td><code>manual-review.md</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <span class="callout-icon">⚠</span>
+        <div class="callout-body">
+          <strong>Hard rule:</strong> MAJOR_BUMP is always Phase C. A package like
+          <code>nanoid 3→5</code> introduces breaking API changes that cannot be safely handled
+          by an override alone. Phase C items are never auto-applied.
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="doc-section" id="settings">
+      <h2>Settings</h2>
+
+      <p>
+        Open VS Code settings and search for <code>mendfix</code>, or click
+        <strong>⚙ MendFix settings</strong> in the panel after an analysis.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>mendfix.outDir</code></td>
+              <td><code>./mendfix-output</code></td>
+              <td>Directory where remediation output files are written when you Apply (Step 3).</td>
+            </tr>
+            <tr>
+              <td><code>mendfix.verifyVersions</code></td>
+              <td><code>false</code></td>
+              <td>Query the npm registry to verify recommended versions before displaying them. Adds ~2–5 seconds per analysis.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="doc-section" id="architecture">
+      <h2>Architecture</h2>
+
+      <p>
+        The extension follows VS Code's two-world model. The <strong>Extension Host</strong>
+        (Node.js) runs all file I/O, shell commands, and engine calls. The
+        <strong>Webview</strong> (browser sandbox) handles all UI rendering. They communicate
+        only via <code>postMessage</code>.
+      </p>
+
+      <div class="arch-diagram">
+        <div class="arch-row">
+          <div class="arch-box accent">Webview (HTML/JS)</div>
+          <div class="arch-arrow">
+            <span>postMessage</span>
+            <div class="line"></div>
+            <span style="font-size:0.7em;margin-top:2px">browse / analyze</span>
+          </div>
+          <div class="arch-box accent">Extension Host (Node.js)</div>
+          <div class="arch-arrow">
+            <span>require()</span>
+            <div class="line"></div>
+            <span style="font-size:0.7em;margin-top:2px">direct, no shell</span>
+          </div>
+          <div class="arch-box">MendFix Engine<br><span style="font-weight:400;font-size:0.85em;color:var(--text-muted)">src/providers<br>src/core<br>src/ecosystems</span></div>
+        </div>
+        <div class="arch-row" style="margin-top:8px">
+          <div class="arch-box muted" style="min-width:130px">User actions<br>(clicks, input)</div>
+          <div class="arch-arrow">
+            <span>postMessage</span>
+            <div class="line" style="transform:scaleX(-1)"></div>
+            <span style="font-size:0.7em;margin-top:2px">result / error</span>
+          </div>
+          <div class="arch-box muted">vscode.SecretStorage<br><span style="font-weight:400;font-size:0.85em">platform tokens</span></div>
+        </div>
+      </div>
+
+      <h3>Key files</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>File</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>extension.js</code></td>
+              <td><code>activate()</code> / <code>deactivate()</code>. Registers <code>MendFixViewProvider</code> against the view ID and wires up both commands.</td>
+            </tr>
+            <tr>
+              <td><code>panel.js</code></td>
+              <td><code>MendFixViewProvider</code> implements <code>vscode.WebviewViewProvider</code>. Owns the HTML template, message dispatch, browse dialog, and engine calls via <code>require()</code>.</td>
+            </tr>
+            <tr>
+              <td><code>package.json</code></td>
+              <td>vsce manifest. Declares the Activity Bar container, sidebar view, two commands, Explorer context menu, and workspace settings.</td>
+            </tr>
+            <tr>
+              <td><code>media/icon.svg</code></td>
+              <td>Activity Bar icon. Uses <code>currentColor</code> — adapts automatically to VS Code's light/dark theme.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Message protocol</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Direction</th><th>Type</th><th>Payload</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Webview → Host</td><td><code>ready</code></td><td>Webview finished loading; host delivers any pending file path.</td></tr>
+            <tr><td>Webview → Host</td><td><code>browse</code></td><td>Open file picker dialog.</td></tr>
+            <tr><td>Webview → Host</td><td><code>analyze</code></td><td><code>{ reportPath, verifyVersions }</code></td></tr>
+            <tr><td>Webview → Host</td><td><code>openSettings</code></td><td>Focus VS Code settings on <code>mendfix</code>.</td></tr>
+            <tr><td>Host → Webview</td><td><code>filePicked</code></td><td><code>{ path }</code> — from browse or right-click command.</td></tr>
+            <tr><td>Host → Webview</td><td><code>thinking</code></td><td>Show spinner; analysis in progress.</td></tr>
+            <tr><td>Host → Webview</td><td><code>result</code></td><td><code>{ totalLibraries, totalCVEs, phaseA[], phaseB[], phaseC[] }</code></td></tr>
+            <tr><td>Host → Webview</td><td><code>error</code></td><td><code>{ errorKind: 'notfound'|'unknown', message }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Dev setup -->
+    <section class="doc-section" id="devsetup">
+      <h2>Development Setup</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Open the extension folder in VS Code</div>
+            <pre><code>code packages/vscode-extension</code></pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Press F5</div>
+            <p>VS Code launches an <em>Extension Development Host</em> — a second VS Code window
+            with MendFix loaded. No build step. No TypeScript compilation. Changes to
+            <code>extension.js</code> or <code>panel.js</code> take effect after reloading
+            the host (<kbd>Ctrl+R</kbd> in the dev host window).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Reload the webview panel</div>
+            <p>After editing <code>panel.js</code>, close and reopen the MendFix sidebar to
+            reload the webview. Use <strong>Developer: Reload Webviews</strong> from the
+            Command Palette for a faster reload.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Run the engine test suite (unchanged)</div>
+            <pre><code><span class="syntax-comment"># from project root — must still pass 332/332</span>
+npm test</code></pre>
+            <p>The extension adds no new tests for Step 1. Engine tests act as the
+            regression guard for the core.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Debugging webview JS</h3>
+      <p>
+        In the Extension Development Host, run
+        <strong>Developer: Open Webview Developer Tools</strong> from the Command Palette.
+        This opens the browser DevTools for the webview, where you can inspect
+        <code>console.log</code> output, the DOM, and network requests.
+      </p>
+
+      <h3>Debugging extension host code</h3>
+      <p>
+        Set breakpoints in <code>extension.js</code> or <code>panel.js</code> and press F5.
+        The VS Code debugger attaches to the Extension Host process automatically.
+      </p>
+    </section>
+
+    <!-- Roadmap -->
+    <section class="doc-section" id="roadmap">
+      <h2>Roadmap</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Step</th><th>Title</th><th>Status</th><th>Priority</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Extension scaffold — sidebar panel, Activity Bar icon, analyze wiring</td>
+              <td style="color:var(--accent)">✓ Done</td>
+              <td>P1</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Report Upload &amp; Analysis Panel — full CVE table, phase cards, provider auto-detect UI</td>
+              <td style="color:var(--text-muted)">Next</td>
+              <td>P1</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Apply, Commit &amp; PR Controls — apply flow, SecretStorage tokens, progress stream, rollback UI</td>
+              <td style="color:var(--text-muted)">Planned</td>
+              <td>P1</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Visual Settings &amp; Portfolio Builder — settings form, portfolio.json builder, vsce publish</td>
+              <td style="color:var(--text-muted)">Planned</td>
+              <td>P2</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Tauri Standalone App — sidecar, shared frontend, OS packaging, auto-update</td>
+              <td style="color:var(--text-muted)">Stretch</td>
+              <td>P3</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>Chrome Extension — PR overlay badges, GitHub/GitLab integration, local API bridge</td>
+              <td style="color:var(--text-muted)">Stretch</td>
+              <td>P3</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ</span>
+        <div class="callout-body">
+          The engine (<code>src/core/</code>, <code>src/providers/</code>,
+          <code>src/ecosystems/</code>) is frozen — no changes in any Phase 6 step.
+          UI, integrations, and automation build on top of the existing deterministic capabilities.
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Highlight active nav link on scroll
+  const links = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('.doc-section');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector('.nav-link[href="#' + entry.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -75% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>

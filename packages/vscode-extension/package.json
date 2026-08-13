@@ -1,7 +1,7 @@
 {
   "name": "mendfix-vscode",
   "displayName": "MendFix",
-  "description": "Automated vulnerability remediation from Mend, Snyk, Dependabot and more",
+  "description": "Automated vulnerability remediation — Mend · Snyk · Dependabot · npm-audit and more",
   "version": "0.1.0",
   "publisher": "mendfix",
   "license": "MIT",
@@ -13,6 +13,24 @@
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mendfix",
+          "title": "MendFix",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mendfix": [
+        {
+          "type": "webview",
+          "id": "mendfix.panel",
+          "name": "MendFix"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "mendfix.openPanel",
@@ -31,6 +49,21 @@
           "group": "mendfix"
         }
       ]
+    },
+    "configuration": {
+      "title": "MendFix",
+      "properties": {
+        "mendfix.outDir": {
+          "type": "string",
+          "default": "./mendfix-output",
+          "description": "Directory for remediation output files (overrides, reports, graph-diff)."
+        },
+        "mendfix.verifyVersions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Check npm registry for version existence before recommending. Slower but more accurate."
+        }
+      }
     }
   },
   "scripts": {
