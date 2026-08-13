@@ -32,6 +32,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-13 — Phase 6 Step 1 (Apply flow): wire Apply button to CLI
+
+**Before:** Analysis was working in the panel but the Apply button was missing — fixes were never written to package.json or package-lock.json regardless of Phase B checkbox state.
+**Changes:**
+- `packages/vscode-extension/panel.js` — `_handleApply()` added: spawns `node mendfix.js apply` with all configured flags (`--package-json`, `--lock-file`, `--apply-phase-b`, `--dry-run`, `--commit`, `--verify-versions`, etc.), streams stdout/stderr back as `applyProgress` messages; posts `applyDone`/`applyError` on close.
+- `packages/vscode-extension/panel.js` — "Apply Phase A" and "+ Phase B" buttons added to results section HTML; apply log div (monospace, scrollable, color-coded) and result banner added.
+- `packages/vscode-extension/panel.js` — Webview JS wired for all five apply message types: `applyStart` (disable buttons, clear log), `applyProgress` (append colored line), `applyDone` (success/failure banner), `applyError` (error banner + log line).
+**Next:** Phase 6 Step 2 — add `mendfix.autoCommit`, `mendfix.verbose`, `mendfix.openPr` controls to the Repo target section; Step 3 — SecretStorage token management.
+
+---
+
 ## 2026-08-13 — Phase 6 Step 1: VS Code Extension scaffold
 
 **Before:** No UI existed; all interaction was CLI-only. Integration regression test also had a broken hardcoded report path.

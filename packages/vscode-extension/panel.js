@@ -1,13 +1,15 @@
 'use strict';
 
-const vscode = require('vscode');
-const path = require('path');
+const vscode  = require('vscode');
+const path    = require('path');
+const { spawn } = require('child_process');
 
 // Paths to core engine modules (relative to this extension file)
 const PROVIDERS_PATH   = path.join(__dirname, '../../src/providers/index.js');
 const SEMVER_PATH      = path.join(__dirname, '../../src/core/semver-engine.js');
 const PHASES_PATH      = path.join(__dirname, '../../src/core/phases.js');
 const REGISTRY_PATH    = path.join(__dirname, '../../src/ecosystems/npm/registry.js');
+const ENGINE_CLI_PATH  = path.join(__dirname, '../../mendfix.js');
 
 class MendFixViewProvider {
   static viewType = 'mendfix.panel';
@@ -46,6 +48,9 @@ class MendFixViewProvider {
           break;
         case 'analyze':
           await this._handleAnalyze(msg.reportPath, msg.verifyVersions);
+          break;
+        case 'apply':
+          await this._handleApply(msg);
           break;
         case 'openSettings':
           vscode.commands.executeCommand('workbench.action.openSettings', '@ext:mendfix.mendfix-vscode');
@@ -106,7 +111,7 @@ class MendFixViewProvider {
   async _handleBrowseFile(field, fileNames, label) {
     const uris = await vscode.window.showOpenDialog({
       canSelectMany: false,
-      filters: { [label]: fileNames },
+      // filters: { [label]: fileNames },
       openLabel: label,
     });
     if (uris && uris[0]) {
@@ -169,6 +174,61 @@ class MendFixViewProvider {
         message: err.message,
       });
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Apply — spawn CLI, stream output back to webview
+  // ---------------------------------------------------------------------------
+
+  async _handleApply(msg) {
+    const { reportPath, pkgPath, lockPath, ecosystem, applyPhaseB,
+            autoCommit, autoCommitPhaseB, dryRun, verbose,
+            verifyVersions, outDir } = msg;
+
+    if (!reportPath) {
+      this._view.webview.postMessage({ type: 'applyError', message: 'No report selected. Run Analyze first.' });
+      return;
+    }
+
+    // Build CLI args
+    const args = [ENGINE_CLI_PATH, 'apply', '--report', reportPath];
+    if (pkgPath)           args.push('--package-json', pkgPath);
+    if (lockPath)          args.push('--lock-file', lockPath);
+    if (outDir)            args.push('--out-dir', outDir);
+    if (ecosystem && ecosystem !== 'auto') args.push('--ecosystem', ecosystem);
+    if (applyPhaseB)       args.push('--apply-phase-b');
+    if (autoCommit)        args.push('--commit');
+    if (autoCommitPhaseB)  args.push('--commit-phase-b');
+    if (dryRun)            args.push('--dry-run');
+    if (verbose)           args.push('--verbose');
+    if (verifyVersions)    args.push('--verify-versions');
+
+    this._view.webview.postMessage({ type: 'applyStart', dryRun: !!dryRun });
+
+    const proc = spawn(process.execPath, args, {
+      cwd: path.dirname(pkgPath || reportPath),
+    });
+
+    const send = (line) =>
+      this._view.webview.postMessage({ type: 'applyProgress', line: line.trimEnd() });
+
+    proc.stdout.on('data', (chunk) =>
+      chunk.toString().split('\n').filter(Boolean).forEach(send));
+    proc.stderr.on('data', (chunk) =>
+      chunk.toString().split('\n').filter(Boolean).forEach(l => send('⚠ ' + l)));
+
+    proc.on('close', (code) => {
+      this._view.webview.postMessage({
+        type: 'applyDone',
+        success: code === 0,
+        exitCode: code,
+        outDir: outDir || './mendfix-output',
+      });
+    });
+
+    proc.on('error', (err) => {
+      this._view.webview.postMessage({ type: 'applyError', message: err.message });
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -405,6 +465,50 @@ class MendFixViewProvider {
     }
     .settings-link:hover { text-decoration: underline; }
 
+    /* ── Apply section ────────────────────────────────────────── */
+    .apply-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      margin-bottom: 6px;
+    }
+    .apply-bar button { flex: 1; padding: 5px 8px; font-size: 0.88em; }
+
+    .apply-log {
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 0.8em;
+      background: var(--vscode-terminal-background, var(--vscode-editor-background));
+      color: var(--vscode-terminal-foreground, var(--vscode-editor-foreground));
+      border: 1px solid var(--vscode-widget-border, rgba(128,128,128,0.2));
+      border-radius: 3px;
+      padding: 6px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-bottom: 6px;
+    }
+    .apply-log .log-ok   { color: var(--vscode-testing-iconPassed, #3fb950); }
+    .apply-log .log-warn { color: var(--vscode-editorWarning-foreground, #d29922); }
+    .apply-log .log-err  { color: var(--vscode-editorError-foreground, #f85149); }
+
+    .apply-result {
+      font-size: 0.85em;
+      padding: 6px 8px;
+      border-radius: 3px;
+      margin-bottom: 6px;
+    }
+    .apply-result.success {
+      background: rgba(35,134,54,0.15);
+      border-left: 3px solid var(--vscode-testing-iconPassed, #3fb950);
+      color: var(--vscode-testing-iconPassed, #3fb950);
+    }
+    .apply-result.failure {
+      background: rgba(248,81,73,0.12);
+      border-left: 3px solid var(--vscode-editorError-foreground, #f85149);
+      color: var(--vscode-editorError-foreground, #f85149);
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -517,6 +621,14 @@ class MendFixViewProvider {
       </div>
     </div>
     <div id="libList"></div>
+
+    <!-- Apply controls -->
+    <div class="apply-bar">
+      <button id="applyABtn">Apply Phase A</button>
+      <button id="applyBBtn" class="secondary">+ Phase B</button>
+    </div>
+    <div id="applyLog" class="apply-log hidden"></div>
+    <div id="applyResult" class="apply-result hidden"></div>
   </div>
 
   <a class="settings-link" id="settingsLink">⚙ MendFix settings</a>
@@ -536,6 +648,10 @@ class MendFixViewProvider {
     const repoHeader   = document.getElementById('repoHeader');
     const repoBody     = document.getElementById('repoBody');
     const repoChevron  = document.getElementById('repoChevron');
+    const applyABtn    = document.getElementById('applyABtn');
+    const applyBBtn    = document.getElementById('applyBBtn');
+    const applyLogEl   = document.getElementById('applyLog');
+    const applyResultEl= document.getElementById('applyResult');
 
     // Collapsible repo target
     repoHeader.addEventListener('click', () => {
@@ -559,6 +675,33 @@ class MendFixViewProvider {
       });
     });
     settingsLink.addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
+
+    function buildApplyMsg(forcePhaseB) {
+      return {
+        type:            'apply',
+        reportPath:      selectedPath,
+        pkgPath:         pkgPath,
+        lockPath:        lockPath,
+        ecosystem:       document.getElementById('ecosystem').value,
+        applyPhaseB:     forcePhaseB || document.getElementById('applyPhaseB').checked,
+        dryRun:          document.getElementById('dryRun').checked,
+        verifyVersions:  document.getElementById('verifyVersions').checked,
+        autoCommit:      false,
+        autoCommitPhaseB:false,
+        verbose:         false,
+        outDir:          '',
+      };
+    }
+
+    applyABtn.addEventListener('click', () => {
+      if (!selectedPath) return;
+      vscode.postMessage(buildApplyMsg(false));
+    });
+
+    applyBBtn.addEventListener('click', () => {
+      if (!selectedPath) return;
+      vscode.postMessage(buildApplyMsg(true));
+    });
 
     function setFile(fsPath) {
       selectedPath = fsPath;
@@ -675,7 +818,59 @@ class MendFixViewProvider {
         hide(resultsEl);
         return;
       }
+
+      if (msg.type === 'applyStart') {
+        applyABtn.disabled = true;
+        applyBBtn.disabled = true;
+        analyzeBtn.disabled = true;
+        applyLogEl.innerHTML = '';
+        hide(applyResultEl);
+        show(applyLogEl);
+        const label = msg.dryRun ? 'Dry-run — no writes to disk…' : 'Applying fixes…';
+        appendLog(label, 'log-ok');
+        return;
+      }
+
+      if (msg.type === 'applyProgress') {
+        const line = msg.line || '';
+        const cls  = line.startsWith('⚠') ? 'log-warn'
+                   : /error|fail/i.test(line) ? 'log-err'
+                   : '';
+        appendLog(line, cls);
+        return;
+      }
+
+      if (msg.type === 'applyDone') {
+        applyABtn.disabled = false;
+        applyBBtn.disabled = false;
+        analyzeBtn.disabled = false;
+        applyResultEl.className = 'apply-result ' + (msg.success ? 'success' : 'failure');
+        applyResultEl.textContent = msg.success
+          ? '✓ Fixes applied. Check ' + (msg.outDir || './mendfix-output') + ' for output files.'
+          : '✗ Apply exited with code ' + msg.exitCode + '. See log above.';
+        show(applyResultEl);
+        return;
+      }
+
+      if (msg.type === 'applyError') {
+        applyABtn.disabled = false;
+        applyBBtn.disabled = false;
+        analyzeBtn.disabled = false;
+        appendLog('⚠ ' + (msg.message || 'Apply failed'), 'log-err');
+        applyResultEl.className = 'apply-result failure';
+        applyResultEl.textContent = '✗ ' + (msg.message || 'Apply failed');
+        show(applyResultEl);
+        return;
+      }
     });
+
+    function appendLog(line, cls) {
+      const span = document.createElement('span');
+      if (cls) span.className = cls;
+      span.textContent = line + '\n';
+      applyLogEl.appendChild(span);
+      applyLogEl.scrollTop = applyLogEl.scrollHeight;
+    }
 
     // Signal to extension host that webview is ready
     vscode.postMessage({ type: 'ready' });
