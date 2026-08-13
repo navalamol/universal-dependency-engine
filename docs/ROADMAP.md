@@ -1,59 +1,111 @@
-# Mend AutoFixer — Feature Tracker
+# Universal Dependency Engine — Feature Tracker
 
-Tracks feature completion across sessions. See `NEXT_MISSION.md` for what to build next.
+Tracks feature completion across all phases. See `NEXT_MISSION.md` for what to build next.
 
 ---
 
-## Done
+## Phase 1 — Mend Auto-Fixer (npm + Maven) ✅ Complete
 
 | Feature | Notes |
 |---------|-------|
-| JSON report parsing | Groups by `library.keyUuid`; handles 3 `fixResolution` string formats + Maven GAV |
-| Excel report parsing | Auto-detects column names |
+| JSON + Excel report parsing | Groups by `library.keyUuid`; handles 3 `fixResolution` string formats + Maven GAV |
 | SemVer engine | Deterministic: per-CVE min same-major fix → max across CVEs; MAJOR_BUMP / NO_FIX / SAFE |
-| Phase A/B/C classification | A: same-major single version; B: same-major multi-instance; C: MAJOR_BUMP / NO_FIX / multi-major |
+| Phase A/B/C classification | A: same-major single version; B: same-major multi-instance; C: MAJOR_BUMP/NO_FIX/multi-major |
 | npm registry verification | `--verify-versions`; adjusts to nearest available ≥ fix; `exists: null` = pass-through |
-| Phase A auto-apply | `--package-json <path>` applies Phase A overrides directly; merges, never replaces |
+| Phase A auto-apply | `--package-json <path>` applies Phase A overrides; merges, never replaces |
 | Output: phase-a/b-overrides.json | Clean `"pkg": "version"` — no `@^major` selectors |
-| Output: manual-review.md | Phase C structured checklist with upgradeType-specific action items (renamed from phase-c-review.md) |
+| Output: manual-review.md | Phase C structured checklist with upgradeType-specific action items |
 | Output: remediation-report.md | Full markdown report with all phases, dep chains, confidence |
-| CLAUDE_WORKFLOW.md | Step-by-step Claude triage doc for Phase C items |
-| package-lock.json dep tree | `src/ecosystems/npm/lock-parser.js`; v2/v3 flat packages map; parent tracking with declared ranges |
+| package-lock.json dep tree | v2/v3 flat packages map; parent tracking with declared ranges; blast radius |
 | Consumer range validation | Phase A → B downgrade when consumer pinned range doesn't satisfy fix version |
 | Dev/build classification | `probableFalsePositive: true` when all lock-file instances are `dev: true` |
 | Parent upgrade recommendations | Phase C MAJOR_BUMP items gain `rootParents[]` |
 | Stale override cleanup | `mendfix cleanup`; flags/removes overrides where consumer ranges already cover fix |
-| Nested parent-scoped overrides | Multi-major disjoint parents → Phase B; generates `"parent": { "pkg": "version" }` keys |
+| Nested parent-scoped overrides | Multi-major disjoint parents → Phase B with nested override map |
 | Dependency chain display | Phase C items show `root → ... → vulnerablePkg` path via BFS |
 | Phase B → A promotion | Same-major multi-instance Phase B auto-promoted when all consumer ranges satisfied |
-| `--out-dir` default | Now relative to the report file's directory, not CWD |
-| Direct dep detection + priority (Scenarios 12/13) | Direct deps bump `dependencies`/`devDependencies`; transitive → `overrides` |
-| package-lock.json update + verify (Scenario 5) | `runPackageLockUpdate` + `verifyFixVersions` in installer.js |
-| Rollback on install failure (Scenario 22) | `snapshotFiles` / `restoreFiles` in installer.js |
-| Preserve human changes (Scenario 26) | `.mend-manifest.json` — skips manually-edited overrides with warning |
-| **Maven support** | maven/registry.js + pom-writer.js; auto-detects MAVEN_ARTIFACT; `--pom-xml` apply flag |
-| **Folder restructure** | src/core/, providers/, ecosystems/npm/, ecosystems/maven/ — zero-friction Phase 2/3 extension |
-| **mendfix.js subcommands** (Scenarios 19/20) | analyze / apply / cleanup; mend-fix.js kept as shim |
-| **Idempotency pre-flight** (Scenario 21) | Pre-flight check against .mend-manifest.json before any writes |
-| **Confidence metadata** (Scenario 14) | confidence.js — evidence + alternative fields per resolution item |
-| **git-commits.js** (Scenarios 15/16 — partial) | File written; commitPhaseA/B/C functions ready; **not yet called from mendfix.js apply** |
+| Direct dep detection + priority | Direct deps bump `dependencies`/`devDependencies`; transitive → `overrides` |
+| package-lock.json update + verify | `runPackageLockUpdate` + `verifyFixVersions` in installer.js |
+| Rollback on install failure | `snapshotFiles` / `restoreFiles` in installer.js |
+| Preserve human changes | `.mend-manifest.json` — skips manually-edited overrides with warning |
+| Maven support | maven/registry.js + pom-writer.js + dep-tree.js; auto-detects MAVEN_ARTIFACT |
+| mendfix.js subcommands | analyze / apply / cleanup / renovate; mend-fix.js kept as shim |
+| Idempotency pre-flight | Pre-flight check against .mend-manifest.json before any writes |
+| Confidence metadata (Scenario 14) | confidence.js — evidence + alternative fields per resolution item |
+| git-commits.js wiring (Scenarios 15/16) | `--commit` flag; commitPhaseA after successful install |
+| PR description (Scenario 18) | pr-description.md written to outDir on every non-dry-run apply |
 
 ---
 
-## Remaining — Phase 1 gaps
+## Phase 1.x — Remediation Path Explorer ✅ Complete
 
-| Feature | Scenario | Status |
-|---------|----------|--------|
-| Wire git-commits.js into mendfix.js apply | 15/16 | File exists; needs wiring + `--commit` flag |
-| PR description generation | 18 | Not started; needs `src/core/pr-description.js` |
-| Maven dep-tree parser | — | Not started; `src/ecosystems/maven/dep-tree.js` |
-| Deep mixed dev/runtime chain classification | 8 full | Deferred; current all-dev check covers most real cases |
+| Feature | Notes |
+|---------|-------|
+| Parent upgrade explorer | Recursive parent-chain exploration with 9 guardrails (depth, cycles, candidate limit, simulation limit) |
+| Manifest inspection per candidate | `getManifest(name, version)` with per-run cache in registry.js |
+| npm install simulation | `simulator.js` — temp-dir `npm install --package-lock-only`; `simulationVerified: true` on confirmed paths |
+| Override-set minimization | `override-minimizer.js` — iteratively simulates removal; `mendfix cleanup --simulate` |
+| Multi-path comparison | `remediation-paths.js` — buildPaths, rankPaths, comparePaths; Change Budget ranking |
+| Decision label taxonomy | SAFE_ALIGNED / SAFE_PARENT_UPGRADE / CONTROLLED_OVERRIDE / NOT_FIXABLE / NON_RUNTIME_EXPOSURE / MANUAL_SECURITY_REVIEW |
+| Security delta | `security-delta.js` — detects regressions introduced by a candidate version |
+| Blast radius | `buildBlastRadius` in lock-parser.js — BFS reverse-dep graph |
+| Safety Gate | Pre-apply checklist; `--force` bypass; halts on regressions or MANUAL confidence |
+| Whole-graph before/after diff | `graph-diff.js` — `graph-diff.md` written after every successful npm install |
+| Mixed dev/runtime chain | `applyPhases` accepts `rootDeps` param; full Scenario 8 classification |
+| Renovate PR relationship analysis | `analyzePRRelationships` — redundancy detection, merge order |
 
 ---
 
+## Phase 2 — Universal Finding Engine ✅ Complete
+
+| Provider | Notes |
+|----------|-------|
+| Snyk | `snyk test --json` standard + `--all-projects` + flat array shapes |
+| npm audit | v1 (npm 6 advisories) + v2 (npm 7+ vulnerabilities); cross-refs lock file for installed versions |
+| Dependabot | GitHub Security API alerts JSON; skips dismissed; cross-refs lock file |
+| OWASP Dependency-Check | JSON schema 1.1; purl extraction for npm + Maven |
+| OSV | osv-scanner JSON + OSV API bulk shapes; SEMVER/ECOSYSTEM range events |
+| Trivy | JSON SchemaVersion 2; multi-ecosystem: npm, Maven, Go, Python; comma-separated fix versions |
+| GitLab Dependency Scanning | v15+ JSON; fix version from remediations map → solution text → identifiers |
+| JFrog Xray | purl parsing: npm/gav/pypi/go/nuget/cargo schemes; installed version embedded |
+
 ---
 
-## Phase 6 — UI Layer
+## Phase 3 — Universal Dependency Engine ✅ Complete
+
+| Ecosystem | Components |
+|-----------|-----------|
+| Python | lock-parser (poetry.lock/Pipfile.lock/requirements.txt), writer, PyPI registry, pip installer, venv simulator |
+| Go | lock-parser (go.mod), writer (replace directives), proxy.golang.org registry, go mod installer, simulator |
+| .NET / NuGet | lock-parser (packages.lock.json + .csproj), writer (Directory.Packages.props), NuGet registry, dotnet restore installer, simulator |
+| Rust / Cargo | lock-parser (Cargo.lock TOML), writer (Cargo.toml + [patch.crates-io]), crates.io registry, cargo update installer, simulator |
+
+---
+
+## Phase 4 — CI/CD Platform Write-back ✅ Complete
+
+| Feature | Notes |
+|---------|-------|
+| GitHub PR creation | `createPR` in providers/github.js |
+| GitLab MR creation | `createMR` + `addMRComment` in providers/gitlab.js; self-hosted via `--gitlab-url` |
+| Azure DevOps PR creation | `createPR` + `addComment` in providers/azuredevops.js; PAT auth |
+| Bitbucket PR creation | `createPR` + `addComment` in providers/bitbucket.js; Basic or Bearer auth |
+| pr-poster dispatcher | `src/core/pr-poster.js` — platform-agnostic validation + dispatch |
+| CLI wiring | `mendfix apply --open-pr --platform <name>` + per-platform credential flags |
+
+---
+
+## Phase 5 — Multi-repo Portfolio Mode ✅ Complete
+
+| Feature | Notes |
+|---------|-------|
+| Portfolio orchestrator | `portfolio-runner.js` — `loadConfig`, `analyzeRepo`, `runPortfolio` |
+| Portfolio report | `src/core/portfolio-report.js` — severity summary, phase distribution, action priority sort |
+| CLI subcommand | `mendfix portfolio --config portfolio.json` |
+
+---
+
+## Phase 6 — UI Layer (next)
 
 | Step | Feature | Priority | Notes |
 |------|---------|----------|-------|
@@ -64,7 +116,7 @@ Tracks feature completion across sessions. See `NEXT_MISSION.md` for what to bui
 | 5 | Tauri standalone app | P3 | Sidecar wraps same engine; shares 100% of Webview frontend; ~10 MB install |
 | 6 | Chrome Extension PR overlay | P3 | MV3; GitHub/GitLab PR badge overlay; read-only; bridges to local VS Code/Tauri server |
 
-Delivery rationale logged in `NEXT_MISSION.md` Phase 6 section and `Master_Roadmap.md`.
+Delivery rationale: VS Code Extension primary — developers already there; full Node.js API access; marketplace distribution. Tauri secondary — IDE-independent, tiny install. Chrome Extension companion only — cannot run shell commands or access filesystem.
 
 ---
 
@@ -76,3 +128,4 @@ Delivery rationale logged in `NEXT_MISSION.md` Phase 6 section and `Master_Roadm
 | `@^major` scoped override selectors | Unreliable across npm versions. Multi-major → Phase C. |
 | TypeScript rewrite | CLAUDE.md explicitly prohibits. Plain CommonJS only. |
 | Backwards-compat shims for old output | No consumers of old format. |
+| Deep mixed dev/runtime chain classification (Scenario 8 full) | All-dev check covers real cases; mixed-chain BFS deferred to Phase 6+ |

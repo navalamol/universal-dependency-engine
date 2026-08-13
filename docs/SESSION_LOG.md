@@ -4,6 +4,22 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## Current State — 2026-08-13
+
+| Phase | What | Status |
+|-------|------|--------|
+| Phase 1 | Mend Auto-Fixer — npm + Maven, 26 scenarios, 32 tests | ✅ Complete |
+| Phase 1.x | Remediation Path Explorer — parent-chain simulation, multi-path ranking, decision labels | ✅ Complete |
+| Phase 2 | Universal Finding Engine — 9 providers (Mend, Snyk, npm audit, Dependabot, OWASP, OSV, Trivy, GitLab, Xray) | ✅ Complete |
+| Phase 3 | Universal Dependency Engine — 6 ecosystems (npm, Maven, Python, Go, .NET, Rust) each with lock-parser/writer/registry/installer/simulator | ✅ Complete |
+| Phase 4 | CI/CD Write-back — GitHub, GitLab, Azure DevOps, Bitbucket; `--open-pr` CLI flag; pr-poster dispatcher | ✅ Complete |
+| Phase 5 | Multi-repo Portfolio — `mendfix portfolio --config`; portfolio-runner.js + portfolio-report.js; action priority sort | ✅ Complete |
+| Phase 6 | UI Layer — VS Code Extension (primary), Tauri standalone (secondary), Chrome Extension PR overlay (companion) | 🔲 Next |
+
+**Test baseline:** 332/332 passing. `mendfix analyze` → A:5 B:0 C:3 confirmed.
+
+---
+
 ## 2026-08-13 — Phase 6 planning: UI Layer delivery decision
 
 **Before:** No UI plan existed; all interaction was CLI-only.
@@ -25,7 +41,7 @@ Minimal change history for future Claude sessions. Only decisions and context th
 - `mendfix.js` — added `portfolio` to `SUBCMDS`; `runPortfolioCommand(argv)` handler reads `--config`, `--out-dir`, `--verify-versions`, `--dry-run`; writes per-repo `remediation-report.md` files then the top-level `portfolio-report.md`; dry-run prints the report to stdout.
 - `tests/core/portfolio-runner.test.js` — 25 tests; all dependencies mocked (providers, core, ecosystems); covers loadConfig validation, analyzeRepo success/error/severity/verify paths, runPortfolio aggregation/outDir/errorCount.
 - `tests/core/portfolio-report.test.js` — 20 tests; covers severity table, phase table, repo table rows, error section, per-repo detail, action order sorting, empty portfolio, writePortfolioReport file output.
-**Next:** 332/332 tests pass. Baseline A:5 B:0 C:3 confirmed. Phase 2 Dependabot provider is next open item.
+**Next:** 332/332 tests pass. Baseline A:5 B:0 C:3 confirmed. Phase 6 UI Layer is next — see NEXT_MISSION.md.
 
 ---
 

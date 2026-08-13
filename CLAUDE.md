@@ -124,9 +124,8 @@ If you estimate the conversation has consumed ~80k tokens, alert the user before
 | Goal | File |
 |------|------|
 | **File map, function signatures, data shapes (read first every session)** | `CODEBASE.md` |
-| What to build next (priorities, Phase 2 entry) | `NEXT_MISSION.md` |
+| What to build next + Phase 6 UI plan | `NEXT_MISSION.md` |
 | Phase C Claude triage instructions | `CLAUDE_WORKFLOW.md` |
 | 9-phase product vision | `Master_Roadmap.md` |
-| All 26 Phase 1 scenarios with completion status | `docs/Phase_1_Goal.md` |
-| Feature completion tracker | `docs/ROADMAP.md` |
+| Feature completion tracker (all phases) | `docs/ROADMAP.md` |
 | Session history + architectural decisions | `docs/SESSION_LOG.md` |
