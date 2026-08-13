@@ -8,6 +8,8 @@ const PROVIDERS_PATH   = path.join(__dirname, '../../src/providers/index.js');
 const SEMVER_PATH      = path.join(__dirname, '../../src/core/semver-engine.js');
 const PHASES_PATH      = path.join(__dirname, '../../src/core/phases.js');
 
+console.log(PROVIDERS_PATH, path, __dirname)
+
 class MendFixViewProvider {
   static viewType = 'mendfix.panel';
 
@@ -75,11 +77,13 @@ class MendFixViewProvider {
 
     try {
       // Direct require of engine core — no child_process
-      const { parseReport }        = require(PROVIDERS_PATH);
-      const { buildResolutionPlan } = require(SEMVER_PATH);
-      const { applyPhases }         = require(PHASES_PATH);
+      const { detectProvider, getParser } = require(PROVIDERS_PATH);
+      const { buildResolutionPlan }        = require(SEMVER_PATH);
+      const { applyPhases }                = require(PHASES_PATH);
 
-      const entries     = parseReport(reportPath);
+      const provider = detectProvider(reportPath);
+      const parser   = getParser(provider);
+      const entries  = parser.parseReport(reportPath);
       const plan        = buildResolutionPlan(entries);
       const phasedItems = applyPhases(plan, null);
 
