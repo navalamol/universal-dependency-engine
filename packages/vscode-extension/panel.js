@@ -1,3 +1,4 @@
+
 'use strict';
 
 const vscode  = require('vscode');
@@ -111,7 +112,6 @@ class MendFixViewProvider {
   async _handleBrowseFile(field, fileNames, label) {
     const uris = await vscode.window.showOpenDialog({
       canSelectMany: false,
-      // filters: { [label]: fileNames },
       openLabel: label,
     });
     if (uris && uris[0]) {
@@ -638,6 +638,7 @@ class MendFixViewProvider {
     let selectedPath = '';
     let pkgPath  = '';
     let lockPath = '';
+    let outDir   = '';
 
     const browseBtn    = document.getElementById('browseBtn');
     const analyzeBtn   = document.getElementById('analyzeBtn');
@@ -689,16 +690,16 @@ class MendFixViewProvider {
         autoCommit:      false,
         autoCommitPhaseB:false,
         verbose:         false,
-        outDir:          '',
+        outDir:          outDir,
       };
     }
 
-    applyABtn.addEventListener('click', () => {
+    if (applyABtn) applyABtn.addEventListener('click', () => {
       if (!selectedPath) return;
       vscode.postMessage(buildApplyMsg(false));
     });
 
-    applyBBtn.addEventListener('click', () => {
+    if (applyBBtn) applyBBtn.addEventListener('click', () => {
       if (!selectedPath) return;
       vscode.postMessage(buildApplyMsg(true));
     });
@@ -733,6 +734,7 @@ class MendFixViewProvider {
       if (s.applyPhaseB)  document.getElementById('applyPhaseB').checked = s.applyPhaseB;
       if (s.dryRun)       document.getElementById('dryRun').checked = s.dryRun;
       if (s.verifyVersions) document.getElementById('verifyVersions').checked = s.verifyVersions;
+      if (s.outDir)       outDir = s.outDir;
       // Auto-expand repo section if any repo target is already set
       if (s.packageJson || s.lockFile) {
         show(repoBody);
@@ -819,15 +821,13 @@ class MendFixViewProvider {
         return;
       }
 
-      if (msg.type === 'applyStart') {
-        applyABtn.disabled = true;
-        applyBBtn.disabled = true;
+       if (msg.type === 'applyStart') {
+        if (applyABtn) applyABtn.disabled = true;
+        if (applyBBtn) applyBBtn.disabled = true;
         analyzeBtn.disabled = true;
-        applyLogEl.innerHTML = '';
-        hide(applyResultEl);
-        show(applyLogEl);
-        const label = msg.dryRun ? 'Dry-run — no writes to disk…' : 'Applying fixes…';
-        appendLog(label, 'log-ok');
+        if (applyLogEl) { applyLogEl.innerHTML = ''; show(applyLogEl); }
+        if (applyResultEl) hide(applyResultEl);
+        appendLog(msg.dryRun ? 'Dry-run — no writes to disk…' : 'Applying fixes…', 'log-ok');
         return;
       }
 
@@ -841,33 +841,38 @@ class MendFixViewProvider {
       }
 
       if (msg.type === 'applyDone') {
-        applyABtn.disabled = false;
-        applyBBtn.disabled = false;
-        analyzeBtn.disabled = false;
-        applyResultEl.className = 'apply-result ' + (msg.success ? 'success' : 'failure');
-        applyResultEl.textContent = msg.success
-          ? '✓ Fixes applied. Check ' + (msg.outDir || './mendfix-output') + ' for output files.'
-          : '✗ Apply exited with code ' + msg.exitCode + '. See log above.';
-        show(applyResultEl);
+        if (applyABtn) applyABtn.disabled = false;
+        if (applyBBtn) applyBBtn.disabled = false;
+        analyzeBtn.disabled = !selectedPath;
+        if (applyResultEl) {
+          applyResultEl.className = 'apply-result ' + (msg.success ? 'success' : 'failure');
+          applyResultEl.textContent = msg.success
+            ? '✓ Fixes applied. Check ' + (msg.outDir || './mendfix-output') + ' for output files.'
+            : '✗ Apply exited with code ' + msg.exitCode + '. See log above.';
+          show(applyResultEl);
+        }
         return;
       }
 
       if (msg.type === 'applyError') {
-        applyABtn.disabled = false;
-        applyBBtn.disabled = false;
-        analyzeBtn.disabled = false;
+        if (applyABtn) applyABtn.disabled = false;
+        if (applyBBtn) applyBBtn.disabled = false;
+        analyzeBtn.disabled = !selectedPath;
         appendLog('⚠ ' + (msg.message || 'Apply failed'), 'log-err');
-        applyResultEl.className = 'apply-result failure';
-        applyResultEl.textContent = '✗ ' + (msg.message || 'Apply failed');
-        show(applyResultEl);
+        if (applyResultEl) {
+          applyResultEl.className = 'apply-result failure';
+          applyResultEl.textContent = '✗ ' + (msg.message || 'Apply failed');
+          show(applyResultEl);
+        }
         return;
-      }
+      }    
     });
 
     function appendLog(line, cls) {
+      if (!applyLogEl) return;
       const span = document.createElement('span');
       if (cls) span.className = cls;
-      span.textContent = line + '\n';
+      span.textContent = line + String.fromCharCode(10);
       applyLogEl.appendChild(span);
       applyLogEl.scrollTop = applyLogEl.scrollHeight;
     }

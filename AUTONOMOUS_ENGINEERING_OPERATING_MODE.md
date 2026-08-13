@@ -97,7 +97,7 @@ For each mission:
    - Record important decisions, completed capability and remaining issues.
    - Keep documentation concise.
 
-12. COMMIT
+12. COMMIT ON APPROVAL
    - Commit completed meaningful work with a clear, descriptive commit message.
    - Do not create meaningless micro-commits.
 
