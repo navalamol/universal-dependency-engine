@@ -1,0 +1,9 @@
+node_modules
+mend-output*
+GH_UI*
+old_work_md_files
+input*
+output*
+renovate-output*
+repos*
+x/*

@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-21 (Batch 2: M2.6+D1A; Batch 3: M3.1–M3.5+D1B+D2.1–D2.3; 698/698 tests)
+Last updated: 2026-08-21 (Batch 4: D3.1–D3.6 patch/backport; 810/810 tests)
 
 ---
 
@@ -89,13 +89,19 @@ lockfile update + verification
 | `security-delta.js` | `computeSecurityDelta(resolvedVersions, findings)` → `{introduced[], fixed[]}` | Cross-reference simulation resolvedVersions against LibraryEntry[] findings; detects regressions introduced by a candidate |
 | `graph-diff.js` | `captureGraph(lockFilePath)` → `Map<name, string[]>\|null`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta?)` → `string` | Whole-graph before/after diff (Item 14). captureGraph snapshots all resolved versions from a lockfile; diffGraphs diffs two snapshots; formatDiff produces markdown. Wired into writeOutputNpm: graph-diff.md written after every successful install. |
 | `safe-exec.js` | `safeSpawn(exe, args, opts)`, `resolveExecutable(name)`, `validatePackageName(name)`, `validateVersion(ver)`, `validatePath(p)`, `buildSafeEnv()`, `ALLOWED_EXECUTABLES` | Centralized safe process executor (M1.1). No shell; allowlisted executables; validates user-derived inputs; structured result. |
-| `evidence-model.js` | `SCHEMA_VERSION`, `OUTCOMES`, `EXPOSURE`, `createEvidence(item, opts)` → `EvidenceBundle`, `mergeVerificationResult(bundle, verResult)`, `mergeRescanResult(bundle, rescanResult)`, `mergeExposureClassification(bundle, exposureResult)`, `toSarif(bundles, opts)`, `toCycloneDxVex(bundles, opts)` | **M2.4+M2.5** Canonical versioned evidence schema. Outcome taxonomy (10 values). Exposure stubs (9 values, populated by D1A). SARIF 2.1.0 + CycloneDX 1.5 VEX export. Immutable merge helpers for verification (M2.1) and rescan (M2.2) results. |
+| `evidence-model.js` | `SCHEMA_VERSION`, `OUTCOMES`, `EXPOSURE`, `createEvidence(item, opts)` → `EvidenceBundle`, `mergeVerificationResult(bundle, verResult)`, `mergeRescanResult(bundle, rescanResult)`, `mergeExposureClassification(bundle, exposureResult)`, `mergePatchData(bundle, patchEvidence)`, `toSarif(bundles, opts)`, `toCycloneDxVex(bundles, opts)` | **M2.4+M2.5+D3.1** Canonical versioned evidence schema. Outcome taxonomy (11 values, incl. LLM_SYNTHESIZED_PATCH). Exposure stubs. SARIF 2.1.0 + CycloneDX 1.5 VEX export. Immutable merge helpers. |
 | `verifier.js` | `runVerification(commands, projectDir, opts)` → `{ passed, commands, commandResults, durationMs, failureReason, ranAt }` | **M2.1** Build/test verification runner. Accepts string or `{cmd, args, required}` command specs. Uses `safeSpawn` (no shell). Fail-fast (default) or run-all mode. Advisory (`required:false`) commands don't block. Feeds into `mergeVerificationResult`. |
 | `rescan-adapter.js` | `RESCAN_STATUS`, `classifyRescanOutcome(phasedItem, afterEntries, opts)`, `classifyPlanRescanOutcomes(phasedPlan, afterEntries, opts)` | **M2.2** Post-remediation rescan classifier. Compares before/after CVE sets from LibraryEntry[]. Returns RESOLVED_AND_RESCANNED / RESOLVED_NOT_RESCANNED / INSTALL_VERIFIED_ONLY / VERIFICATION_FAILED. Feeds into `mergeRescanResult`. |
 | `evidence-gate.js` | `GATE_DECISION`, `evaluateBundleGate(bundle, policy)`, `applyEvidenceGate(phasedPlan, bundles, policy)` → `{ phasedPlan, gateReport }` | **M2.3** Fail-closed safety gate. Verification failure → BLOCKED. Rescan CVEs remaining → BLOCKED. Required evidence missing → DOWNGRADED (A→B). Phase B/C pass through. Never mutates originals. |
 | `exposure-classifier.js` | `classifyExposure(item, depTree, opts?)` → `{ classification, confidence, evidenceSources }`, `classifyPlanExposure(phasedPlan, depTree, opts?)` → `Array<{ item, exposureResult }>` | **D1A** Environmental exposure classifier. 9 classification values (RUNTIME_REACHABLE … UNKNOWN_EXPOSURE). Evidence sources: lockfile flags, root-parent isDev, dep-chain depth, package-name pattern matching, optional package.json scripts scan. devDependency flag alone never dismisses a finding. |
 | `policy-loader.js` | `loadPolicy(projectDir, opts?)`, `parsePolicy(raw)`, `isFreezeWindow(loaded, now?)`, `isDenylisted(loaded, pkg)`, `meetsSeverityThreshold(loaded, severity)`, `isPhaseAllowed(loaded, phase)`, `toGatePolicy(loaded)` | **M3.2** `.dependency-intelligence.yml` loader/validator. Allowed phases, severity threshold, blast-radius limit, denylist, registry allowlist, freeze windows, verification/rescan config. Feeds into evidence gate. |
 | `audit-trail.js` | `createTrail(opts?)` → Trail, `readTrailFile(filePath)`, `queryTrail(entries, filters)`, `EVENTS` | **M3.3** Append-only NDJSON audit trail. Trail.record(event, data), flush(filePath) appends to disk, readFile reads back. Never overwrites. |
+| `patch-engine.js` | `PATCH_STATUS`, `hashDiff(diff)`, `createPatch(pkg, from, to, diff?)` → `PatchData`, `applyPatch(installDir, patchData, opts?)`, `verifyPatch(patchData)`, `writePatchFile(patchData, outDir)`, `buildPatchEvidence(patchData)` | **D3.1** Native patch support. SHA-256 hash per diff. Writes patch file to installDir or outDir. buildPatchEvidence feeds into EvidenceBundle via mergePatchData. |
+| `fix-transplant.js` | `TRANSPLANT_CONFIDENCE`, `BACKPORT_STATUS`, `locateUpstreamFix(pkg, installed, fix, opts?)`, `assessBackport(installed, fix, opts?)`, `buildTransplantPlan(pkg, installed, fix, opts?)` | **D3.2** Fix transplant engine. Locates upstream fix via injected manifest. Assesses backportability by semver distance. Recommends BACKPORT / FORK_OR_MIGRATE / REVIEW_REQUIRED. |
+| `fork-workflow.js` | `FORK_STATUS`, `FORK_REASON`, `createForkSpec(item, org, opts?)` → `ForkSpec`, `buildForkDebtLedger(specs, opts?)` → `ForkDebtLedger`, `writeForkDebtLedger(ledger, outDir)` → path | **D3.3** Internal fork workflow. Scoped name derivation. Expiry-aware ledger. Writes markdown + JSON fork-debt-ledger to outDir. |
+| `llm-patch-advisor.js` | `LLM_PATCH_OUTCOME`, `APPROVAL_STATE`, `isEnabled(opts?)`, `suggestPatch(item, patchContext?, opts?)` → `LLMPatchSuggestion\|null`, `applyApproval(suggestion, decision, opts?)` | **D3.4** LLM-assisted patch skeleton (feature-flag off by default). Always: requiresHumanApproval:true, autoPublish:false, affectsPhaseClassification:false. Module never calls an LLM. |
+| `license-gate.js` | `COPYLEFT_LICENSES`, `PERMISSIVE_LICENSES`, `LICENSE_DECISION`, `extractLicense(manifest)`, `checkLicenseCompatibility(license, policy?)`, `evaluateLicenseGate(item, opts?)` | **D3.5** Licensing gate. SPDX-aware permissive/copyleft classification. Policy: blockedLicenses, allowedLicenses, blockCopyleft. LICENSE_BLOCKED outcome integration. |
+| `disclosure-prep.js` | `DISCLOSURE_STATUS`, `buildDisclosureDraft(item, opts?)`, `renderDisclosureDraft(draft)`, `writeDisclosureDraft(item, outDir, opts?)` | **D3.6** Responsible disclosure draft builder. Never sends externally. requiresApproval:true, autoSend:false always. Writes markdown + JSON per-package to outDir. |
 | `kpi-report.js` | `computeKPIs(bundles)` → KPIMetrics, `generateKPIReport(bundles, opts?)` → string, `writeKPIReport(bundles, outDir, opts?)` → path | **M3.4** Pilot KPI report. Metrics from EvidenceBundle[]: totalFindings, phaseDistribution, remediatedCount, verificationPassRate, rescanClosureRate, exposureBreakdown, runtimeReachableFixed, cvesAddressed. Estimates labeled as estimates. |
 | `hygiene-advisor.js` | `detectUnusedDevDeps(pkg)`, `detectRetirementSignals(entries, registryMeta)`, `detectPreventiveUpgrades(entries, installed, available)`, `detectGitAndBranchDeps(pkg)`, `analyzeHygiene(pkg, entries, opts?)` | **D1B** Hygiene findings: unused devDeps, deprecated packages (registry flag), preventive patch/minor upgrades, git/branch deps. All findings have evidence + confidence. Never auto-applies. |
 | `usage-fingerprint.js` | `scanDirectory(dir, pkgName, opts?)`, `parseImports(content, filePath, target?)`, `buildFingerprint(scanResult)` → `{ effortEstimate, filesWithUsage, symbols, subpaths, … }` | **D2.1** API usage fingerprint scanner. Regex-based import/require/export detection. Effort estimation (trivial/low/medium/high). Skips node_modules. Respects maxFiles limit. |
@@ -317,9 +323,15 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/usage-fingerprint.test.js` | `parseImports` (require/import/export/symbols/subpaths), `buildFingerprint`, `scanDirectory` (node_modules skip, maxFiles) — 22 tests |
 | `tests/core/migration-planner.test.js` | `findAlternatives` (scoring, sorting, orgApproved), `selectStrategy`, `generateMigrationPlan`, `writeMigrationPlan` — 18 tests |
 | `tests/ci/github-actions.test.js` | `generateWorkflow` (dry-run default, permissions, apply block, artifact upload), `generateAzureDevOpsPipeline` — 17 tests |
+| `tests/core/patch-engine.test.js` | `hashDiff`, `createPatch`, `verifyPatch`, `applyPatch` (dryRun/missing dir/success), `writePatchFile`, `buildPatchEvidence` — 20 tests |
+| `tests/core/fix-transplant.test.js` | `locateUpstreamFix` (confidence levels, URL cleanup, manifest override), `assessBackport` (major/minor/patch/UNKNOWN), `buildTransplantPlan` — 18 tests |
+| `tests/core/fork-workflow.test.js` | `createForkSpec` (scope strip, expiry, opts), `buildForkDebtLedger` (expiry detection, RESOLVED skip), `writeForkDebtLedger` — 18 tests |
+| `tests/core/llm-patch-advisor.test.js` | `isEnabled` (default off), `suggestPatch` (flag gating, invariants: requiresApproval/autoPublish/affectsPhaseClassification), `applyApproval` — 18 tests |
+| `tests/core/license-gate.test.js` | `extractLicense` (string/object/null), `checkLicenseCompatibility` (permissive/copyleft/blocked/allowedList/expression), `evaluateLicenseGate` — 20 tests |
+| `tests/core/disclosure-prep.test.js` | `buildDisclosureDraft` (invariants: requiresApproval/autoSend, CVEs, opts), `renderDisclosureDraft`, `writeDisclosureDraft` — 18 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **698/698 pass**
+Baseline: **810/810 pass**
 
 ---
 
@@ -355,8 +367,14 @@ Baseline: **698/698 pass**
 | **Phase 5.6 D1B** — `src/core/hygiene-advisor.js`: unused devDeps, deprecated packages, preventive upgrades, git/branch deps; all findings evidence-backed; no auto-apply; 20 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.6 D2.1** — `src/core/usage-fingerprint.js`: regex import/require/export scanner, symbol extraction, subpath detection, effort estimation, node_modules skip; 22 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.6 D2.2+D2.3** — `src/core/migration-planner.js`: curated alternatives catalogue + scoring, strategy selection (7 strategies), `major-migration-plan.md` generation; 18 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D3.1** — `src/core/patch-engine.js`: SHA-256 patch hashes, createPatch/applyPatch/verifyPatch/writePatchFile/buildPatchEvidence; `mergePatchData` in evidence-model.js; 20 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D3.2** — `src/core/fix-transplant.js`: upstream fix locator, backport assessor, transplant plan builder; BACKPORTABLE/RISKY/NOT_BACKPORTABLE/UNKNOWN statuses; 18 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D3.3** — `src/core/fork-workflow.js`: fork spec builder, expiry-aware debt ledger, fork-debt-ledger.md+json writer; FORK_STATUS/FORK_REASON enums; 18 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D3.4** — `src/core/llm-patch-advisor.js`: feature-flagged LLM patch skeleton; never calls LLM; requiresHumanApproval/autoPublish/affectsPhaseClassification invariants; LLM_SYNTHESIZED_PATCH outcome in evidence-model.js; 18 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D3.5** — `src/core/license-gate.js`: SPDX-aware license classifier; permissive/copyleft/blocked policy; LICENSE_BLOCKED outcome integration; 20 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D3.6** — `src/core/disclosure-prep.js`: responsible disclosure draft builder; requiresApproval/autoSend invariants; markdown+JSON per-package output; never sends externally; 18 tests | ✅ DONE 2026-08-21 |
 
-**Next:** Batch 4 — D3 (patch/backport) + Phase 6 (UI layer). **698/698 tests; A:5 B:0 C:3 baseline.**
+**Next:** Phase 6 — UI layer (VS Code extension as thin client over canonical API). **810/810 tests; A:5 B:0 C:3 baseline.**
 
 ---
 

@@ -241,13 +241,15 @@ Begin only after Mission 1 exit gate passes.
 ### D2.4 — Prototype branches (stretch goal)
 Implement only after D2.1–D2.3 pass exit gate. Where policy permits: isolated prototypes, build/test comparison, dependency graph diff, behavioral replay. Do not merge or publish prototypes automatically. **This is a stretch goal, not a D2 gate condition.**
 
-### D3 — Patch, Backport and Upstream Contribution
-- D3.1: Native npm patch support (version-specific unified diffs, patch hashes in evidence)
-- D3.2: Fix Transplant Engine (upstream fix commit location, smallest legal backport, regression tests)
-- D3.3: Internal fork workflow (scoped private package, fork-debt ledger with owner + expiry)
-- D3.4: LLM-assisted candidate patches — feature-flag disabled by default; no effect on Phase A/B/C classification; human security approval required; outcome labelled LLM_SYNTHESIZED_PATCH; never auto-publish
-- D3.5: Licensing gate (detect/check license before patching/forking; LICENSE_BLOCKED outcome)
-- D3.6: Upstream disclosure preparation (never sends externally without explicit approval)
+### ~~D3 — Patch, Backport and Upstream Contribution~~ ✅ DONE 2026-08-21
+- ~~D3.1: Native npm patch support~~ ✅ `src/core/patch-engine.js` — SHA-256 hash per diff, apply/verify/write helpers, buildPatchEvidence → mergePatchData in evidence-model
+- ~~D3.2: Fix Transplant Engine~~ ✅ `src/core/fix-transplant.js` — manifest-injected upstream locator, semver-distance backport assessor (BACKPORTABLE/RISKY/NOT_BACKPORTABLE), transplant plan
+- ~~D3.3: Internal fork workflow~~ ✅ `src/core/fork-workflow.js` — scoped name derivation, expiry-aware ledger, fork-debt-ledger.md+json writer
+- ~~D3.4: LLM-assisted patches~~ ✅ `src/core/llm-patch-advisor.js` — feature-flag off by default; invariants always safe; applyApproval; LLM_SYNTHESIZED_PATCH in OUTCOMES; never auto-publishes
+- ~~D3.5: Licensing gate~~ ✅ `src/core/license-gate.js` — SPDX permissive/copyleft/policy classification; LICENSE_BLOCKED outcome
+- ~~D3.6: Upstream disclosure preparation~~ ✅ `src/core/disclosure-prep.js` — requiresApproval/autoSend invariants; md+json output; never sends externally
+
+**✅ D3 EXIT GATE PASSED** — 810/810 tests · A:5 B:0 C:3 baseline · all D3 modules have no network calls (manifest injected by caller) · LLM advisor feature-flag off by default · disclosure never auto-sends.
 
 ---
 

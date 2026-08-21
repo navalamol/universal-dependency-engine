@@ -13,16 +13,17 @@ const SCHEMA_VERSION = '1.0';
 
 // ─── Outcome taxonomy (M2.5) ─────────────────────────────────────────────────
 const OUTCOMES = Object.freeze({
-  FIXED:                'FIXED',                // fix applied, lock/manifest updated
-  NOT_AFFECTED:         'NOT_AFFECTED',         // package present but execution path unreachable
-  MITIGATED:            'MITIGATED',            // compensating control in place (WAF, network policy)
-  PATCHED:              'PATCHED',              // vendor patch applied directly
-  FORKED:               'FORKED',               // internal fork created under scoped private package
-  ACCEPTED_RISK:        'ACCEPTED_RISK',        // risk formally accepted with justification
-  LICENSE_BLOCKED:      'LICENSE_BLOCKED',      // license prevents patching or forking
-  VERIFICATION_FAILED:  'VERIFICATION_FAILED',  // fix applied but build/test/rescan step failed
-  REQUIRES_MIGRATION:   'REQUIRES_MIGRATION',   // major migration needed; no safe in-place path
-  NO_SAFE_PATH:         'NO_SAFE_PATH',         // no fix version, no parent upgrade, no alternative
+  FIXED:                  'FIXED',                  // fix applied, lock/manifest updated
+  NOT_AFFECTED:           'NOT_AFFECTED',           // package present but execution path unreachable
+  MITIGATED:              'MITIGATED',              // compensating control in place (WAF, network policy)
+  PATCHED:                'PATCHED',                // vendor patch applied directly
+  FORKED:                 'FORKED',                 // internal fork created under scoped private package
+  ACCEPTED_RISK:          'ACCEPTED_RISK',          // risk formally accepted with justification
+  LICENSE_BLOCKED:        'LICENSE_BLOCKED',        // license prevents patching or forking
+  VERIFICATION_FAILED:    'VERIFICATION_FAILED',    // fix applied but build/test/rescan step failed
+  REQUIRES_MIGRATION:     'REQUIRES_MIGRATION',     // major migration needed; no safe in-place path
+  NO_SAFE_PATH:           'NO_SAFE_PATH',           // no fix version, no parent upgrade, no alternative
+  LLM_SYNTHESIZED_PATCH:  'LLM_SYNTHESIZED_PATCH',  // D3.4 — LLM candidate patch; human approval required
 });
 
 // ─── Exposure classification (D1A stubs) ─────────────────────────────────────
@@ -364,34 +365,49 @@ function toCycloneDxVex(bundles, opts = {}) {
 
 function _vexState(outcome) {
   const map = {
-    FIXED:               'resolved',
-    NOT_AFFECTED:        'not_affected',
-    MITIGATED:           'resolved_with_pedigree',
-    PATCHED:             'resolved',
-    FORKED:              'resolved_with_pedigree',
-    ACCEPTED_RISK:       'exploitable',
-    LICENSE_BLOCKED:     'in_triage',
-    VERIFICATION_FAILED: 'in_triage',
-    REQUIRES_MIGRATION:  'in_triage',
-    NO_SAFE_PATH:        'in_triage',
+    FIXED:                  'resolved',
+    NOT_AFFECTED:           'not_affected',
+    MITIGATED:              'resolved_with_pedigree',
+    PATCHED:                'resolved',
+    FORKED:                 'resolved_with_pedigree',
+    ACCEPTED_RISK:          'exploitable',
+    LICENSE_BLOCKED:        'in_triage',
+    VERIFICATION_FAILED:    'in_triage',
+    REQUIRES_MIGRATION:     'in_triage',
+    NO_SAFE_PATH:           'in_triage',
+    LLM_SYNTHESIZED_PATCH:  'in_triage',
   };
   return map[outcome] || 'in_triage';
 }
 
 function _vexResponse(outcome) {
   const map = {
-    FIXED:               'update',
-    NOT_AFFECTED:        'will_not_fix',
-    MITIGATED:           'workaround_available',
-    PATCHED:             'update',
-    FORKED:              'update',
-    ACCEPTED_RISK:       'can_not_fix',
-    LICENSE_BLOCKED:     'can_not_fix',
-    VERIFICATION_FAILED: 'rollback',
-    REQUIRES_MIGRATION:  'update',
-    NO_SAFE_PATH:        'can_not_fix',
+    FIXED:                  'update',
+    NOT_AFFECTED:           'will_not_fix',
+    MITIGATED:              'workaround_available',
+    PATCHED:                'update',
+    FORKED:                 'update',
+    ACCEPTED_RISK:          'can_not_fix',
+    LICENSE_BLOCKED:        'can_not_fix',
+    VERIFICATION_FAILED:    'rollback',
+    REQUIRES_MIGRATION:     'update',
+    NO_SAFE_PATH:           'can_not_fix',
+    LLM_SYNTHESIZED_PATCH:  'workaround_available',
   };
   return map[outcome] || 'can_not_fix';
+}
+
+// ─── D3.1 patch merge helper ─────────────────────────────────────────────────
+/**
+ * Merge patch metadata (from D3.1 patch-engine) into an existing bundle.
+ * Returns a new bundle (does not mutate the original).
+ *
+ * @param {EvidenceBundle} bundle
+ * @param {object} patchEvidence   result of buildPatchEvidence(patchData)
+ * @returns {EvidenceBundle}
+ */
+function mergePatchData(bundle, patchEvidence) {
+  return { ...bundle, patch: patchEvidence };
 }
 
 // ─── Exports ─────────────────────────────────────────────────────────────────
@@ -403,6 +419,7 @@ module.exports = {
   mergeVerificationResult,
   mergeRescanResult,
   mergeExposureClassification,
+  mergePatchData,
   toSarif,
   toCycloneDxVex,
 };

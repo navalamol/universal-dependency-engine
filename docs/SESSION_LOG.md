@@ -4,6 +4,22 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Batch 4: D3 Patch/Backport + evidence-model extensions
+
+**Before:** Batch 3 done (698/698). D3 patch/backport unstarted.
+**Changes:**
+- `src/core/patch-engine.js` (D3.1): SHA-256 hash per diff, createPatch/applyPatch/verifyPatch/writePatchFile/buildPatchEvidence — deterministic patch identity without network
+- `src/core/fix-transplant.js` (D3.2): upstream fix locator (manifest-injected, no network), backport assessor by semver distance (BACKPORTABLE/RISKY/NOT_BACKPORTABLE), transplant plan builder
+- `src/core/fork-workflow.js` (D3.3): fork spec builder with scoped name derivation, expiry-aware ledger auto-marking EXPIRED, fork-debt-ledger.md+json writer
+- `src/core/llm-patch-advisor.js` (D3.4): feature-flag off by default, suggestion skeleton never calls LLM, three invariants (requiresHumanApproval/autoPublish/affectsPhaseClassification) are always set to safe values regardless of flag, applyApproval for human sign-off
+- `src/core/license-gate.js` (D3.5): SPDX-aware permissive/copyleft classification, policy-configurable blocklist/allowlist, blockCopyleft flag, LICENSE_BLOCKED outcome wiring
+- `src/core/disclosure-prep.js` (D3.6): structured disclosure draft with impact-statement template, renderDisclosureDraft markdown renderer, writeDisclosureDraft writes md+json, requiresApproval/autoSend always safe
+- `src/core/evidence-model.js`: added LLM_SYNTHESIZED_PATCH to OUTCOMES (11 total), added mergePatchData helper, updated SARIF/VEX maps for new outcome
+- 112 new tests across 6 test files; 810/810 total; A:5 B:0 C:3 baseline confirmed
+**Next:** Phase 6 — VS Code extension rebuilt as thin client over canonical orchestration API.
+
+---
+
 ## 2026-08-21 — Batch 3: M3 Pilot Packaging + D1B + D2.1–D2.3
 
 **Before:** M2 + D1A done (549/549). M3, D1B, D2 were unstarted.
