@@ -1,8 +1,8 @@
 'use strict';
 
-const fs           = require('fs');
-const path         = require('path');
-const { execSync } = require('child_process');
+const fs   = require('fs');
+const path = require('path');
+const { safeSpawn, validatePackageName } = require('../../core/safe-exec');
 
 const TIMEOUT_MS = 120000;
 
@@ -34,13 +34,12 @@ function runPipInstall(projectDir, requirementsPath) {
   const venvPip = findVenvPip(projectDir);
   const pip     = venvPip || 'pip';
 
-  const cmd = `"${pip}" install -r "${requirementsPath}" --quiet`;
-  try {
-    execSync(cmd, { cwd: projectDir, timeout: TIMEOUT_MS, stdio: 'pipe' });
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.stderr ? err.stderr.toString() : err.message };
+  const result = safeSpawn(pip, ['install', '-r', requirementsPath, '--quiet'],
+    { cwd: projectDir, timeout: TIMEOUT_MS });
+  if (!result.success) {
+    return { success: false, error: result.stderr || result.stdout || `exit ${result.status}` };
   }
+  return { success: true };
 }
 
 function findVenvPip(projectDir) {
@@ -66,9 +65,9 @@ function verifyFixVersions(phaseAItems, projectDir) {
   for (const item of phaseAItems) {
     if (!item.recommendedVersion) continue;
     try {
-      const out = execSync(`"${pip}" show "${item.libraryName}"`, {
-        cwd: projectDir, timeout: 15000, stdio: 'pipe',
-      }).toString();
+      validatePackageName(item.libraryName);
+      const r = safeSpawn(pip, ['show', item.libraryName], { cwd: projectDir, timeout: 15000 });
+      const out = r.stdout;
       const m = out.match(/^Version:\s*(.+)$/im);
       if (!m) {
         mismatches.push({ name: item.libraryName, expected: item.recommendedVersion, actual: 'not installed' });

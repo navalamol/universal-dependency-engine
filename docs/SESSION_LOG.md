@@ -20,6 +20,27 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Phase 5.5 M1.1: Secure process execution + roadmap restructure
+
+**Before:** Phases 1–5 complete. No security hardening phase existed. Several ecosystem installers/simulators interpolated user-derived values (package names, versions from vulnerability reports) into shell command template strings — potential RCE via malicious report. All npm/mvn process calls used `shell: true`.
+
+**Changes:**
+- `Dependency Intelligence Engine-MasterPlanUpdate.md` reviewed and approved: inserted Phase 5.5 (Enterprise Trust) and Phase 5.6 (Deep Remediation Intelligence) before Phase 6 UI. Approved execution order: M1 → M2 → D1A → M3 → D1B → D2 → D3 → Phase 6. D2.4 marked stretch goal.
+- `Master_Roadmap.md`, `NEXT_MISSION.md`, `docs/ROADMAP.md`, `CODEBASE.md`, `CLAUDE.md` — all updated to reflect new phase structure. CLAUDE.md report path corrected to `D:\Automation\input\reports\GH_ui-platform_dev-vulnerability-report.json`.
+- `src/core/safe-exec.js` — new centralized safe process-execution utility: `ALLOWED_EXECUTABLES` set, `resolveExecutable` (Windows .cmd resolution), `validatePackageName`/`validateVersion`/`validatePath` (reject shell metacharacters + null bytes), `safeSpawn` (no shell, structured result), `buildSafeEnv` (minimal env forwarding).
+- `src/ecosystems/rust/installer.js` — replaced `execSync(\`cargo update ... "${name}" ... "${version}"\`)` with `safeSpawn('cargo', [..., name, ..., version], ...)` + validation.
+- `src/ecosystems/rust/simulator.js` — same fix for `cargo update --manifest-path ... --package ... --precise ...`.
+- `src/ecosystems/python/installer.js` — replaced `execSync(\`"${pip}" show "${item.libraryName}"\`)` and `execSync(\`"${pip}" install -r "${requirementsPath}"\`)` with `safeSpawn` array args.
+- `src/ecosystems/python/simulator.js` — replaced all three `execSync` shell template strings with `safeSpawn`.
+- `src/ecosystems/npm/installer.js` — removed `shell: true` from npm + mvn calls; uses `resolveExecutable` for Windows .cmd.
+- `src/ecosystems/npm/simulator.js` — removed `shell: true`; uses `resolveExecutable`.
+- `src/ecosystems/maven/dep-tree.js` — removed `shell: true`.
+- `tests/core/safe-exec.test.js` — 41 new tests: validatePackageName (injection payloads), validateVersion, validatePath, resolveExecutable, ALLOWED_EXECUTABLES, safeSpawn.
+
+**Next:** M1.2 credential handling; M1.3 canonical orchestration API (fix VS Code extension pipeline gap).
+
+---
+
 ## 2026-08-13 — Phase 6 planning: UI Layer delivery decision
 
 **Before:** No UI plan existed; all interaction was CLI-only.

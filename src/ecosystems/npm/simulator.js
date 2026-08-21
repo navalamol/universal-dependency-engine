@@ -5,6 +5,7 @@ const os     = require('os');
 const path   = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const { resolveExecutable } = require('../../core/safe-exec');
 const { parseLockFile } = require('./lock-parser');
 
 const DEFAULT_TIMEOUT_MS      = 30_000;
@@ -98,7 +99,7 @@ function runOne(pkgContent, baseLockPath, candidate, timeoutMs) {
       fs.copyFileSync(baseLockPath, path.join(tempDir, 'package-lock.json'));
     }
 
-    const result = spawnSync('npm', [
+    const result = spawnSync(resolveExecutable('npm'), [
       'install',
       '--package-lock-only',
       '--legacy-peer-deps',
@@ -108,7 +109,7 @@ function runOne(pkgContent, baseLockPath, candidate, timeoutMs) {
       cwd:     tempDir,
       timeout: timeoutMs,
       encoding: 'utf8',
-      shell:   true,  // required for Windows npm.cmd resolution
+      shell:   false,
     });
 
     const timedOut = !!(result.error && result.error.code === 'ETIMEDOUT') ||

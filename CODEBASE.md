@@ -87,6 +87,7 @@ lockfile update + verification
 | `remediation-paths.js` | `buildPaths(item, allFindings?)`, `rankPaths(paths)`, `comparePaths(item, allFindings?)`, `enrichWithPaths(phasedPlan, allFindings?)`, `LABELS`, `BUDGET_TIERS` | Multi-path comparison + Change Budget ranking; adds `recommendedPath`, `alternativePaths[]`, `decisionLabel` to every PhasedItem; `securityDelta` computed per PARENT_UPGRADE path when allFindings provided |
 | `security-delta.js` | `computeSecurityDelta(resolvedVersions, findings)` → `{introduced[], fixed[]}` | Cross-reference simulation resolvedVersions against LibraryEntry[] findings; detects regressions introduced by a candidate |
 | `graph-diff.js` | `captureGraph(lockFilePath)` → `Map<name, string[]>\|null`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta?)` → `string` | Whole-graph before/after diff (Item 14). captureGraph snapshots all resolved versions from a lockfile; diffGraphs diffs two snapshots; formatDiff produces markdown. Wired into writeOutputNpm: graph-diff.md written after every successful install. |
+| `safe-exec.js` | `safeSpawn(exe, args, opts)`, `resolveExecutable(name)`, `validatePackageName(name)`, `validateVersion(ver)`, `validatePath(p)`, `buildSafeEnv()`, `ALLOWED_EXECUTABLES` | Centralized safe process executor (M1.1). No shell; allowlisted executables; validates user-derived inputs; structured result. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `portfolio-report.js` | `generatePortfolioReport(portfolio, opts)` → `string`, `writePortfolioReport(portfolio, outDir, opts)` → `path` | Portfolio-level markdown report across multiple repos |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
@@ -310,7 +311,7 @@ Baseline: **332/332 pass**
 | Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 | Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 5.5 M1 — Security and canonical-engine closure. Key tasks: (1) centralized safe process-execution utility replacing any shell-string interpolation in ecosystem installers/simulators; (2) canonical orchestration API so CLI, VS Code extension, and portfolio mode all run the same full pipeline — confirmed gap: `packages/vscode-extension/panel.js` calls `applyPhases(plan, null)` without lock-tree loading, `enrichWithConfidence`, or `enrichWithPaths`; (3) credential handling improvements; (4) CI setup; (5) documentation reconciliation. See `NEXT_MISSION.md` for full detail.
+**Next:** Phase 5.5 M1 (in progress) — M1.1 secure process execution is done (`src/core/safe-exec.js`; critical shell-injection risks in rust/python installers+simulators fixed; `shell: true` removed from npm/mvn; 41 new tests; 373/373 passing). Remaining M1 tasks: M1.2 credential handling; M1.3 canonical orchestration API (fix VS Code extension pipeline gap — `packages/vscode-extension/panel.js` calls `applyPhases(plan, null)` without lock-tree, `enrichWithConfidence`, or `enrichWithPaths`); M1.4 threat model docs; M1.5 CI; M1.6 doc reconciliation.
 
 ---
 

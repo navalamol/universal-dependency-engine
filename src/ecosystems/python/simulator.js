@@ -1,9 +1,9 @@
 'use strict';
 
-const fs           = require('fs');
-const os           = require('os');
-const path         = require('path');
-const { execSync } = require('child_process');
+const fs   = require('fs');
+const os   = require('os');
+const path = require('path');
+const { safeSpawn } = require('../../core/safe-exec');
 
 const TIMEOUT_MS = 60000;
 
@@ -45,17 +45,29 @@ async function simulate(baseRequirementsPath, candidates, opts = {}) {
     const reqPath = path.join(tmpDir, 'requirements.txt');
     fs.writeFileSync(reqPath, lines.join('\n'));
 
-    // Create venv
-    execSync(`python -m venv "${path.join(tmpDir, 'venv')}"`, { timeout: 30000, stdio: 'pipe' });
+    // Create venv — use 'python' or 'python3'; python exe is known-safe (not user input)
+    const pythonExe = process.platform === 'win32' ? 'python' : 'python3';
+    const venvDir   = path.join(tmpDir, 'venv');
+    const venvResult = safeSpawn(pythonExe, ['-m', 'venv', venvDir], { timeout: 30000 });
+    if (!venvResult.success) {
+      throw new Error(venvResult.stderr || `venv creation failed (exit ${venvResult.status})`);
+    }
 
     const pip = process.platform === 'win32'
       ? path.join(tmpDir, 'venv', 'Scripts', 'pip.exe')
       : path.join(tmpDir, 'venv', 'bin', 'pip');
 
-    execSync(`"${pip}" install -r "${reqPath}" --quiet`, { timeout: TIMEOUT_MS, stdio: 'pipe' });
+    const installResult = safeSpawn(pip, ['install', '-r', reqPath, '--quiet'], { timeout: TIMEOUT_MS });
+    if (!installResult.success) {
+      throw new Error(installResult.stderr || `pip install failed (exit ${installResult.status})`);
+    }
 
     // Collect installed versions
-    const freeze  = execSync(`"${pip}" freeze`, { timeout: 15000, stdio: 'pipe' }).toString();
+    const freezeResult = safeSpawn(pip, ['freeze'], { timeout: 15000 });
+    if (!freezeResult.success) {
+      throw new Error(freezeResult.stderr || 'pip freeze failed');
+    }
+    const freeze = freezeResult.stdout;
     const resolved = new Map();
     for (const line of freeze.split('\n')) {
       const m = line.match(/^([A-Za-z0-9_.\-]+)==(.+)$/);

@@ -1,9 +1,9 @@
 'use strict';
 
-const fs           = require('fs');
-const os           = require('os');
-const path         = require('path');
-const { execSync } = require('child_process');
+const fs   = require('fs');
+const os   = require('os');
+const path = require('path');
+const { safeSpawn, validatePackageName, validateVersion } = require('../../core/safe-exec');
 
 const TIMEOUT_MS = 90000;
 
@@ -37,10 +37,16 @@ async function simulate(cargoTomlPath, candidates, opts = {}) {
 
     // Run cargo update to lock at precise versions
     for (const { name, version } of candidates) {
-      execSync(
-        `cargo update --manifest-path "${tmpCargoToml}" --package "${name}" --precise "${version}"`,
-        { cwd: tmpDir, timeout: TIMEOUT_MS, stdio: 'pipe' }
+      validatePackageName(name);
+      validateVersion(version);
+      const result = safeSpawn(
+        'cargo',
+        ['update', '--manifest-path', tmpCargoToml, '--package', name, '--precise', version],
+        { cwd: tmpDir, timeout: TIMEOUT_MS }
       );
+      if (!result.success) {
+        throw new Error(result.stderr || result.stdout || `cargo update failed (exit ${result.status})`);
+      }
     }
 
     // Collect resolved versions from Cargo.lock

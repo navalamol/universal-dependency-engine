@@ -124,10 +124,11 @@ All 9 providers complete: Mend, Snyk, npm-audit, Dependabot, OWASP, OSV, Trivy, 
 
 **Objective:** Make CLI, UI, portfolio and future CI integrations consume one canonical decision pipeline; remove product-security weaknesses before any external pilot.
 
-#### M1.1 Secure process execution
-- Find every `exec`/`execSync`/`spawn`/`spawnSync`/`shell: true` and dynamically-constructed command strings
-- Implement a centralized safe process-execution utility: separate executable + args, no shell by default, allowlisted executables, input validation, timeouts, redacted output
-- Replace vulnerable command-string construction in ecosystem installers/simulators
+#### ~~M1.1 Secure process execution~~ ✅ DONE 2026-08-21
+- `src/core/safe-exec.js` — `ALLOWED_EXECUTABLES`, `resolveExecutable` (Windows .cmd), `validatePackageName`/`validateVersion`/`validatePath`, `safeSpawn` (no shell, structured result), `buildSafeEnv`
+- Fixed critical shell injection in `rust/installer.js`, `rust/simulator.js`, `python/installer.js`, `python/simulator.js`
+- Removed `shell: true` from `npm/installer.js`, `npm/simulator.js`, `maven/dep-tree.js`
+- 41 new injection tests; **373/373 passing**; baseline A:5 B:0 C:3 confirmed
 
 #### M1.2 Credential handling
 - Stop accepting tokens as plain CLI arguments (deprecation warning if kept for compat)

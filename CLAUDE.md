@@ -74,7 +74,7 @@ Expected: 8 libraries, 22 CVEs. Phase A: 5, Phase B: 0, Phase C: 3. Exit 0.
 node mendfix.js analyze --report ../GH_ui-platform_dev-vulnerability-report.json --verify-versions
 ```
 
-Report location: `D:\Automation\GH_ui-platform_dev-vulnerability-report.json`
+Report location: `D:\Automation\input\reports\GH_ui-platform_dev-vulnerability-report.json`
 
 ## Rules
 

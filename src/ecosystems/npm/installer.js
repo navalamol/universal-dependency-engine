@@ -3,6 +3,7 @@
 const fs   = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { resolveExecutable } = require('../../core/safe-exec');
 const semver = require('semver');
 const { parseLockFile } = require('./lock-parser');
 
@@ -29,10 +30,10 @@ function restoreFiles(snapshots) {
 
 // Scenario 5 — update package-lock.json without a full install
 function runPackageLockUpdate(dir) {
-  const result = spawnSync('npm', ['install', '--legacy-peer-deps', '--package-lock-only'], {
+  const result = spawnSync(resolveExecutable('npm'), ['install', '--legacy-peer-deps', '--package-lock-only'], {
     cwd: dir,
     stdio: 'pipe',
-    shell: true,
+    shell: false,
   });
   return {
     success: result.status === 0,
@@ -108,10 +109,10 @@ function detectManualChanges(packageJsonPath, overridesToApply) {
 // Run `mvn dependency:resolve` to confirm the pom.xml changes resolve cleanly.
 // -B = batch/non-interactive, -q = quiet output.
 function runMavenResolve(dir) {
-  const result = spawnSync('mvn', ['dependency:resolve', '-B', '-q'], {
+  const result = spawnSync(resolveExecutable('mvn'), ['dependency:resolve', '-B', '-q'], {
     cwd: dir,
     stdio: 'pipe',
-    shell: true,
+    shell: false,
   });
   return {
     success: result.status === 0,

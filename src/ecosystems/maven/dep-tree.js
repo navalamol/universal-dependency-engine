@@ -1,6 +1,7 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
+const { resolveExecutable } = require('../../core/safe-exec');
 
 /**
  * Build a DepTree (Map<name, Entry[]>) from Maven's dependency:tree text output.
@@ -17,9 +18,9 @@ const { spawnSync } = require('child_process');
  */
 function buildMavenDepTree(projectDir) {
   const result = spawnSync(
-    'mvn',
+    resolveExecutable('mvn'),
     ['dependency:tree', '-DoutputType=text', '-B'],
-    { cwd: projectDir, encoding: 'utf8', shell: true }
+    { cwd: projectDir, encoding: 'utf8', shell: false }
   );
 
   if (result.status !== 0) {

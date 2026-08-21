@@ -1,7 +1,7 @@
 'use strict';
 
-const fs           = require('fs');
-const { execSync } = require('child_process');
+const fs = require('fs');
+const { safeSpawn, validatePackageName, validateVersion } = require('../../core/safe-exec');
 
 const TIMEOUT_MS = 120000;
 
@@ -25,12 +25,18 @@ function runCargoUpdate(phaseAItems, projectDir) {
   for (const item of phaseAItems) {
     if (!item.recommendedVersion) continue;
     try {
-      execSync(
-        `cargo update --package "${item.libraryName}" --precise "${item.recommendedVersion}"`,
-        { cwd: projectDir, timeout: TIMEOUT_MS, stdio: 'pipe' }
-      );
+      validatePackageName(item.libraryName);
+      validateVersion(item.recommendedVersion);
     } catch (err) {
-      return { success: false, error: err.stderr ? err.stderr.toString() : err.message };
+      return { success: false, error: `Validation error: ${err.message}` };
+    }
+    const result = safeSpawn(
+      'cargo',
+      ['update', '--package', item.libraryName, '--precise', item.recommendedVersion],
+      { cwd: projectDir, timeout: TIMEOUT_MS }
+    );
+    if (!result.success) {
+      return { success: false, error: result.stderr || result.stdout || `exit ${result.status}` };
     }
   }
   return { success: true };
@@ -40,12 +46,11 @@ function runCargoUpdate(phaseAItems, projectDir) {
  * Run `cargo check` to verify the workspace compiles with updated Cargo.lock.
  */
 function runCargoCheck(projectDir) {
-  try {
-    execSync('cargo check --quiet', { cwd: projectDir, timeout: TIMEOUT_MS, stdio: 'pipe' });
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.stderr ? err.stderr.toString() : err.message };
+  const result = safeSpawn('cargo', ['check', '--quiet'], { cwd: projectDir, timeout: TIMEOUT_MS });
+  if (!result.success) {
+    return { success: false, error: result.stderr || result.stdout || `exit ${result.status}` };
   }
+  return { success: true };
 }
 
 /**
