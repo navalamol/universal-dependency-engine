@@ -4,6 +4,22 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — M2.6 Benchmark Corpus + D1A Exposure Classifier
+
+**Before:** M2 exit gate blocked on M2.6 (no benchmark corpus); D1A exposure classifier was a stub (`mergeExposureClassification` existed but no classifier). 502 tests.
+
+**Changes:**
+- `src/core/exposure-classifier.js` (new) — D1A: `classifyExposure(item, depTree, opts?)` → `{ classification, confidence, evidenceSources }`. 9-value EXPOSURE classification using lockfile dev flags, root-parent isDev, dep-chain depth, package-name pattern tables (test/build/CI tools), and optional package.json scripts scanning. `classifyPlanExposure` for bulk classification. Rule enforced: devDependency flag alone never implies "not critical".
+- `tests/core/exposure-classifier.test.js` (new) — 28 tests: production/dev/test/build/CI classification paths, mixed dev/prod entries, scripts scanning, confidence bounds, empty/null guards.
+- `tests/fixtures/benchmark/npm-mixed.trivy.json` (new) — synthetic Trivy fixture: 11 vulnerabilities across 10 packages (SAFE same-major, MAJOR_BUMP nanoid 3→5, NO_FIX tough-cookie). Known ground truth: A≥7 B=0 C≥2.
+- `tests/fixtures/benchmark/npm-all-safe.trivy.json` (new) — synthetic Trivy fixture: 10 packages all with same-major SAFE upgrades. Known ground truth: A=10 B=0 C=0.
+- `tests/integration/benchmark-corpus.test.js` (new) — 19 M2.6 tests: pipeline shape, determinism (run twice → same counts), Phase A evidence bundle creation, D1A `mergeExposureClassification` round-trip. Zero fabricated percentages — all metrics measured from the actual pipeline.
+- `orchestrator.js` — step 10 added: opt-in `classifyExposure: true` param runs `classifyPlanExposure` and returns `exposureResults` alongside the existing result shape.
+
+**Next:** M3 (CI integrations, policy file, audit trail, KPI report, pilot runbook). M2 + D1A exit gates both passed. **549/549 tests; A:5 B:0 C:3 baseline.**
+
+---
+
 ## 2026-08-21 — Bugfix: Windows npm install failure + report direct-dep inconsistency
 
 **Before:** `mendfix apply` failing on Windows with "FAILED (exit null)" + rolled back; `remediation-report.md` showing direct-dep packages (unzipper, axios) in the overrides block instead of dependencies.

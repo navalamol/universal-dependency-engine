@@ -93,6 +93,7 @@ lockfile update + verification
 | `verifier.js` | `runVerification(commands, projectDir, opts)` → `{ passed, commands, commandResults, durationMs, failureReason, ranAt }` | **M2.1** Build/test verification runner. Accepts string or `{cmd, args, required}` command specs. Uses `safeSpawn` (no shell). Fail-fast (default) or run-all mode. Advisory (`required:false`) commands don't block. Feeds into `mergeVerificationResult`. |
 | `rescan-adapter.js` | `RESCAN_STATUS`, `classifyRescanOutcome(phasedItem, afterEntries, opts)`, `classifyPlanRescanOutcomes(phasedPlan, afterEntries, opts)` | **M2.2** Post-remediation rescan classifier. Compares before/after CVE sets from LibraryEntry[]. Returns RESOLVED_AND_RESCANNED / RESOLVED_NOT_RESCANNED / INSTALL_VERIFIED_ONLY / VERIFICATION_FAILED. Feeds into `mergeRescanResult`. |
 | `evidence-gate.js` | `GATE_DECISION`, `evaluateBundleGate(bundle, policy)`, `applyEvidenceGate(phasedPlan, bundles, policy)` → `{ phasedPlan, gateReport }` | **M2.3** Fail-closed safety gate. Verification failure → BLOCKED. Rescan CVEs remaining → BLOCKED. Required evidence missing → DOWNGRADED (A→B). Phase B/C pass through. Never mutates originals. |
+| `exposure-classifier.js` | `classifyExposure(item, depTree, opts?)` → `{ classification, confidence, evidenceSources }`, `classifyPlanExposure(phasedPlan, depTree, opts?)` → `Array<{ item, exposureResult }>` | **D1A** Environmental exposure classifier. 9 classification values (RUNTIME_REACHABLE … UNKNOWN_EXPOSURE). Evidence sources: lockfile flags, root-parent isDev, dep-chain depth, package-name pattern matching, optional package.json scripts scan. devDependency flag alone never dismisses a finding. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `portfolio-report.js` | `generatePortfolioReport(portfolio, opts)` → `string`, `writePortfolioReport(portfolio, outDir, opts)` → `path` | Portfolio-level markdown report across multiple repos |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
@@ -295,9 +296,11 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/verifier.test.js` | `runVerification` — string/object commands, fail-fast, advisory, timeout, allowlist, safeSpawn mock — 20 tests |
 | `tests/core/rescan-adapter.test.js` | `classifyRescanOutcome`, `classifyPlanRescanOutcomes` — null/empty/partial/full rescan scenarios — 19 tests |
 | `tests/core/evidence-gate.test.js` | `evaluateBundleGate`, `applyEvidenceGate` — ALLOWED/DOWNGRADED/BLOCKED, phase mutation, no-mutation guarantee — 16 tests |
+| `tests/core/exposure-classifier.test.js` | `classifyExposure`, `classifyPlanExposure` — production/dev/test/build/CI classification, scripts scanning, confidence bounds — 28 tests |
+| `tests/integration/benchmark-corpus.test.js` | M2.6 benchmark corpus — 2 synthetic Trivy fixtures, determinism, evidence bundle creation, D1A integration — 19 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **502/502 pass**
+Baseline: **549/549 pass**
 
 ---
 
@@ -323,8 +326,10 @@ Baseline: **502/502 pass**
 | **Phase 5.5 M2.2** — `rescan-adapter.js`: post-remediation rescan classifier; 19 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.5 M2.3** — `evidence-gate.js`: fail-closed Phase A gate; 16 tests | ✅ DONE 2026-08-21 |
 | **Bugfix** — Windows `.cmd` spawn (`installer.js` `_spawnSafe`); report direct-dep split (`report.js` + `mendfix.js`); 11 new tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M2.6** — Benchmark corpus: 2 synthetic Trivy fixtures (`npm-mixed`, `npm-all-safe`); 19 tests covering determinism, phase counts, evidence bundle creation, D1A round-trip | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D1A** — `exposure-classifier.js`: 9-value classifier, lockfile flags, pattern matching, scripts scan, `classifyPlanExposure`; wired into `orchestrator.js` step 10 (opt-in); 28 tests | ✅ DONE 2026-08-21 |
 
-**Next:** M2.6 (benchmark corpus with reproducible metrics) + D1A (exposure classification). **502/502 tests; A:5 B:0 C:3 baseline.**
+**Next:** M3 (CI integrations, policy file, audit trail, KPI report, pilot runbook). **549/549 tests; A:5 B:0 C:3 baseline.**
 
 ---
 

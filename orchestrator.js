@@ -28,6 +28,8 @@ const { buildResolutionPlan }                               = require('./src/cor
 const { applyPhases }                                       = require('./src/core/phases');
 const { enrichWithConfidence }                              = require('./src/core/confidence');
 const { enrichWithPaths }                                   = require('./src/core/remediation-paths');
+const { classifyPlanExposure }                              = require('./src/core/exposure-classifier');
+const { mergeExposureClassification }                       = require('./src/core/evidence-model');
 const { detectEcosystem }                                   = require('./src/ecosystems/index');
 const { parseLockFile: parseNpmLock, getRootDeps, findDepChain } =
   require('./src/ecosystems/npm/lock-parser');
@@ -171,6 +173,8 @@ function enrichNpmChains(phasedPlan, depTree, rootDeps) {
  * @param {string}  [opts.cargoTomlPath]      - Rust: Cargo.toml
  * @param {number}  [opts.maxDepth]           - Max depth for npm parent-chain exploration
  * @param {number}  [opts.maxSimulations]     - Max npm install simulations
+ * @param {boolean} [opts.classifyExposure]   - D1A: run exposure classifier (default false)
+ * @param {object}  [opts.packageJson]        - Parsed package.json for exposure scripts scan
  *
  * @returns {Promise<{
  *   entries:             LibraryEntry[],
@@ -178,7 +182,8 @@ function enrichNpmChains(phasedPlan, depTree, rootDeps) {
  *   provider:            string,
  *   phasedPlan:          PhasedItem[],
  *   depTree:             Map|null,
- *   registryAdjustments: Array<{name, requested, adjusted}>
+ *   registryAdjustments: Array<{name, requested, adjusted}>,
+ *   exposureResults:     Array<{item, exposureResult}>|null
  * }>}
  */
 async function runAnalysisPipeline(opts = {}) {
@@ -196,6 +201,8 @@ async function runAnalysisPipeline(opts = {}) {
     cargoTomlPath       = null,
     maxDepth            = undefined,
     maxSimulations      = undefined,
+    classifyExposure    = false,
+    packageJson         = null,
   } = opts;
 
   if (!reportPath) throw new Error('runAnalysisPipeline: reportPath is required');
@@ -263,7 +270,13 @@ async function runAnalysisPipeline(opts = {}) {
   // 9. Remediation path enrichment
   phasedPlan = enrichWithPaths(phasedPlan, entries);
 
-  return { entries, ecosystem, provider, phasedPlan, depTree, registryAdjustments };
+  // 10. D1A: Exposure classification (opt-in)
+  let exposureResults = null;
+  if (classifyExposure) {
+    exposureResults = classifyPlanExposure(phasedPlan, depTree, { packageJson });
+  }
+
+  return { entries, ecosystem, provider, phasedPlan, depTree, registryAdjustments, exposureResults };
 }
 
 module.exports = { runAnalysisPipeline };
