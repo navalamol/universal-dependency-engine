@@ -105,18 +105,98 @@ Tracks feature completion across all phases. See `NEXT_MISSION.md` for what to b
 
 ---
 
-## Phase 6 — UI Layer (next)
+## Phase 5.5 — Enterprise Trust and Pilot Release (current)
+
+| Mission | Feature | Status |
+|---------|---------|--------|
+| M1 | Secure process execution — centralized safe executor, no shell-string interpolation | Planned |
+| M1 | Credential handling — env/SecretStorage preferred; no tokens in reports/logs | Planned |
+| M1 | Canonical orchestration API — one pipeline for CLI, UI, portfolio, CI | Planned |
+| M1 | Confirmed gap: VS Code extension bypasses enrichWithConfidence + enrichWithPaths | Confirmed |
+| M1 | Product threat model (THREAT_MODEL.md, SECURITY_ARCHITECTURE.md) | Planned |
+| M1 | Reproducible clean CI | Planned |
+| M1 | Documentation reconciliation across all status files | Planned |
+| M2 | Configurable build/test verification commands | Planned |
+| M2 | Post-remediation rescan adapter (4 outcome states) | Planned |
+| M2 | Fail-closed safety gate for Phase A application | Planned |
+| M2 | Canonical versioned evidence model (JSON + SARIF + CycloneDX/VEX) | Planned |
+| M2 | Outcome taxonomy (FIXED / NOT_AFFECTED / MITIGATED / PATCHED / FORKED / ...) | Planned |
+| M2 | Benchmark corpus + measured metrics | Planned |
+| M3 | GitHub Actions CI integration | Planned |
+| M3 | Repository policy file (.dependency-intelligence.yml) | Planned |
+| M3 | Append-only structured audit trail | Planned |
+| M3 | Pilot KPI report with exposure-aware metrics | Planned |
+| M3 | Pilot runbook | Planned |
+
+---
+
+## Phase 5.6 — Deep Remediation Intelligence
+
+| Sub-phase | Feature | Status |
+|-----------|---------|--------|
+| D1A | Exposure classification (RUNTIME_REACHABLE / TEST_ONLY / CI_EXECUTED / ...) | Planned (before M3) |
+| D1B | Unused dep detection + retirement signals + preventive hygiene | Planned (after M3) |
+| D2.1 | API usage fingerprint | Planned |
+| D2.2 | Alternative-package intelligence and scoring | Planned |
+| D2.3 | Migration strategy comparison | Planned |
+| D2.4 | Prototype branches + behavioral comparison | Stretch goal |
+| D3.1 | Native npm patch support | Planned |
+| D3.2 | Fix Transplant Engine | Planned |
+| D3.3 | Internal fork workflow with fork-debt ledger | Planned |
+| D3.4 | LLM-assisted candidate patches (feature-flag gated, human-approval required) | Planned |
+| D3.5 | Licensing gate | Planned |
+| D3.6 | Upstream disclosure preparation | Planned |
+
+---
+
+## Phase 6 — Focused UI Layer
 
 | Step | Feature | Priority | Notes |
 |------|---------|----------|-------|
-| 1 | VS Code Extension scaffold | P1 | `packages/vscode-extension/` — extension host + Webview panel + vsce manifest |
-| 2 | Report upload & analysis panel | P1 | File picker, provider auto-detect, phase A/B/C cards, CVE table, confidence display |
-| 3 | Apply / Commit / PR controls | P1 | One-click apply, SecretStorage tokens, progress stream, rollback UI, Phase C read-only |
-| 4 | Settings form & portfolio builder | P2 | Visual config for all CLI flags; portfolio.json builder; vsce publish to marketplace |
-| 5 | Tauri standalone app | P3 | Sidecar wraps same engine; shares 100% of Webview frontend; ~10 MB install |
-| 6 | Chrome Extension PR overlay | P3 | MV3; GitHub/GitLab PR badge overlay; read-only; bridges to local VS Code/Tauri server |
+| 1 | VS Code extension rebuilt on canonical API (M1.3) | P1 | Fixes gap: panel.js currently bypasses confidence + path enrichment |
+| 2 | Read-only evidence and analysis view | P1 | Visualizes canonical evidence; no separate decision logic in UI |
+| 3 | Governed apply/approval workflow | P1 | Phase C read-only; Phase B approval-gated |
+| 4 | Portfolio/pilot KPI view with exposure breakdown | P2 | Uses exposure data from D1A |
+| 5 | Tauri standalone app | P3 | Deferred until pilot evidence shows demand |
+| 6 | Chrome Extension PR overlay | P3 | Deferred until pilot evidence shows demand |
 
-Delivery rationale: VS Code Extension primary — developers already there; full Node.js API access; marketplace distribution. Tauri secondary — IDE-independent, tiny install. Chrome Extension companion only — cannot run shell commands or access filesystem.
+---
+
+## Phase 7 — Dependency Outcome Knowledge Graph
+
+Collect event schema now; build intelligence only after real outcomes exist.
+
+| Feature | Status |
+|---------|--------|
+| Event schema design | Planned |
+| Remediation outcome storage | Planned |
+| Successful migration recipe store | Planned |
+| PR outcome + rollback tracking | Planned |
+
+---
+
+## Phase 8 — Organization-Specific Dependency Intelligence
+
+| Feature | Status |
+|---------|--------|
+| Repository-specific compatibility history | Planned |
+| Reusable remediation recipes | Planned |
+| Regression-aware recommendations | Planned |
+| Predictive change risk | Planned |
+
+---
+
+## Phase 9 — LLM Intelligence
+
+| Feature | Status |
+|---------|--------|
+| Changelog + migration-guide analysis | Planned |
+| Root-cause explanation | Planned |
+| Candidate codemods | Planned |
+| Backport assistance | Planned |
+| Natural-language evidence queries | Planned |
+
+LLM suggestions remain subordinate to deterministic evidence, policy and verification.
 
 ---
 
@@ -127,5 +207,5 @@ Delivery rationale: VS Code Extension primary — developers already there; full
 | AI-based SemVer resolution | Non-deterministic. `semver` package is the source of truth. |
 | `@^major` scoped override selectors | Unreliable across npm versions. Multi-major → Phase C. |
 | TypeScript rewrite | CLAUDE.md explicitly prohibits. Plain CommonJS only. |
-| Backwards-compat shims for old output | No consumers of old format. |
-| Deep mixed dev/runtime chain classification (Scenario 8 full) | All-dev check covers real cases; mixed-chain BFS deferred to Phase 6+ |
+| Electron app | Same capability as Tauri at 15× larger install size. |
+| Phase C auto-apply via LLM | Phase C must always require human approval. |

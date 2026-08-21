@@ -4,10 +4,7 @@ Read this before every session. This is the complete bootstrap.
 
 ## What this is
 
-Node.js CLI that reads Mend vulnerability reports and automatically remediates ~90–95% of CVEs via
-npm `overrides` or Maven `pom.xml` patches. The remaining ~5–10% (Phase C) is handled by Claude
-via `CLAUDE_WORKFLOW.md`. Phase 1 (Mend/npm/Maven) is at ~97%. See `NEXT_MISSION.md` for remaining
-gaps and Phase 2 entry criteria.
+Node.js CLI that reads vulnerability reports and automatically remediates CVEs via npm `overrides`, Maven `pom.xml` patches, and ecosystem-specific fixes across 6 runtimes (npm, Maven, Python, Go, .NET, Rust). Phases 1–5 are complete (332/332 tests; 9 scanner providers; portfolio mode; CI/CD write-back). Phase 5.5 is the current phase: security hardening, canonical orchestration API, verified evidence model, and enterprise pilot readiness. See `NEXT_MISSION.md` for the full mission sequence.
 
 ## Architecture
 
@@ -124,7 +121,7 @@ If you estimate the conversation has consumed ~80k tokens, alert the user before
 | Goal | File |
 |------|------|
 | **File map, function signatures, data shapes (read first every session)** | `CODEBASE.md` |
-| What to build next + Phase 6 UI plan | `NEXT_MISSION.md` |
+| What to build next + Phase 5.5/5.6 plan | `NEXT_MISSION.md` |
 | Phase C Claude triage instructions | `CLAUDE_WORKFLOW.md` |
 | 9-phase product vision | `Master_Roadmap.md` |
 | Feature completion tracker (all phases) | `docs/ROADMAP.md` |

@@ -1,7 +1,7 @@
 # Next Mission
 
 Single source of truth for what to build next. Updated after each session.
-**Last updated:** 2026-08-13
+**Last updated:** 2026-08-21
 
 ---
 
@@ -118,71 +118,134 @@ All 9 providers complete: Mend, Snyk, npm-audit, Dependabot, OWASP, OSV, Trivy, 
 
 ---
 
-## Phase 6 — UI Layer (next major phase)
+## Phase 5.5 — Enterprise Trust and Pilot Release
 
-### Delivery decision
+### Mission 1 — Security and canonical-engine closure ← CURRENT
 
-| Vehicle | Decision | Reason |
-|---------|----------|--------|
-| **VS Code Extension** | ✅ Primary | Devs already there; full Node.js host API; Webview panel; marketplace; workspace auto-detected |
-| **Tauri standalone app** | ✅ Secondary | IDE-independent; ~10 MB (vs Electron 150 MB); shares 100% of frontend from extension |
-| **Chrome Extension** | ✅ Companion (Step 6) | PR overlay badges only — cannot run shell commands or access filesystem |
-| **Electron** | ❌ Rejected | Same capability as Tauri at 15× larger install size |
+**Objective:** Make CLI, UI, portfolio and future CI integrations consume one canonical decision pipeline; remove product-security weaknesses before any external pilot.
 
-The extension wraps the existing CLI engine — no changes to `src/core/`, providers, or ecosystems.
-The Webview (HTML/CSS/JS) communicates with the extension host (Node.js) via VS Code message-passing API.
-Phase C items remain read-only in the UI — no auto-apply path exposed.
+#### M1.1 Secure process execution
+- Find every `exec`/`execSync`/`spawn`/`spawnSync`/`shell: true` and dynamically-constructed command strings
+- Implement a centralized safe process-execution utility: separate executable + args, no shell by default, allowlisted executables, input validation, timeouts, redacted output
+- Replace vulnerable command-string construction in ecosystem installers/simulators
 
-### Build sequence
+#### M1.2 Credential handling
+- Stop accepting tokens as plain CLI arguments (deprecation warning if kept for compat)
+- Prefer env injection, VS Code SecretStorage, short-lived platform credentials
+- Never include credentials in reports, evidence, errors, process output, or PR descriptions
+- Ensure extension actually uses SecretStorage before claiming it does
 
-| Step | Title | Files | Priority |
-|------|-------|-------|----------|
-| 1 | VS Code Extension Scaffold | `packages/vscode-extension/extension.js`, `panel.js`, `package.json` (vsce) | P1 |
-| 2 | Report Upload & Analysis Panel | `report-view.html`, phase-cards, CVE table, provider auto-detect from file | P1 |
-| 3 | Apply, Commit & PR Controls | apply flow, SecretStorage tokens, progress stream, rollback UI | P1 |
-| 4 | Visual Settings & Portfolio Builder | settings form, portfolio.json builder, vsce publish | P2 |
-| 5 | Tauri Standalone App (stretch) | Tauri sidecar, shared frontend from Steps 2–3, OS packaging, auto-update | P3 |
-| 6 | Chrome Extension — PR Overlay (companion) | MV3 extension, GitHub/GitLab PR badges, local API bridge | P3 |
+#### M1.3 Canonical orchestration API
+- Create one canonical orchestration layer consumed by: CLI analyze, CLI apply, portfolio mode, VS Code analysis, future CI integrations
+- **Confirmed gap:** `packages/vscode-extension/panel.js` calls `applyPhases(plan, null)` and stops — no lock-tree loading, no `enrichWithConfidence`, no `enrichWithPaths`
+- Pipeline must include: provider detection → ecosystem detection → lock/dep-graph loading → deterministic resolution → phase classification → confidence enrichment → remediation-path exploration → security delta + blast radius → policy evaluation → structured result
+- CLI and UI must not independently reimplement this pipeline
+- Add contract tests comparing results across entry points
 
-### Key architecture rules for Step 1
-- Extension host (Node.js) owns all file I/O, `npm install`, `git` calls — same as the CLI
-- Webview owns all UI rendering — posts messages to host, receives structured results
-- Secrets (platform tokens) stored via `vscode.SecretStorage` — never in webview state
-- `mendfix analyze` / `apply` / `portfolio` run via direct `require()` from the host, not child_process
-- Test: existing 332 tests must still pass unchanged after scaffolding
+#### M1.4 Product threat model
+- `docs/THREAT_MODEL.md` and `docs/SECURITY_ARCHITECTURE.md`
+- Data-flow diagram, trust-boundary diagram, threats/mitigations, residual risks
 
----
+#### M1.5 Reproducible clean CI
+- Clean checkout: deterministic install → syntax check → all tests → regression fixture → machine-readable results
+- No real secrets. No external repo changes. Least-privilege permissions.
 
-## Phase 1 → Phase 1.x entry: Remediation Path Explorer (preserved)
+#### M1.6 Documentation reconciliation
+- Remove contradictory status across CLAUDE.md, CODEBASE.md, NEXT_MISSION.md, Master_Roadmap.md, docs/ROADMAP.md
+- Keep completed/pending/blocker states precise
 
-**Phase 1 is complete (all conditions met as of 2026-08-12):**
-- Test baseline holds: `node mendfix.js analyze --report ...` → Phase A:5, B:0, C:3 ✅
-- All 26 scenarios verified ✅
-
-**Phase 1.x entry point (Remediation Path Explorer):**
-
-The core differentiator after V1. See `REMEDIATION_CAPABILITY_ROADMAP.md` for full detail.
-
-Build sequence (3 steps):
-1. **Manifest inspection per candidate parent version** — fetch `Y@candidate/package.json` from
-   npm registry, extract declared child range, verify fixed child version satisfies it.
-   Files: `src/ecosystems/npm/parent-upgrade-explorer.js`, `src/ecosystems/npm/registry.js`
-
-2. **Isolated package-manager simulation** — new `src/ecosystems/npm/simulator.js`.
-   For each viable candidate: write temp `package.json`, run `npm install --package-lock-only`,
-   parse resulting lockfile, confirm vulnerable dep resolves to fixed version.
-   This promotes INFERRED parent upgrade paths to VERIFIED.
-
-3. **Multi-path comparison + Change Budget ranking** — collect all explored paths, rank by
-   VERIFIED > INFERRED then by Change Budget tier (lockfile-only > parent minor > override).
-   Phase A/B/C + decision label assigned after ranking from evidence.
-   Files: new `src/core/remediation-paths.js`, extend `src/core/phases.js`
+**Exit gate:** Test suite passes · regression baseline A:5 B:0 C:3 · identical fixtures produce equivalent decisions through CLI + UI adapter + portfolio adapter · no report-derived value interpolated into shell command · credential-redaction tests pass · all status docs agree.
 
 ---
 
-## Phase 2 entry criteria ✅ MET (2026-08-12)
+### Mission 2 — Verified remediation evidence
 
-All three gate conditions were satisfied. Phase 2 is complete. Phase 3+ entry criteria TBD in Master_Roadmap.md.
+Begin only after Mission 1 exit gate passes.
+
+**Objective:** Phase A fix becomes reproducible and independently auditable.
+
+- M2.1: Configurable build/test verification commands (safe process utility; required-check failure blocks Phase A)
+- M2.2: Post-remediation rescan adapter (RESOLVED_AND_RESCANNED / RESOLVED_NOT_RESCANNED / INSTALL_VERIFIED_ONLY / VERIFICATION_FAILED)
+- M2.3: Fail-closed safety gate (Phase A application fails or downgrades when required evidence is incomplete)
+- M2.4: Canonical evidence model (versioned machine-readable JSON; SARIF + CycloneDX/VEX export; human report = view of canonical evidence)
+- M2.5: Outcome taxonomy (FIXED / NOT_AFFECTED / MITIGATED / PATCHED / FORKED / ACCEPTED_RISK / LICENSE_BLOCKED / VERIFICATION_FAILED / REQUIRES_MIGRATION / NO_SAFE_PATH)
+- M2.6: Benchmark corpus using synthetic/approved fixtures; measured metrics only — no fabricated percentages
+
+**Exit gate:** Every verified Phase A fixture has a complete canonical evidence bundle · required failures downgrade/block · benchmark metrics reproducible.
+
+---
+
+### (interleaved) Phase 5.6 D1A — Exposure classification
+
+Begin after Mission 2 exit gate. Feeds into Mission 3 KPI reports.
+
+Classify vulnerable packages as: RUNTIME_REACHABLE / PRODUCTION_BUNDLED / BUILD_TIME_EXECUTED / CI_EXECUTED / TEST_ONLY / LOCAL_TOOLING_ONLY / INSTALLED_NOT_USED / NOT_IN_PRODUCTION_ARTIFACT / UNKNOWN_EXPOSURE
+
+Evidence sources: lockfile dep flags · root dep classification · import/require usage · build config · lifecycle scripts · bundled production artifacts · CI scripts · dep path
+
+Rules:
+- devDependency flag alone never implies "not critical" — build/CI deps can execute with powerful credentials
+- Preserve original vulnerability severity; add environmental exposure and remediation priority separately
+- Exposure claims include evidence and confidence
+
+**Exit gate:** Exposure data integrated into canonical evidence model · KPI reports include exposure breakdown · dev-only packages not incorrectly dismissed.
+
+---
+
+### Mission 3 — Paid-pilot delivery
+
+Begin only after Mission 2 + D1A exit gates pass.
+
+**Objective:** Package the engine for a controlled enterprise pilot with exposure-aware KPIs.
+
+- M3.1: CI integrations — GitHub Actions (primary); Azure DevOps if capacity permits; least-privilege; dry-run default; dedicated branch; no protected-branch writes; evidence as artifact
+- M3.2: Repository policy file (`.dependency-intelligence.yml` or equivalent) — allowed phases, severity threshold, blast-radius limit, build/test/rescan commands, registry allowlist, package denylist, freeze windows
+- M3.3: Append-only structured audit trail
+- M3.4: Pilot KPI report — findings analyzed/remediated, build/test pass rate, rescan closure rate, RUNTIME_REACHABLE exposure delta, engineer time estimate, PR acceptance
+- M3.5: Pilot runbook
+
+**Exit gate:** Pilot infrastructure passes synthetic/local integration tests · end-to-end: scan → plan → apply → build/test → rescan → evidence → draft PR (no real mutation) · policy and approval gates enforced · real pilot execution blocked on external repo supply.
+
+---
+
+## Phase 5.6 — Deep Remediation Intelligence (after M3)
+
+### D1B — Removal, retirement and preventive hygiene
+- Unused dependency detection (with evidence + confidence; no silent removal)
+- Dependency retirement signals (deprecation, archived repo, maintenance history, maintainer concentration, license risk)
+- Preventive hygiene: same-major patch/minor updates, deprecated packages, high-centrality deps, git/branch deps, runtime incompatibilities
+- Preventive changes use separate PRs; default to recommendation not auto-application
+
+### D2.1–D2.3 — Replacement and Major Migration Navigator
+- D2.1: API usage fingerprint (imports, symbols, constructor usage, error handling, test patterns)
+- D2.2: Alternative-package intelligence (curated catalogue, org-approved packages, native APIs; scored on capability coverage, security history, migration effort, license, runtime compat)
+- D2.3: Migration strategy comparison (direct upgrade / major-by-major / adapter / strangler / dual-run / internal fork / feature removal)
+- Generates `major-migration-plan.md` from canonical migration evidence
+
+### D2.4 — Prototype branches (stretch goal)
+Implement only after D2.1–D2.3 pass exit gate. Where policy permits: isolated prototypes, build/test comparison, dependency graph diff, behavioral replay. Do not merge or publish prototypes automatically. **This is a stretch goal, not a D2 gate condition.**
+
+### D3 — Patch, Backport and Upstream Contribution
+- D3.1: Native npm patch support (version-specific unified diffs, patch hashes in evidence)
+- D3.2: Fix Transplant Engine (upstream fix commit location, smallest legal backport, regression tests)
+- D3.3: Internal fork workflow (scoped private package, fork-debt ledger with owner + expiry)
+- D3.4: LLM-assisted candidate patches — feature-flag disabled by default; no effect on Phase A/B/C classification; human security approval required; outcome labelled LLM_SYNTHESIZED_PATCH; never auto-publish
+- D3.5: Licensing gate (detect/check license before patching/forking; LICENSE_BLOCKED outcome)
+- D3.6: Upstream disclosure preparation (never sends externally without explicit approval)
+
+---
+
+## Phase 6 — Focused UI Layer (after 5.5 + 5.6 D1/D2)
+
+Build on canonical orchestration API (M1.3) and exposure classification (D1A). The VS Code extension panel.js gap (calling applyPhases without lock-tree, confidence, or path enrichment) is resolved by M1.3.
+
+Priorities:
+1. VS Code extension rebuilt as thin client over canonical API
+2. Read-only evidence and analysis view
+3. Governed apply/approval workflow
+4. Portfolio/pilot KPI view with exposure breakdown
+
+Tauri and Chrome extension deferred until paid-pilot evidence shows demand.
 
 ---
 
@@ -192,16 +255,13 @@ All three gate conditions were satisfied. Phase 2 is complete. Phase 3+ entry cr
 - No AI in the SemVer engine — it must stay deterministic
 - No `@^major` selectors in overrides output
 - No MAJOR_BUMP auto-applied — always Phase C
-- No Phase 2 work until Phase 1 gaps 1 and 2 are closed
+- Phase C must never become auto-apply merely because an LLM recommends a fix
+- No fabricated pilot, benchmark or remediation-success results
+- Do not build Tauri, Electron or Chrome extensions in these phases
+- The VS Code extension must remain a thin client over the canonical engine
 
 ---
 
 ## Product context (one paragraph)
 
-This is Phase 1 of a 9-phase Dependency Intelligence OS (see `Master_Roadmap.md`). The
-provider/core/ecosystem separation built in Phase 1 is permanent infrastructure — it is what
-makes Phases 2 and 3 cheap. Every interface decision (`LibraryEntry[]`, `ResolutionItem[]`,
-`PhasedItem[]`) is load-bearing. Don't simplify what looks like over-engineering — it's the
-foundation for millions of users. The Remediation Path Explorer (Phase 1.x) adds the
-Find → Explore → Simulate → Verify → Compare → Recommend → Apply pipeline that makes parent
-upgrade recommendations verified rather than inferred. See `REMEDIATION_CAPABILITY_ROADMAP.md`.
+This is Phase 5.5 of a 9-phase Dependency Intelligence OS (see `Master_Roadmap.md`). The provider/core/ecosystem separation built in Phases 1–5 is permanent infrastructure. Phase 5.5 adds the enterprise trust layer: security hardening, canonical orchestration API, verified evidence model, and pilot delivery. Phase 5.6 adds deep remediation intelligence (exposure classification, migration navigator, patch/backport). The deterministic engine is and remains the MOAT. AI assists only after deterministic resolution, verification, and human approval are in place.

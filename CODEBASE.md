@@ -310,7 +310,7 @@ Baseline: **332/332 pass**
 | Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 | Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 6 — UI Layer. VS Code Extension (primary): Webview panel wrapping the existing engine with report upload, analysis view, one-click apply/commit/PR controls, settings form, and portfolio builder. No changes to `src/core/`, providers, or ecosystems. See `NEXT_MISSION.md` for the 6-step build sequence.
+**Next:** Phase 5.5 M1 — Security and canonical-engine closure. Key tasks: (1) centralized safe process-execution utility replacing any shell-string interpolation in ecosystem installers/simulators; (2) canonical orchestration API so CLI, VS Code extension, and portfolio mode all run the same full pipeline — confirmed gap: `packages/vscode-extension/panel.js` calls `applyPhases(plan, null)` without lock-tree loading, `enrichWithConfidence`, or `enrichWithPaths`; (3) credential handling improvements; (4) CI setup; (5) documentation reconciliation. See `NEXT_MISSION.md` for full detail.
 
 ---
 
