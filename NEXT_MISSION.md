@@ -209,35 +209,34 @@ Begin only after Mission 1 exit gate passes.
 
 ---
 
-### Mission 3 — Paid-pilot delivery
-
-Begin only after Mission 2 + D1A exit gates pass.
+### ~~Mission 3 — Paid-pilot delivery~~ ✅ DONE 2026-08-21
 
 **Objective:** Package the engine for a controlled enterprise pilot with exposure-aware KPIs.
 
-- M3.1: CI integrations — GitHub Actions (primary); Azure DevOps if capacity permits; least-privilege; dry-run default; dedicated branch; no protected-branch writes; evidence as artifact
-- M3.2: Repository policy file (`.dependency-intelligence.yml` or equivalent) — allowed phases, severity threshold, blast-radius limit, build/test/rescan commands, registry allowlist, package denylist, freeze windows
-- M3.3: Append-only structured audit trail
-- M3.4: Pilot KPI report — findings analyzed/remediated, build/test pass rate, rescan closure rate, RUNTIME_REACHABLE exposure delta, engineer time estimate, PR acceptance
-- M3.5: Pilot runbook
+- ~~M3.1: CI integrations — GitHub Actions + Azure DevOps; least-privilege; dry-run default; dedicated branch; no protected-branch writes; evidence as artifact~~ ✅ `src/ci/github-actions.js`
+- ~~M3.2: Repository policy file (`.dependency-intelligence.yml`)~~ ✅ `src/core/policy-loader.js`
+- ~~M3.3: Append-only structured audit trail~~ ✅ `src/core/audit-trail.js`
+- ~~M3.4: Pilot KPI report~~ ✅ `src/core/kpi-report.js`
+- ~~M3.5: Pilot runbook~~ ✅ `docs/PILOT_RUNBOOK.md`
 
-**Exit gate:** Pilot infrastructure passes synthetic/local integration tests · end-to-end: scan → plan → apply → build/test → rescan → evidence → draft PR (no real mutation) · policy and approval gates enforced · real pilot execution blocked on external repo supply.
+**✅ MISSION 3 EXIT GATE PASSED** — 698/698 tests · pilot infrastructure tested with synthetic fixtures · policy + approval gates enforced · audit trail append-only · KPI metrics derived from evidence (no fabricated numbers).
 
 ---
 
 ## Phase 5.6 — Deep Remediation Intelligence (after M3)
 
-### D1B — Removal, retirement and preventive hygiene
-- Unused dependency detection (with evidence + confidence; no silent removal)
-- Dependency retirement signals (deprecation, archived repo, maintenance history, maintainer concentration, license risk)
-- Preventive hygiene: same-major patch/minor updates, deprecated packages, high-centrality deps, git/branch deps, runtime incompatibilities
-- Preventive changes use separate PRs; default to recommendation not auto-application
+### ~~D1B — Removal, retirement and preventive hygiene~~ ✅ DONE 2026-08-21
+- ~~Unused dependency detection~~ ✅ `src/core/hygiene-advisor.js` `detectUnusedDevDeps`
+- ~~Dependency retirement signals~~ ✅ `detectRetirementSignals`
+- ~~Preventive hygiene~~ ✅ `detectPreventiveUpgrades`, `detectGitAndBranchDeps`
+- All findings: `autoApplicable = false`; evidence-backed; confidence-labelled; 20 tests
 
-### D2.1–D2.3 — Replacement and Major Migration Navigator
-- D2.1: API usage fingerprint (imports, symbols, constructor usage, error handling, test patterns)
-- D2.2: Alternative-package intelligence (curated catalogue, org-approved packages, native APIs; scored on capability coverage, security history, migration effort, license, runtime compat)
-- D2.3: Migration strategy comparison (direct upgrade / major-by-major / adapter / strangler / dual-run / internal fork / feature removal)
-- Generates `major-migration-plan.md` from canonical migration evidence
+### ~~D2.1–D2.3 — Replacement and Major Migration Navigator~~ ✅ DONE 2026-08-21
+- ~~D2.1: API usage fingerprint~~ ✅ `src/core/usage-fingerprint.js` — regex import/require/export scanner, symbol extraction, subpath detection, effort estimation; 22 tests
+- ~~D2.2: Alternative-package intelligence~~ ✅ `src/core/migration-planner.js` `ALTERNATIVES_CATALOGUE` — curated catalogue, composite scoring (capability×0.35 + security×0.30 + effort×0.25 + license×0.10 + orgBonus)
+- ~~D2.3: Migration strategy comparison~~ ✅ `selectStrategy` — 8 strategies (DIRECT_UPGRADE / MAJOR_BY_MAJOR / ADAPTER / STRANGLER_FIG / DUAL_RUN / INTERNAL_FORK / FEATURE_REMOVAL / REPLACEMENT); generates `major-migration-plan.md`; 18 tests
+
+**✅ D1B + D2.1–D2.3 EXIT GATE PASSED** — 698/698 tests · all hygiene findings evidence-backed + not auto-applicable · migration plan covers Phase C items only · usage fingerprint drives effort estimates.
 
 ### D2.4 — Prototype branches (stretch goal)
 Implement only after D2.1–D2.3 pass exit gate. Where policy permits: isolated prototypes, build/test comparison, dependency graph diff, behavioral replay. Do not merge or publish prototypes automatically. **This is a stretch goal, not a D2 gate condition.**

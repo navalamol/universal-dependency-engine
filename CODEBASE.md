@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-21 (Phase 5.5 M2.1–M2.5 + bugfix: Windows npm install + report direct-dep split)
+Last updated: 2026-08-21 (Batch 2: M2.6+D1A; Batch 3: M3.1–M3.5+D1B+D2.1–D2.3; 698/698 tests)
 
 ---
 
@@ -94,6 +94,12 @@ lockfile update + verification
 | `rescan-adapter.js` | `RESCAN_STATUS`, `classifyRescanOutcome(phasedItem, afterEntries, opts)`, `classifyPlanRescanOutcomes(phasedPlan, afterEntries, opts)` | **M2.2** Post-remediation rescan classifier. Compares before/after CVE sets from LibraryEntry[]. Returns RESOLVED_AND_RESCANNED / RESOLVED_NOT_RESCANNED / INSTALL_VERIFIED_ONLY / VERIFICATION_FAILED. Feeds into `mergeRescanResult`. |
 | `evidence-gate.js` | `GATE_DECISION`, `evaluateBundleGate(bundle, policy)`, `applyEvidenceGate(phasedPlan, bundles, policy)` → `{ phasedPlan, gateReport }` | **M2.3** Fail-closed safety gate. Verification failure → BLOCKED. Rescan CVEs remaining → BLOCKED. Required evidence missing → DOWNGRADED (A→B). Phase B/C pass through. Never mutates originals. |
 | `exposure-classifier.js` | `classifyExposure(item, depTree, opts?)` → `{ classification, confidence, evidenceSources }`, `classifyPlanExposure(phasedPlan, depTree, opts?)` → `Array<{ item, exposureResult }>` | **D1A** Environmental exposure classifier. 9 classification values (RUNTIME_REACHABLE … UNKNOWN_EXPOSURE). Evidence sources: lockfile flags, root-parent isDev, dep-chain depth, package-name pattern matching, optional package.json scripts scan. devDependency flag alone never dismisses a finding. |
+| `policy-loader.js` | `loadPolicy(projectDir, opts?)`, `parsePolicy(raw)`, `isFreezeWindow(loaded, now?)`, `isDenylisted(loaded, pkg)`, `meetsSeverityThreshold(loaded, severity)`, `isPhaseAllowed(loaded, phase)`, `toGatePolicy(loaded)` | **M3.2** `.dependency-intelligence.yml` loader/validator. Allowed phases, severity threshold, blast-radius limit, denylist, registry allowlist, freeze windows, verification/rescan config. Feeds into evidence gate. |
+| `audit-trail.js` | `createTrail(opts?)` → Trail, `readTrailFile(filePath)`, `queryTrail(entries, filters)`, `EVENTS` | **M3.3** Append-only NDJSON audit trail. Trail.record(event, data), flush(filePath) appends to disk, readFile reads back. Never overwrites. |
+| `kpi-report.js` | `computeKPIs(bundles)` → KPIMetrics, `generateKPIReport(bundles, opts?)` → string, `writeKPIReport(bundles, outDir, opts?)` → path | **M3.4** Pilot KPI report. Metrics from EvidenceBundle[]: totalFindings, phaseDistribution, remediatedCount, verificationPassRate, rescanClosureRate, exposureBreakdown, runtimeReachableFixed, cvesAddressed. Estimates labeled as estimates. |
+| `hygiene-advisor.js` | `detectUnusedDevDeps(pkg)`, `detectRetirementSignals(entries, registryMeta)`, `detectPreventiveUpgrades(entries, installed, available)`, `detectGitAndBranchDeps(pkg)`, `analyzeHygiene(pkg, entries, opts?)` | **D1B** Hygiene findings: unused devDeps, deprecated packages (registry flag), preventive patch/minor upgrades, git/branch deps. All findings have evidence + confidence. Never auto-applies. |
+| `usage-fingerprint.js` | `scanDirectory(dir, pkgName, opts?)`, `parseImports(content, filePath, target?)`, `buildFingerprint(scanResult)` → `{ effortEstimate, filesWithUsage, symbols, subpaths, … }` | **D2.1** API usage fingerprint scanner. Regex-based import/require/export detection. Effort estimation (trivial/low/medium/high). Skips node_modules. Respects maxFiles limit. |
+| `migration-planner.js` | `findAlternatives(pkgName, opts?)`, `selectStrategy(item, alts, fingerprint?)`, `generateMigrationPlan(plan, opts?)`, `writeMigrationPlan(plan, outDir, opts?)`, `MIGRATION_STRATEGIES`, `ALTERNATIVES_CATALOGUE` | **D2.2+D2.3** Curated alternatives catalogue + scoring. Strategy selection (DIRECT_UPGRADE / MAJOR_BY_MAJOR / ADAPTER / STRANGLER_FIG / INTERNAL_FORK / REPLACEMENT / FEATURE_REMOVAL). Generates `major-migration-plan.md`. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `portfolio-report.js` | `generatePortfolioReport(portfolio, opts)` → `string`, `writePortfolioReport(portfolio, outDir, opts)` → `path` | Portfolio-level markdown report across multiple repos |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
@@ -170,6 +176,12 @@ lockfile update + verification
 | `pom-writer.js` | `buildPomPatch`, `writePomPatch`, `applyPomPatch`, `detectManualChanges` | Write + apply pom.xml dependencyManagement patches |
 | `registry.js` | `getPublishedVersions(groupId, artifactId)`, `resolveToAvailableVersion(gId, aId, ver)`, `verifyPlanVersions(plan)` | Maven Central version checks (300ms delay for rate limits) |
 | `dep-tree.js` | `buildMavenDepTree(projectDir)` → `DepTree\|null`, `parseMavenDepTreeText(text)` → `DepTree` | Run + parse `mvn dependency:tree` output into DepTree |
+
+### src/ci/
+
+| File | Exports | Purpose |
+|------|---------|---------|
+| `github-actions.js` | `generateWorkflow(opts?)` → `string`, `generateAzureDevOpsPipeline(opts?)` → `string` | **M3.1** CI/CD YAML generators. GitHub Actions default: dry-run, `contents:read`, `pull-requests:read`. Write permissions only when `enableApply+enableOpenPR`. No `--*-token` CLI args — secrets via env vars. Dedicated branch for applies. Azure DevOps pipeline with PublishBuildArtifacts task. |
 
 ---
 
@@ -298,9 +310,16 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/evidence-gate.test.js` | `evaluateBundleGate`, `applyEvidenceGate` — ALLOWED/DOWNGRADED/BLOCKED, phase mutation, no-mutation guarantee — 16 tests |
 | `tests/core/exposure-classifier.test.js` | `classifyExposure`, `classifyPlanExposure` — production/dev/test/build/CI classification, scripts scanning, confidence bounds — 28 tests |
 | `tests/integration/benchmark-corpus.test.js` | M2.6 benchmark corpus — 2 synthetic Trivy fixtures, determinism, evidence bundle creation, D1A integration — 19 tests |
+| `tests/core/policy-loader.test.js` | `loadPolicy`, `parsePolicy`, freeze windows, denylist, severity threshold, phase allow/block, filesystem round-trip — 33 tests |
+| `tests/core/audit-trail.test.js` | `createTrail`, record/getEntries/toNdjson, flush/readFile, append-only guarantee, `queryTrail` — 20 tests |
+| `tests/core/kpi-report.test.js` | `computeKPIs` (all metrics), `generateKPIReport`, `writeKPIReport` — 19 tests |
+| `tests/core/hygiene-advisor.test.js` | `detectUnusedDevDeps`, `detectRetirementSignals`, `detectPreventiveUpgrades`, `detectGitAndBranchDeps`, `analyzeHygiene` — 20 tests |
+| `tests/core/usage-fingerprint.test.js` | `parseImports` (require/import/export/symbols/subpaths), `buildFingerprint`, `scanDirectory` (node_modules skip, maxFiles) — 22 tests |
+| `tests/core/migration-planner.test.js` | `findAlternatives` (scoring, sorting, orgApproved), `selectStrategy`, `generateMigrationPlan`, `writeMigrationPlan` — 18 tests |
+| `tests/ci/github-actions.test.js` | `generateWorkflow` (dry-run default, permissions, apply block, artifact upload), `generateAzureDevOpsPipeline` — 17 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **549/549 pass**
+Baseline: **698/698 pass**
 
 ---
 
@@ -328,8 +347,16 @@ Baseline: **549/549 pass**
 | **Bugfix** — Windows `.cmd` spawn (`installer.js` `_spawnSafe`); report direct-dep split (`report.js` + `mendfix.js`); 11 new tests | ✅ DONE 2026-08-21 |
 | **Phase 5.5 M2.6** — Benchmark corpus: 2 synthetic Trivy fixtures (`npm-mixed`, `npm-all-safe`); 19 tests covering determinism, phase counts, evidence bundle creation, D1A round-trip | ✅ DONE 2026-08-21 |
 | **Phase 5.6 D1A** — `exposure-classifier.js`: 9-value classifier, lockfile flags, pattern matching, scripts scan, `classifyPlanExposure`; wired into `orchestrator.js` step 10 (opt-in); 28 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M3.1** — `src/ci/github-actions.js`: GitHub Actions + Azure DevOps YAML generators; dry-run default; least-privilege; dedicated branch; artifact upload; 17 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M3.2** — `src/core/policy-loader.js`: `.dependency-intelligence.yml` loader/validator; allowedPhases, severity threshold, freeze windows, denylist, gate policy bridge; 33 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M3.3** — `src/core/audit-trail.js`: append-only NDJSON trail; EVENTS enum; flush/readFile/queryTrail; 20 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M3.4** — `src/core/kpi-report.js`: computeKPIs + generateKPIReport + writeKPIReport; all metrics from evidence bundles; estimates clearly labeled; 19 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M3.5** — `docs/PILOT_RUNBOOK.md`: end-to-end pilot workflow; install → analyze → apply → verify → rescan → KPI report; guardrails table | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D1B** — `src/core/hygiene-advisor.js`: unused devDeps, deprecated packages, preventive upgrades, git/branch deps; all findings evidence-backed; no auto-apply; 20 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D2.1** — `src/core/usage-fingerprint.js`: regex import/require/export scanner, symbol extraction, subpath detection, effort estimation, node_modules skip; 22 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.6 D2.2+D2.3** — `src/core/migration-planner.js`: curated alternatives catalogue + scoring, strategy selection (7 strategies), `major-migration-plan.md` generation; 18 tests | ✅ DONE 2026-08-21 |
 
-**Next:** M3 (CI integrations, policy file, audit trail, KPI report, pilot runbook). **549/549 tests; A:5 B:0 C:3 baseline.**
+**Next:** Batch 4 — D3 (patch/backport) + Phase 6 (UI layer). **698/698 tests; A:5 B:0 C:3 baseline.**
 
 ---
 

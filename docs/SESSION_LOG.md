@@ -4,6 +4,26 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Batch 3: M3 Pilot Packaging + D1B + D2.1–D2.3
+
+**Before:** M2 + D1A done (549/549). M3, D1B, D2 were unstarted.
+
+**Changes:**
+- `src/ci/github-actions.js` (new) — M3.1: `generateWorkflow` (GitHub Actions YAML) + `generateAzureDevOpsPipeline`; dry-run default, contents:read by default, write only when `enableApply+enableOpenPR`; no `--*-token` CLI args; dedicated branch; 17 tests.
+- `src/core/policy-loader.js` (new) — M3.2: `.dependency-intelligence.yml` loader/validator; `loadPolicy`, `parsePolicy`, `isFreezeWindow`, `isDenylisted`, `meetsSeverityThreshold`, `isPhaseAllowed`, `toGatePolicy`; non-fatal on missing file (returns defaults); 33 tests.
+- `src/core/audit-trail.js` (new) — M3.3: `createTrail` → `{ record, getEntries, toNdjson, flush, readFile }`; EVENTS frozen enum (10 values); `flush` uses `appendFileSync` (never overwrites); `readTrailFile`, `queryTrail`; 20 tests.
+- `src/core/kpi-report.js` (new) — M3.4: `computeKPIs(bundles)` derives totalFindings, phaseDistribution, outcomeDistribution, verificationPassRate, rescanClosureRate, exposureBreakdown, runtimeReachableFixed, cvesAddressed, engineer-time estimate (labeled as estimate); `generateKPIReport` + `writeKPIReport`; 19 tests.
+- `docs/PILOT_RUNBOOK.md` (new) — M3.5: end-to-end 8-step pilot workflow; guardrails table (MAJOR_BUMP always Phase C, credentials via env vars, audit trail append-only, no fabricated metrics); CI/CD, D1B hygiene, D2 migration sections.
+- `src/core/hygiene-advisor.js` (new) — D1B: `detectUnusedDevDeps`, `detectRetirementSignals`, `detectPreventiveUpgrades`, `detectGitAndBranchDeps`, `analyzeHygiene`; all findings `autoApplicable=false`; 20 tests.
+- `src/core/usage-fingerprint.js` (new) — D2.1: `parseImports` (regex REQUIRE_RE/IMPORT_RE/EXPORT_RE), `scanDirectory` (skips node_modules, respects maxFiles), `buildFingerprint` (trivial/low/medium/high effort estimate); 22 tests.
+- `src/core/migration-planner.js` (new) — D2.2+D2.3: `ALTERNATIVES_CATALOGUE` (request/moment/uuid/nanoid/tough-cookie/node-forge), composite scoring, `findAlternatives`, `selectStrategy` (8 strategies), `generateMigrationPlan` (Phase C only), `writeMigrationPlan`; 18 tests.
+- `CODEBASE.md` — 8 new source file entries + 7 new test file entries; baseline updated to 698/698.
+- `NEXT_MISSION.md` — M3, D1B, D2.1–D2.3 marked done; exit gates recorded.
+
+**Next:** Batch 4 — D3 (patch/backport) + Phase 6 (UI layer). **698/698 tests; A:5 B:0 C:3 baseline.**
+
+---
+
 ## 2026-08-21 — M2.6 Benchmark Corpus + D1A Exposure Classifier
 
 **Before:** M2 exit gate blocked on M2.6 (no benchmark corpus); D1A exposure classifier was a stub (`mergeExposureClassification` existed but no classifier). 502 tests.
