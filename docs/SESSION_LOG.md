@@ -4,6 +4,20 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Bugfix: Windows npm install failure + report direct-dep inconsistency
+
+**Before:** `mendfix apply` failing on Windows with "FAILED (exit null)" + rolled back; `remediation-report.md` showing direct-dep packages (unzipper, axios) in the overrides block instead of dependencies.
+
+**Changes:**
+- `src/ecosystems/npm/installer.js` — added `_spawnSafe()` helper: on Windows, `.cmd` batch files cannot be spawned directly with `shell:false`; wraps them as `cmd.exe /c <path.cmd> <args>` with `shell:false` (injection-safe). Passes `process.env` to preserve npm's full environment. `runPackageLockUpdate` and `runMavenResolve` now use `_spawnSafe`. Root cause: M1.1 removed `shell:true` but did not handle Windows `.cmd` invocation.
+- `src/core/report.js` — `generateReport` accepts `opts.directDeps` (Set of package names). Phase A section now splits into "Direct dependency bumps" (packages to bump in `dependencies`/`devDependencies`) vs "Overrides to apply" (transitive packages). Both sections are omitted when empty.
+- `mendfix.js` — `writeOutputNpm` now receives `reportOpts` (not pre-generated `reportContent`). After `detectDirectDeps` it regenerates the report with `directDeps` so the written `remediation-report.md` is accurate. Dry-run and other ecosystems receive a pre-generated report as before.
+- 15 new tests (5 installer spawn tests + 6 report directDeps tests); **502/502 total passing**; A:5 B:0 C:3 baseline confirmed.
+
+**Next:** M2.6 (benchmark corpus) + D1A (exposure classification)
+
+---
+
 ## 2026-08-21 — Phase 5.5 M2.1–M2.3: Verifier, rescan adapter, fail-closed gate
 
 **Before:** M2.4+M2.5 done (436 tests). No build/test verification, no rescan adapter, no Phase A gate.

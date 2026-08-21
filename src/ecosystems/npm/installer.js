@@ -28,12 +28,25 @@ function restoreFiles(snapshots) {
   }
 }
 
+// On Windows, .cmd batch files cannot be spawned directly with shell:false —
+// they require cmd.exe /c to interpret them.
+function _spawnSafe(exe, args, opts) {
+  let spawnExe  = exe;
+  let spawnArgs = args;
+  if (process.platform === 'win32' && /\.cmd$/i.test(exe)) {
+    spawnExe  = process.env.COMSPEC || 'cmd.exe';
+    spawnArgs = ['/c', exe, ...args];
+  }
+  return spawnSync(spawnExe, spawnArgs, opts);
+}
+
 // Scenario 5 — update package-lock.json without a full install
 function runPackageLockUpdate(dir) {
-  const result = spawnSync(resolveExecutable('npm'), ['install', '--legacy-peer-deps', '--package-lock-only'], {
-    cwd: dir,
+  const result = _spawnSafe(resolveExecutable('npm'), ['install', '--legacy-peer-deps', '--package-lock-only'], {
+    cwd:   dir,
     stdio: 'pipe',
     shell: false,
+    env:   process.env,
   });
   return {
     success: result.status === 0,
@@ -109,10 +122,11 @@ function detectManualChanges(packageJsonPath, overridesToApply) {
 // Run `mvn dependency:resolve` to confirm the pom.xml changes resolve cleanly.
 // -B = batch/non-interactive, -q = quiet output.
 function runMavenResolve(dir) {
-  const result = spawnSync(resolveExecutable('mvn'), ['dependency:resolve', '-B', '-q'], {
-    cwd: dir,
+  const result = _spawnSafe(resolveExecutable('mvn'), ['dependency:resolve', '-B', '-q'], {
+    cwd:   dir,
     stdio: 'pipe',
     shell: false,
+    env:   process.env,
   });
   return {
     success: result.status === 0,

@@ -29,9 +29,18 @@ function generateReport(phasedPlan, options = {}) {
   const phaseBCves = phaseB.reduce((n, r) => n + r.cveCount, 0);
   const phaseCCves = phaseC.reduce((n, r) => n + r.cveCount, 0);
 
-  const overrides = {};
+  // directDeps: optional Set<string> of package names that are root direct deps —
+  // they should be bumped in package.json directly, not via npm overrides.
+  const directDepNames = options.directDeps || new Set();
+  const overrides      = {};
+  const directBumps    = {};
   for (const r of phaseA) {
-    if (r.recommendedVersion) overrides[r.libraryName] = r.recommendedVersion;
+    if (!r.recommendedVersion) continue;
+    if (directDepNames.has(r.libraryName)) {
+      directBumps[r.libraryName] = r.recommendedVersion;
+    } else {
+      overrides[r.libraryName] = r.recommendedVersion;
+    }
   }
 
   const lines = [
@@ -102,12 +111,22 @@ function generateReport(phasedPlan, options = {}) {
       lines.push(``);
       lines.push(`After applying: run \`mvn dependency:resolve\` to confirm resolution.`);
     } else {
-      lines.push(`**Overrides to apply:**`);
-      lines.push(``);
-      lines.push('```json');
-      lines.push(JSON.stringify({ overrides }, null, 2));
-      lines.push('```');
-      lines.push(``);
+      if (Object.keys(directBumps).length > 0) {
+        lines.push(`**Direct dependency bumps** (packages you own directly — bump the version in \`package.json\`'s \`dependencies\` / \`devDependencies\`):`);
+        lines.push(``);
+        lines.push('```json');
+        lines.push(JSON.stringify({ dependencies: directBumps }, null, 2));
+        lines.push('```');
+        lines.push(``);
+      }
+      if (Object.keys(overrides).length > 0) {
+        lines.push(`**Overrides to apply** (transitive dependencies — add to \`package.json\`'s \`overrides\` section):`);
+        lines.push(``);
+        lines.push('```json');
+        lines.push(JSON.stringify({ overrides }, null, 2));
+        lines.push('```');
+        lines.push(``);
+      }
       lines.push(`After applying: \`npm install --package-lock-only --legacy-peer-deps\``);
     }
     lines.push(``);

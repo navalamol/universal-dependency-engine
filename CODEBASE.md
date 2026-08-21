@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-21 (Phase 5.5 M2.1–M2.5 — verifier, rescan-adapter, evidence-gate, evidence-model)
+Last updated: 2026-08-21 (Phase 5.5 M2.1–M2.5 + bugfix: Windows npm install + report direct-dep split)
 
 ---
 
@@ -297,7 +297,7 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/evidence-gate.test.js` | `evaluateBundleGate`, `applyEvidenceGate` — ALLOWED/DOWNGRADED/BLOCKED, phase mutation, no-mutation guarantee — 16 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **491/491 pass**
+Baseline: **502/502 pass**
 
 ---
 
@@ -322,8 +322,9 @@ Baseline: **491/491 pass**
 | **Phase 5.5 M2.1** — `verifier.js`: build/test runner via safe-exec; 20 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.5 M2.2** — `rescan-adapter.js`: post-remediation rescan classifier; 19 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.5 M2.3** — `evidence-gate.js`: fail-closed Phase A gate; 16 tests | ✅ DONE 2026-08-21 |
+| **Bugfix** — Windows `.cmd` spawn (`installer.js` `_spawnSafe`); report direct-dep split (`report.js` + `mendfix.js`); 11 new tests | ✅ DONE 2026-08-21 |
 
-**Next:** M2.6 (benchmark corpus with reproducible metrics) + D1A (exposure classification). **491/491 tests; A:5 B:0 C:3 baseline.**
+**Next:** M2.6 (benchmark corpus with reproducible metrics) + D1A (exposure classification). **502/502 tests; A:5 B:0 C:3 baseline.**
 
 ---
 

@@ -883,16 +883,16 @@ async function main() {
   // ── Step 5: Write output ─────────────────────────────────────────────────
   console.log('\n[5/5] Writing output...');
 
-  const reportContent = generateReport(phasedPlan, {
+  const reportOpts = {
     project:        path.basename(reportFile, path.extname(reportFile)),
     reportDate:     new Date().toISOString().split('T')[0],
     verifyVersions,
     ecosystem,
-  });
+  };
 
   if (dryRun) {
     console.log('\n' + '─'.repeat(70));
-    console.log(reportContent);
+    console.log(generateReport(phasedPlan, reportOpts));
     return;
   }
 
@@ -900,17 +900,18 @@ async function main() {
 
   let applyFailed;
   if (ecosystem === 'maven') {
-    applyFailed = await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, reportContent);
+    applyFailed = await writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomXmlPath, generateReport(phasedPlan, reportOpts));
   } else if (ecosystem === 'python') {
-    applyFailed = await writeOutputPython(phasedPlan, phaseA, phaseB, phaseC, outDir, requirementsTxtPath, reportContent);
+    applyFailed = await writeOutputPython(phasedPlan, phaseA, phaseB, phaseC, outDir, requirementsTxtPath, generateReport(phasedPlan, reportOpts));
   } else if (ecosystem === 'go') {
-    applyFailed = await writeOutputGo(phasedPlan, phaseA, phaseB, phaseC, outDir, goModPath, reportContent);
+    applyFailed = await writeOutputGo(phasedPlan, phaseA, phaseB, phaseC, outDir, goModPath, generateReport(phasedPlan, reportOpts));
   } else if (ecosystem === 'dotnet') {
-    applyFailed = await writeOutputDotnet(phasedPlan, phaseA, phaseB, phaseC, outDir, packagesPropsPath, reportContent);
+    applyFailed = await writeOutputDotnet(phasedPlan, phaseA, phaseB, phaseC, outDir, packagesPropsPath, generateReport(phasedPlan, reportOpts));
   } else if (ecosystem === 'rust') {
-    applyFailed = await writeOutputRust(phasedPlan, phaseA, phaseB, phaseC, outDir, cargoTomlPath, reportContent);
+    applyFailed = await writeOutputRust(phasedPlan, phaseA, phaseB, phaseC, outDir, cargoTomlPath, generateReport(phasedPlan, reportOpts));
   } else {
-    applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions, applyPhaseB);
+    // Pass reportOpts so writeOutputNpm can regenerate with directDeps info after the split
+    applyFailed = await writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportOpts, verifyVersions, applyPhaseB);
   }
 
   if (applyFailed) {
@@ -1094,7 +1095,7 @@ async function writeOutputMaven(phasedPlan, phaseA, phaseB, phaseC, outDir, pomX
 // npm output writer
 // ---------------------------------------------------------------------------
 
-async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportContent, verifyVersions, applyPhaseB = false) {
+async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packageJsonPath, depTree, reportOpts, verifyVersions, applyPhaseB = false) {
   let directUpgrades     = [];
   let phaseAForOverrides = phaseA;
 
@@ -1154,6 +1155,10 @@ async function writeOutputNpm(phasedPlan, phaseA, phaseB, phaseC, outDir, packag
     console.log(`  Wrote: ${manualPath}`);
   }
 
+  // Regenerate report with directDeps so the overrides block correctly omits
+  // packages that should be bumped directly in package.json.
+  const directDeps = new Set(directUpgrades.map(u => u.libraryName));
+  const reportContent = generateReport(phasedPlan, { ...reportOpts, directDeps });
   const reportPath = path.join(outDir, 'remediation-report.md');
   fs.writeFileSync(reportPath, reportContent);
   console.log(`  Wrote: ${reportPath}`);
