@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-21 (Batch 5B: comparison-report.js + enhanced report; 853/853 tests)
+Last updated: 2026-08-21 (Batch 6: VS Code extension 4-panel thin client; 869/869 tests)
 
 ---
 
@@ -321,6 +321,7 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/ecosystems/npm/installer.test.js` | `snapshotFiles`, `restoreFiles`, `saveManifest`, `detectManualChanges` |
 | `tests/integration/regression-mend-report.test.js` | End-to-end: parse → resolve → phase → report. Baseline: A:5 B:0 C:3 |
 | `tests/integration/demo-command.test.js` | **Batch 5A exit gate**: Phase A ≥ 4, B ≥ 2, C ≥ 2 across all 4 scanner reports; D1A fires ≥ 4; all 4 produce identical A:9/B:4/C:3 distributions; 18 tests |
+| `tests/integration/extension-panels.test.js` | **Batch 6 exit gate**: 4-panel data contracts; SARIF/VEX/KPI export from demo corpus; evidence item shapes; loadDemo JSON contract; 16 tests |
 | `tests/providers/providers-new.test.js` | npm-audit (v1+v2), dependabot, owasp parsers + format detection + detectProvider routing |
 | `tests/providers/providers-osv-trivy.test.js` | osv (scanner + bulk shapes), trivy (npm/maven/go/python results) + detectProvider routing |
 | `tests/providers/providers-gitlab-xray.test.js` | gitlab (npm+maven, solution/remediations fix parsing), xray (npm+maven+component_id edge cases) |
@@ -391,8 +392,9 @@ Baseline: **828/828 pass**
 | **Phase 5.6 D3.6** — `src/core/disclosure-prep.js`: responsible disclosure draft builder; requiresApproval/autoSend invariants; markdown+JSON per-package output; never sends externally; 18 tests | ✅ DONE 2026-08-21 |
 | **Batch 5A** — `fixtures/demo-corpus/` (npm fixture: 16 vulnerable transitive packages, 69 CVEs across 4 scanner reports) + `mendfix demo` subcommand + integration tests. All 4 scanners produce A:9/B:4/C:3; D1A fires on 10+ findings; 18 new tests; 828/828 total | ✅ DONE 2026-08-21 |
 | **Batch 5B** — `src/core/comparison-report.js` (before/after delta table) + `report.js` enhanced with exposure summary, phase B parent upgrade paths, phase C migration alternatives, evidence footer + `mendfix demo --compare`; 25 new tests; 853/853 total | ✅ DONE 2026-08-21 |
+| **Batch 6** — VS Code extension rebuilt as 4-panel thin client (Scan / Analyze / Apply / Evidence); `panel.js` full rewrite with tab navigation; `extension.js` `mendfix.loadDemo` command + URI handler; `mendfix demo --ui` flag; 16 new tests; 869/869 total | ✅ DONE 2026-08-21 |
 
-**Next:** Batch 6 — VS Code extension rebuild as 4-panel thin client (Scan / Analyze / Apply / Evidence). **853/853 tests; A:5 B:0 C:3 baseline; demo corpus: A:9 B:4 C:3.**
+**Next:** Batch 7 — Enterprise polish: PDF/HTML export, portfolio KPI view, SARIF import story. **869/869 tests; A:5 B:0 C:3 baseline; demo corpus: A:9 B:4 C:3.**
 
 ---
 

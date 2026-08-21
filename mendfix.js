@@ -516,6 +516,7 @@ async function runDemoCommand(rawArgs) {
 
   const reportArg  = rawArgs.find(a => !a.startsWith('--'));
   const doCompare  = rawArgs.includes('--compare');
+  const openUi     = rawArgs.includes('--ui');
   const REPORTS_DIR = path.join(DEMO_DIR, 'reports');
   const DEFAULT_REPORT = path.join(REPORTS_DIR, 'mend-report.json');
 
@@ -599,6 +600,21 @@ async function runDemoCommand(rawArgs) {
     }
     console.log('  ───────────────────────────────────────────────────────────');
   }
+
+  if (openUi) {
+    console.log('  Opening VS Code extension…');
+    const uriArg = 'vscode://mendfix.mendfix-vscode/loadDemo';
+    const { spawn: spawnProc } = require('child_process');
+    const codeBin = process.platform === 'win32' ? 'code.cmd' : 'code';
+    const proc = spawnProc(codeBin, ['--open-url', uriArg], { stdio: 'ignore', shell: true, detached: true });
+    proc.on('error', () => {
+      console.log('  (VS Code not found in PATH — open manually and run MendFix: Load Demo)');
+    });
+    proc.unref();
+    console.log(`  → URI: ${uriArg}`);
+    console.log('  → Or run command: MendFix: Load Demo\n');
+  }
+
   console.log('');
 }
 

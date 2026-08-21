@@ -4,6 +4,17 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Batch 6: VS Code extension 4-panel thin client
+
+**Before:** 853/853 tests. Extension was a single-panel sidebar with Scan+Apply merged. No tab navigation, no Evidence panel, no SARIF/VEX/KPI export, no demo loading.
+**Changes:**
+- `packages/vscode-extension/panel.js`: Full rewrite as 4-tab thin client — Scan / Analyze / Apply / Evidence tabs with tab-bar navigation. `_handleAnalyze` now returns richer data (exposure summary, comparison report delta, evidence items). New handlers: `_handleExport` (SARIF/VEX/KPI), `_handleRollback` (cleanup spawn), `_handleLoadDemo` (reads demo-output/demo-analysis.json). `_dispatchAnalysisResult` shared by analyze + loadDemo paths.
+- `packages/vscode-extension/extension.js`: Added `mendfix.loadDemo` command + URI handler `vscode://mendfix.mendfix-vscode/loadDemo`. Added `onUri` activation event.
+- `packages/vscode-extension/package.json`: Added `mendfix.loadDemo` command + `"activationEvents": ["onUri"]`.
+- `mendfix.js`: Added `--ui` flag on demo command — after writing demo-output, tries to open VS Code via `code --open-url vscode://mendfix.mendfix-vscode/loadDemo`.
+- `tests/integration/extension-panels.test.js`: 16 new tests verifying 4-panel data contracts: scanner detection, phase distribution, exposure shapes, comparison report, SARIF/VEX/KPI export, evidence item fields, loadDemo JSON contract.
+**Next:** Batch 7 — Enterprise polish: HTML/PDF export, portfolio KPI view in extension, SARIF import docs.
+
 ## 2026-08-21 — Batch 5B: Comparison report + enhanced remediation report
 
 **Before:** 828/828 tests. No comparison report. report.js had no exposure summary, no parent paths, no migration alternatives, no evidence footer.

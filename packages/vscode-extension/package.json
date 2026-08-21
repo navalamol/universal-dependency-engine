@@ -10,7 +10,7 @@
   },
   "categories": ["Other"],
   "keywords": ["security", "vulnerabilities", "mend", "snyk", "dependabot", "npm", "maven"],
-  "activationEvents": [],
+  "activationEvents": ["onUri"],
   "main": "./extension.js",
   "contributes": {
     "viewsContainers": {
@@ -39,6 +39,10 @@
       {
         "command": "mendfix.analyzeReport",
         "title": "MendFix: Analyze Vulnerability Report"
+      },
+      {
+        "command": "mendfix.loadDemo",
+        "title": "MendFix: Load Demo Output"
       }
     ],
     "menus": {

@@ -24,6 +24,25 @@ function activate(context) {
       vscode.commands.executeCommand('mendfix.panel.focus');
     })
   );
+
+  // Load demo output (invoked by `mendfix demo --ui` via URI or command)
+  context.subscriptions.push(
+    vscode.commands.registerCommand('mendfix.loadDemo', () => {
+      vscode.commands.executeCommand('mendfix.panel.focus');
+      provider.loadDemoOutput();
+    })
+  );
+
+  // URI handler: vscode://mendfix.mendfix-vscode/loadDemo
+  context.subscriptions.push(
+    vscode.window.registerUriHandler({
+      handleUri(uri) {
+        if (uri.path === '/loadDemo') {
+          vscode.commands.executeCommand('mendfix.loadDemo');
+        }
+      },
+    })
+  );
 }
 
 function deactivate() {}
