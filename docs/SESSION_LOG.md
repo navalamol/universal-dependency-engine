@@ -4,6 +4,20 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Phase 5.5 M2.4+M2.5: Canonical evidence model + outcome taxonomy
+
+**Before:** M1 complete (389 tests). No machine-readable evidence schema; human-readable strings only in confidence.js.
+
+**Changes:**
+- `src/core/evidence-model.js` (new) — `SCHEMA_VERSION`, `OUTCOMES` (10-value taxonomy: FIXED / NOT_AFFECTED / MITIGATED / PATCHED / FORKED / ACCEPTED_RISK / LICENSE_BLOCKED / VERIFICATION_FAILED / REQUIRES_MIGRATION / NO_SAFE_PATH), `EXPOSURE` (9-value stubs for D1A), `createEvidence(item, opts)` → versioned EvidenceBundle, `mergeVerificationResult` / `mergeRescanResult` / `mergeExposureClassification` (immutable merge helpers for M2.1/M2.2/D1A), `toSarif(bundles)` → SARIF 2.1.0, `toCycloneDxVex(bundles)` → CycloneDX 1.5 VEX
+- `tests/core/evidence-model.test.js` (new) — 47 tests covering schema structure, all outcome derivations, merge helpers (round-trip), SARIF level mapping, VEX state mapping, CycloneDX multi-CVE expansion
+- `CODEBASE.md` — new entry for evidence-model.js; test count updated 389→436; stale header fixed; duplicate Phase 4 row removed
+- Key design decision: `EXPOSURE` values are stubs (all produce UNKNOWN_EXPOSURE until D1A runs); `mergeExposureClassification` is the D1A integration point; the schema is designed so D1A fills exposure without a version bump
+
+**Next:** M2.1 (build/test verifier via safe-exec) + M2.2 (rescan adapter) + M2.3 (fail-closed Phase A gate)
+
+---
+
 ## Current State — 2026-08-13
 
 | Phase | What | Status |

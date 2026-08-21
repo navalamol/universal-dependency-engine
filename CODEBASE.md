@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-12 (Python + Go + .NET + Rust ecosystems — Phase 3 complete)
+Last updated: 2026-08-21 (Phase 5.5 M2.4+M2.5 — evidence-model.js, outcome taxonomy, SARIF/VEX export)
 
 ---
 
@@ -89,6 +89,7 @@ lockfile update + verification
 | `security-delta.js` | `computeSecurityDelta(resolvedVersions, findings)` → `{introduced[], fixed[]}` | Cross-reference simulation resolvedVersions against LibraryEntry[] findings; detects regressions introduced by a candidate |
 | `graph-diff.js` | `captureGraph(lockFilePath)` → `Map<name, string[]>\|null`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta?)` → `string` | Whole-graph before/after diff (Item 14). captureGraph snapshots all resolved versions from a lockfile; diffGraphs diffs two snapshots; formatDiff produces markdown. Wired into writeOutputNpm: graph-diff.md written after every successful install. |
 | `safe-exec.js` | `safeSpawn(exe, args, opts)`, `resolveExecutable(name)`, `validatePackageName(name)`, `validateVersion(ver)`, `validatePath(p)`, `buildSafeEnv()`, `ALLOWED_EXECUTABLES` | Centralized safe process executor (M1.1). No shell; allowlisted executables; validates user-derived inputs; structured result. |
+| `evidence-model.js` | `SCHEMA_VERSION`, `OUTCOMES`, `EXPOSURE`, `createEvidence(item, opts)` → `EvidenceBundle`, `mergeVerificationResult(bundle, verResult)`, `mergeRescanResult(bundle, rescanResult)`, `mergeExposureClassification(bundle, exposureResult)`, `toSarif(bundles, opts)`, `toCycloneDxVex(bundles, opts)` | **M2.4+M2.5** Canonical versioned evidence schema. Outcome taxonomy (10 values). Exposure stubs (9 values, populated by D1A). SARIF 2.1.0 + CycloneDX 1.5 VEX export. Immutable merge helpers for verification (M2.1) and rescan (M2.2) results. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `portfolio-report.js` | `generatePortfolioReport(portfolio, opts)` → `string`, `writePortfolioReport(portfolio, outDir, opts)` → `path` | Portfolio-level markdown report across multiple repos |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
@@ -287,9 +288,10 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/providers/providers-gitlab-xray.test.js` | gitlab (npm+maven, solution/remediations fix parsing), xray (npm+maven+component_id edge cases) |
 | `tests/core/portfolio-runner.test.js` | `loadConfig`, `analyzeRepo`, `runPortfolio` — full mock suite |
 | `tests/core/portfolio-report.test.js` | `generatePortfolioReport`, `writePortfolioReport` |
+| `tests/core/evidence-model.test.js` | `createEvidence`, merge helpers, SARIF/VEX export, outcome taxonomy, exposure stubs — 47 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **389/389 pass**
+Baseline: **436/436 pass**
 
 ---
 
@@ -308,11 +310,11 @@ Baseline: **389/389 pass**
 | **Phase 3 — Universal Dependency Engine (6 ecosystems)** | ✅ **COMPLETE** |
 | Phase 4 entry — write-back: GitHub `createPR`, GitLab `createMR`, AzDO `createPR`, Bitbucket `createPR` | ✅ DONE 2026-08-12 |
 | Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
-
-| Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 | Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
+| **Phase 5.5 M1** — `orchestrator.js`; extension gap; credential warnings; threat model; CI; 389 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M2.4+M2.5** — `evidence-model.js`: canonical evidence schema, outcome taxonomy, SARIF/VEX export; 47 tests | ✅ DONE 2026-08-21 |
 
-**Next:** Phase 5.5 Mission 2 — Verified remediation evidence. M1 is complete: `orchestrator.js` canonical pipeline; extension gap fixed; credential warnings; threat model docs; CI; 389/389 tests; A:5 B:0 C:3 baseline.
+**Next:** Phase 5.5 M2.1 (build/test verifier) + M2.2 (rescan adapter) + M2.3 (fail-closed gate). **436/436 tests; A:5 B:0 C:3 baseline.**
 
 ---
 
