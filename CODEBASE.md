@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-21 (Batch 4: D3.1–D3.6 patch/backport; 810/810 tests)
+Last updated: 2026-08-21 (Batch 5A: demo corpus + mendfix demo; 828/828 tests)
 
 ---
 
@@ -12,6 +12,7 @@ Last updated: 2026-08-21 (Batch 4: D3.1–D3.6 patch/backport; 810/810 tests)
 | Command | File | Function/Route |
 |---------|------|---------------|
 | `mendfix analyze` | `mendfix.js` | Sets `--dry-run=true`, runs `main()` |
+| `mendfix demo [report]` | `mendfix.js` → `runDemoCommand()` | Runs full pipeline against demo corpus fixture; prints banner (A/B/C/D1A counts); writes `demo-output/demo-analysis.json`. Default report: `fixtures/demo-corpus/reports/mend-report.json` |
 | `mendfix apply` | `mendfix.js` | Runs `main()` — writes files + installs |
 | `mendfix apply --commit` | `mendfix.js` | Same + calls `commitPhaseA` after install |
 | `mendfix cleanup` | `mendfix.js` | Calls `runCleanup(lockFilePath, pkgJsonPath)` |
@@ -58,6 +59,18 @@ lockfile update + verification
 | `orchestrator.js` | **Canonical analysis pipeline (M1.3).** `runAnalysisPipeline(opts)` → `{entries, ecosystem, provider, phasedPlan, depTree, registryAdjustments}`. Single source of truth consumed by CLI, extension, and portfolio mode. |
 | `portfolio-runner.js` | Portfolio orchestrator (Phase 5). `loadConfig(configPath)`, `analyzeRepo(repoEntry, opts)`, `runPortfolio(configPath, opts)`. Uses `runAnalysisPipeline` internally. |
 | `mend-fix.js` | Backward-compat shim. Do not modify. |
+
+### fixtures/demo-corpus/ (Batch 5A)
+
+| File | Purpose |
+|------|---------|
+| `npm/package.json` | Demo app manifest: 8 prod + 7 dev deps; all vulnerable packages are transitive |
+| `npm/package-lock.json` | v2 lock with 16 vulnerable transitive packages; parent ranges use tilde/bounded constraints to keep qs/got as Phase B (e.g. `"qs": "~6.7.0"` so fix 6.9.7 violates `~6.7.0` → no Phase B→A promotion) |
+| `reports/mend-report.json` | 69 CVEs in Mend JSON format (`vulnerabilities[]` with `library.keyUuid`) |
+| `reports/snyk-report.json` | 69 CVEs in Snyk format (`vulnerabilities[]` with `packageName`/`version`/`fixedIn`) |
+| `reports/dependabot-report.json` | 69 CVEs in Dependabot alerts format; all ranges use `"= X.Y.Z"` for exact version discovery |
+| `reports/osv-report.json` | 69 CVEs in osv-scanner format (shape 1: `results[].packages[]` with embedded version) |
+| `reports/package-lock.json` | Minimal 3-entry lock (ansi-regex@5.0.0, semver@5.7.1, json5@1.0.1) — prevents Dependabot parser from reading wrong versions from project root (project root has ansi-regex@6.x, semver@7.x, json5@2.x) |
 
 ### src/providers/
 
@@ -305,6 +318,7 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/ecosystems/npm/lock-parser.test.js` | `parseLockFile`, `getRootDeps`, `findDepChain` |
 | `tests/ecosystems/npm/installer.test.js` | `snapshotFiles`, `restoreFiles`, `saveManifest`, `detectManualChanges` |
 | `tests/integration/regression-mend-report.test.js` | End-to-end: parse → resolve → phase → report. Baseline: A:5 B:0 C:3 |
+| `tests/integration/demo-command.test.js` | **Batch 5A exit gate**: Phase A ≥ 4, B ≥ 2, C ≥ 2 across all 4 scanner reports; D1A fires ≥ 4; all 4 produce identical A:9/B:4/C:3 distributions; 18 tests |
 | `tests/providers/providers-new.test.js` | npm-audit (v1+v2), dependabot, owasp parsers + format detection + detectProvider routing |
 | `tests/providers/providers-osv-trivy.test.js` | osv (scanner + bulk shapes), trivy (npm/maven/go/python results) + detectProvider routing |
 | `tests/providers/providers-gitlab-xray.test.js` | gitlab (npm+maven, solution/remediations fix parsing), xray (npm+maven+component_id edge cases) |
@@ -331,7 +345,7 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/disclosure-prep.test.js` | `buildDisclosureDraft` (invariants: requiresApproval/autoSend, CVEs, opts), `renderDisclosureDraft`, `writeDisclosureDraft` — 18 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **810/810 pass**
+Baseline: **828/828 pass**
 
 ---
 
@@ -373,8 +387,9 @@ Baseline: **810/810 pass**
 | **Phase 5.6 D3.4** — `src/core/llm-patch-advisor.js`: feature-flagged LLM patch skeleton; never calls LLM; requiresHumanApproval/autoPublish/affectsPhaseClassification invariants; LLM_SYNTHESIZED_PATCH outcome in evidence-model.js; 18 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.6 D3.5** — `src/core/license-gate.js`: SPDX-aware license classifier; permissive/copyleft/blocked policy; LICENSE_BLOCKED outcome integration; 20 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.6 D3.6** — `src/core/disclosure-prep.js`: responsible disclosure draft builder; requiresApproval/autoSend invariants; markdown+JSON per-package output; never sends externally; 18 tests | ✅ DONE 2026-08-21 |
+| **Batch 5A** — `fixtures/demo-corpus/` (npm fixture: 16 vulnerable transitive packages, 69 CVEs across 4 scanner reports) + `mendfix demo` subcommand + integration tests. All 4 scanners produce A:9/B:4/C:3; D1A fires on 10+ findings; 18 new tests; 828/828 total | ✅ DONE 2026-08-21 |
 
-**Next:** Batch 5A — Demo corpus (`fixtures/demo-corpus/`) + `mendfix demo` subcommand. Real 60–80 CVE fixture set (npm + Maven) + 4-scanner reports (Mend/Snyk/Dependabot/OSV). All three phases must fire; D1A exposure must fire; all scanners must produce equivalent phase distributions. **810/810 tests; A:5 B:0 C:3 baseline.**
+**Next:** Batch 5B — `src/core/comparison-report.js` before/after delta table + enhanced remediation report (CVE count delta, phase-shift highlights, exposure summary). **828/828 tests; A:5 B:0 C:3 baseline; demo corpus: A:9 B:4 C:3.**
 
 ---
 

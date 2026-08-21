@@ -1,0 +1,174 @@
+{
+  "results": [
+    {
+      "source": { "path": "fixtures/demo-corpus/npm/package-lock.json", "type": "lockfile" },
+      "packages": [
+        {
+          "package": { "name": "lodash", "version": "4.17.15", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-x5rq-j2xg-h7qm", "aliases": ["CVE-2018-3721"],  "database_specific": { "severity": "HIGH",     "cvss3_score": 6.1 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v574", "aliases": ["CVE-2018-16487"], "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.8 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-jf85-cpcp-j695", "aliases": ["CVE-2019-10744"], "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.1 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-p6mc-m468-83gw", "aliases": ["CVE-2020-8203"],  "database_specific": { "severity": "HIGH",     "cvss3_score": 7.4 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-29mw-wpgm-hmr9", "aliases": ["CVE-2020-28500"], "database_specific": { "severity": "MEDIUM",   "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-35jh-r3h4-6jhm", "aliases": ["CVE-2021-23337"], "database_specific": { "severity": "HIGH",     "cvss3_score": 7.2 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-c7qv-q95q-8v27", "aliases": ["CVE-2021-23440"], "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.1 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] },
+            { "id": "GHSA-m6wx-rfpc-43m2", "aliases": ["CVE-2022-43782"], "database_specific": { "severity": "MEDIUM",   "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "lodash", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"4.17.21"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "node-fetch", "version": "2.6.1", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-r683-j2x4-v87g", "aliases": ["CVE-2022-0235"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 6.1 }, "affected": [{ "package": { "name": "node-fetch", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.6.7"}] }] }] },
+            { "id": "GHSA-7v5v-9h63-cj86", "aliases": ["CVE-2022-0158"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "node-fetch", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.6.7"}] }] }] },
+            { "id": "GHSA-jq7f-qjqq-5h4m", "aliases": ["CVE-2023-26067"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "node-fetch", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.6.7"}] }] }] },
+            { "id": "GHSA-c4vg-9m9r-wq4w", "aliases": ["CVE-2021-23441"], "database_specific": { "severity": "LOW",    "cvss3_score": 3.1 }, "affected": [{ "package": { "name": "node-fetch", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.6.7"}] }] }] },
+            { "id": "GHSA-w8x4-pxfv-3m96", "aliases": ["CVE-2022-43783"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "node-fetch", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.6.7"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "minimist", "version": "1.2.5", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-vh95-rmgr-6w4m", "aliases": ["CVE-2020-7598"],  "database_specific": { "severity": "MEDIUM",   "cvss3_score": 5.6 }, "affected": [{ "package": { "name": "minimist", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"1.2.6"}] }] }] },
+            { "id": "GHSA-xvch-5gv4-984h", "aliases": ["CVE-2021-44906"], "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.8 }, "affected": [{ "package": { "name": "minimist", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"1.2.6"}] }] }] },
+            { "id": "GHSA-p5gc-c584-jj6v", "aliases": ["CVE-2021-23442"], "database_specific": { "severity": "HIGH",     "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "minimist", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"1.2.6"}] }] }] },
+            { "id": "GHSA-2rgq-8v2q-x7m8", "aliases": ["CVE-2022-21824"], "database_specific": { "severity": "MEDIUM",   "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "minimist", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"1.2.6"}] }] }] },
+            { "id": "GHSA-83xq-8j26-gxhm", "aliases": ["CVE-2023-30556"], "database_specific": { "severity": "MEDIUM",   "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "minimist", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"1.2.6"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "ansi-regex", "version": "5.0.0", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-93q8-gq69-wqmw", "aliases": ["CVE-2021-3807"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "ansi-regex", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.0.1"}] }] }] },
+            { "id": "GHSA-g4qr-5w42-c7mm", "aliases": ["CVE-2022-43784"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "ansi-regex", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.0.1"}] }] }] },
+            { "id": "GHSA-2q3r-5m2h-f7c7", "aliases": ["CVE-2021-23443"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "ansi-regex", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.0.1"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "semver", "version": "5.7.1", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-c2qf-rxjj-qqgw", "aliases": ["CVE-2022-25883"], "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "semver", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.7.2"}] }] }] },
+            { "id": "GHSA-4p35-cfcx-8653", "aliases": ["CVE-2022-43785"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "semver", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.7.2"}] }] }] },
+            { "id": "GHSA-34mg-q7m9-h6gr", "aliases": ["CVE-2021-23444"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "semver", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.7.2"}] }] }] },
+            { "id": "GHSA-8v2r-xxcg-c4vm", "aliases": ["CVE-2023-44270"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.9 }, "affected": [{ "package": { "name": "semver", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.7.2"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "axios", "version": "0.21.1", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-4w2v-q235-vp99", "aliases": ["CVE-2021-3749"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 6.5 }, "affected": [{ "package": { "name": "axios", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.21.4"}] }] }] },
+            { "id": "GHSA-3xgq-45jj-v275", "aliases": ["CVE-2022-1214"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "axios", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.21.4"}] }] }] },
+            { "id": "GHSA-wf5p-g6vw-rhxx", "aliases": ["CVE-2023-45857"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 6.5 }, "affected": [{ "package": { "name": "axios", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.21.4"}] }] }] },
+            { "id": "GHSA-c4v7-4p35-4v8r", "aliases": ["CVE-2022-43786"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "axios", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.21.4"}] }] }] },
+            { "id": "GHSA-w8rv-9h83-5m2j", "aliases": ["CVE-2023-30535"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "axios", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.21.4"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "terser", "version": "5.14.1", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-4wf5-vphf-c2xc", "aliases": ["CVE-2022-25858"], "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "terser", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.15.0"}] }] }] },
+            { "id": "GHSA-h6m5-3p6m-xqmq", "aliases": ["CVE-2022-43787"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "terser", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.15.0"}] }] }] },
+            { "id": "GHSA-27h5-7xj8-jc8q", "aliases": ["CVE-2021-23445"], "database_specific": { "severity": "LOW",    "cvss3_score": 3.1 }, "affected": [{ "package": { "name": "terser", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"5.15.0"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "json-schema", "version": "0.2.3", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-896r-f27r-55mw", "aliases": ["CVE-2021-3918"],  "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.8 }, "affected": [{ "package": { "name": "json-schema", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.4.0"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v580", "aliases": ["CVE-2022-43793"], "database_specific": { "severity": "HIGH",     "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "json-schema", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"0.4.0"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "nth-check", "version": "2.0.0", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-rp65-9cf3-cjxr", "aliases": ["CVE-2021-3803"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "nth-check", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.1"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v581", "aliases": ["CVE-2022-43794"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "nth-check", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.1"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "qs", "version": "6.5.2", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-f9cm-p3mf-strp", "aliases": ["CVE-2014-7191"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-cqmj-92xf-r6r9", "aliases": ["CVE-2017-7989"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-hrpp-h998-j3pp", "aliases": ["CVE-2022-24999"], "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-gqgv-6jq5-jjj9", "aliases": ["CVE-2022-43788"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-7fm8-9frq-x3m5", "aliases": ["CVE-2023-27903"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "qs", "version": "6.7.0", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-f9cm-p3mf-str1", "aliases": ["CVE-2014-7191"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-cqmj-92xf-r6r1", "aliases": ["CVE-2017-7989"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-hrpp-h998-j3p1", "aliases": ["CVE-2022-24999"], "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-gqgv-6jq5-jjj1", "aliases": ["CVE-2022-43788"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] },
+            { "id": "GHSA-7fm8-9frq-x3m1", "aliases": ["CVE-2023-27903"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "qs", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.9.7"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "got", "version": "11.8.2", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-pfrx-2q88-qq97", "aliases": ["CVE-2022-33987"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] },
+            { "id": "GHSA-j7pg-3m4r-qpxm", "aliases": ["CVE-2022-43789"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] },
+            { "id": "GHSA-g4xv-fj3m-5q9w", "aliases": ["CVE-2021-23446"], "database_specific": { "severity": "LOW",    "cvss3_score": 3.1 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] },
+            { "id": "GHSA-q483-3xrm-v8mj", "aliases": ["CVE-2023-30536"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "got", "version": "11.8.3", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-pfrx-2q88-qq98", "aliases": ["CVE-2022-33987"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] },
+            { "id": "GHSA-j7pg-3m4r-qpx1", "aliases": ["CVE-2022-43789"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] },
+            { "id": "GHSA-g4xv-fj3m-5q91", "aliases": ["CVE-2021-23446"], "database_specific": { "severity": "LOW",    "cvss3_score": 3.1 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] },
+            { "id": "GHSA-q483-3xrm-v8m1", "aliases": ["CVE-2023-30536"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "got", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"11.8.5"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "json5", "version": "1.0.1", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-9c47-m6qq-7p4h", "aliases": ["CVE-2022-46175"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.1 }, "affected": [{ "package": { "name": "json5", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.2.2"}] }] }] },
+            { "id": "GHSA-cjxm-xhwv-4mc5", "aliases": ["CVE-2022-43790"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "json5", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.2.2"}] }] }] },
+            { "id": "GHSA-9r2r-v4m8-g5r2", "aliases": ["CVE-2023-25166"],  "database_specific": { "severity": "HIGH",   "cvss3_score": 7.0 }, "affected": [{ "package": { "name": "json5", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.2.2"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v575", "aliases": ["CVE-2021-23447"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "json5", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.2.2"}] }] }] },
+            { "id": "GHSA-jm7r-qpqq-5r5h", "aliases": ["CVE-2023-30537"],  "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "json5", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.2.2"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "glob-parent", "version": "5.1.2", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-ww39-953v-wcq6", "aliases": ["CVE-2020-28469"], "database_specific": { "severity": "HIGH",   "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "glob-parent", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.0.1"}] }] }] },
+            { "id": "GHSA-3xgq-45jj-v276", "aliases": ["CVE-2022-43791"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "glob-parent", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.0.1"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v576", "aliases": ["CVE-2021-23448"], "database_specific": { "severity": "MEDIUM", "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "glob-parent", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.0.1"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v577", "aliases": ["CVE-2023-30538"], "database_specific": { "severity": "LOW",    "cvss3_score": 3.1 }, "affected": [{ "package": { "name": "glob-parent", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"6.0.1"}] }] }] }
+          ],
+          "groups": []
+        },
+        {
+          "package": { "name": "loader-utils", "version": "1.4.0", "ecosystem": "npm" },
+          "vulnerabilities": [
+            { "id": "GHSA-76p3-8jx3-jpfq", "aliases": ["CVE-2022-37601"],  "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.8 }, "affected": [{ "package": { "name": "loader-utils", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.4"}] }] }] },
+            { "id": "GHSA-3rfm-jhwj-7488", "aliases": ["CVE-2022-37603"],  "database_specific": { "severity": "HIGH",     "cvss3_score": 7.5 }, "affected": [{ "package": { "name": "loader-utils", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.4"}] }] }] },
+            { "id": "GHSA-hhq3-ff78-jv3g", "aliases": ["CVE-2022-37616"],  "database_specific": { "severity": "CRITICAL", "cvss3_score": 9.8 }, "affected": [{ "package": { "name": "loader-utils", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.4"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v578", "aliases": ["CVE-2022-43792"],  "database_specific": { "severity": "MEDIUM",   "cvss3_score": 5.3 }, "affected": [{ "package": { "name": "loader-utils", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.4"}] }] }] },
+            { "id": "GHSA-4xc9-xhrj-v579", "aliases": ["CVE-2023-30539"],  "database_specific": { "severity": "MEDIUM",   "cvss3_score": 4.3 }, "affected": [{ "package": { "name": "loader-utils", "ecosystem": "npm" }, "ranges": [{ "type": "SEMVER", "events": [{"introduced":"0"},{"fixed":"2.0.4"}] }] }] }
+          ],
+          "groups": []
+        }
+      ]
+    }
+  ]
+}

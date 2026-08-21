@@ -504,14 +504,96 @@ async function runPortfolioCommand(argv) {
 }
 
 // ---------------------------------------------------------------------------
+// Demo command
+// ---------------------------------------------------------------------------
+
+async function runDemoCommand(rawArgs) {
+  const { runAnalysisPipeline } = require('./orchestrator');
+  const DEMO_DIR   = path.join(__dirname, 'fixtures', 'demo-corpus');
+  const LOCK_FILE  = path.join(DEMO_DIR, 'npm', 'package-lock.json');
+  const PKG_JSON   = path.join(DEMO_DIR, 'npm', 'package.json');
+  const OUT_DIR    = path.join(process.cwd(), 'demo-output');
+
+  const reportArg = rawArgs.find(a => !a.startsWith('--'));
+  const REPORTS_DIR = path.join(DEMO_DIR, 'reports');
+  const DEFAULT_REPORT = path.join(REPORTS_DIR, 'mend-report.json');
+
+  const reportPath = reportArg
+    ? path.resolve(reportArg)
+    : DEFAULT_REPORT;
+
+  if (!fs.existsSync(reportPath)) {
+    console.error(`ERROR: Demo corpus report not found: ${reportPath}`);
+    console.error(`  Expected demo corpus at: ${DEMO_DIR}`);
+    process.exit(1);
+  }
+
+  console.log('\n╔══════════════════════════════════════════════════════════╗');
+  console.log('║           mend-autofixer  —  Demo Mode                   ║');
+  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  console.log(`  Report  : ${path.relative(process.cwd(), reportPath)}`);
+  console.log(`  Lock    : ${path.relative(process.cwd(), LOCK_FILE)}`);
+  console.log('  Running full analysis pipeline...\n');
+
+  let result;
+  try {
+    result = await runAnalysisPipeline({
+      reportPath,
+      lockFilePath:     LOCK_FILE,
+      packageJsonPath:  PKG_JSON,
+      classifyExposure: true,
+    });
+  } catch (err) {
+    console.error(`ERROR: Pipeline failed — ${err.message}`);
+    process.exit(1);
+  }
+
+  const { phasedPlan, entries, exposureResults } = result;
+  const phaseA = (phasedPlan || []).filter(i => i.phase === 'A');
+  const phaseB = (phasedPlan || []).filter(i => i.phase === 'B');
+  const phaseC = (phasedPlan || []).filter(i => i.phase === 'C');
+
+  const totalCves = (entries || []).reduce((n, e) => n + (e.cves || []).length, 0);
+
+  console.log('┌─────────────────────────────────────────────────────────┐');
+  console.log('│  Analysis Results                                        │');
+  console.log('├─────────────────────────────────────────────────────────┤');
+  console.log(`│  Libraries affected  : ${String(entries.length).padEnd(32)}│`);
+  console.log(`│  Total CVEs          : ${String(totalCves).padEnd(32)}│`);
+  console.log('├─────────────────────────────────────────────────────────┤');
+  console.log(`│  Phase A (auto-apply): ${String(phaseA.length).padEnd(32)}│`);
+  console.log(`│  Phase B (review)    : ${String(phaseB.length).padEnd(32)}│`);
+  console.log(`│  Phase C (manual)    : ${String(phaseC.length).padEnd(32)}│`);
+  if (exposureResults && exposureResults.length) {
+    const reachable = exposureResults.filter(r => r.exposureResult && r.exposureResult.classification === 'RUNTIME_REACHABLE').length;
+    const devOnly   = exposureResults.filter(r => r.exposureResult && ['TEST_ONLY','LOCAL_TOOLING_ONLY','CI_EXECUTED','BUILD_TIME_EXECUTED'].includes(r.exposureResult.classification)).length;
+    console.log('├─────────────────────────────────────────────────────────┤');
+    console.log(`│  D1A: RUNTIME_REACHABLE: ${String(reachable).padEnd(30)}│`);
+    console.log(`│  D1A: Dev/Test only    : ${String(devOnly).padEnd(30)}│`);
+  }
+  console.log('└─────────────────────────────────────────────────────────┘\n');
+
+  if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  const outPath = path.join(OUT_DIR, 'demo-analysis.json');
+  fs.writeFileSync(outPath, JSON.stringify({ phasedPlan, exposureResults }, null, 2));
+  console.log(`  Output written to: ${path.relative(process.cwd(), outPath)}\n`);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main() {
   // ── Subcommand routing ───────────────────────────────────────────────────
   const rawArgs = process.argv.slice(2);
-  const SUBCMDS = ['analyze', 'apply', 'cleanup', 'renovate', 'portfolio'];
+  const SUBCMDS = ['analyze', 'apply', 'cleanup', 'renovate', 'portfolio', 'demo'];
   const subcmd  = SUBCMDS.includes(rawArgs[0]) ? rawArgs.shift() : null;
+
+  if (subcmd === 'demo') {
+    await runDemoCommand(rawArgs);
+    return;
+  }
 
   if (subcmd === 'renovate') {
     const { main: renovateMain } = require('./renovate-apply');

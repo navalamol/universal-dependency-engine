@@ -4,6 +4,24 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Batch 5A: Demo corpus + mendfix demo command
+
+**Before:** 810/810 tests. No demo corpus. No `mendfix demo` subcommand.
+**Changes:**
+- Created `fixtures/demo-corpus/npm/package.json` — 8 prod + 7 dev deps, all vulnerable packages as transitives
+- Created `fixtures/demo-corpus/npm/package-lock.json` — v2 lock with 16 vulnerable transitive packages at vulnerable versions; parent ranges use tilde/range-bounded constraints to prevent Phase B → A promotion (e.g. `"qs": "~6.7.0"` so 6.9.7 fails range check)
+- Created `fixtures/demo-corpus/reports/mend-report.json` — 69 CVEs in Mend JSON format
+- Created `fixtures/demo-corpus/reports/snyk-report.json` — 69 CVEs in Snyk format
+- Created `fixtures/demo-corpus/reports/dependabot-report.json` — 69 CVEs with `"= X.Y.Z"` ranges for version discovery
+- Created `fixtures/demo-corpus/reports/osv-report.json` — 69 CVEs in osv-scanner format (shape 1 with embedded versions)
+- Created `fixtures/demo-corpus/reports/package-lock.json` — minimal 3-entry lock file so Dependabot parser gets correct demo versions for ansi-regex/semver/json5 (project root has newer versions of these 3 packages)
+- Added `runDemoCommand()` + `'demo'` subcommand to `mendfix.js`; calls `runAnalysisPipeline` with D1A enabled, prints ASCII summary banner, writes `demo-output/demo-analysis.json`
+- Created `tests/integration/demo-command.test.js` — 18 tests verifying exit gate (Phase A ≥ 4, B ≥ 2, C ≥ 2, D1A ≥ 4, all 4 scanners equivalent A:9/B:4/C:3)
+- All 4 scanner reports produce identical A:9/B:4/C:3 distributions; 828/828 tests pass
+**Next:** Batch 5B — `src/core/comparison-report.js` before/after delta table + enhanced remediation report
+
+---
+
 ## 2026-08-21 — Strategic replan: demo-first batches 5A → 7
 
 **Before:** Batch 4 done (810/810). Original plan had Phase 6 UI next.

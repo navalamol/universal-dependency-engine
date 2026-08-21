@@ -1,0 +1,2487 @@
+{
+  "phasedPlan": [
+    {
+      "libraryName": "lodash",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "4.17.15",
+      "filename": "lodash-4.17.15.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2018-3721",
+          "severity": "HIGH",
+          "score": 6.1,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2018-16487",
+          "severity": "CRITICAL",
+          "score": 9.8,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2019-10744",
+          "severity": "CRITICAL",
+          "score": 9.1,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2020-8203",
+          "severity": "HIGH",
+          "score": 7.4,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2020-28500",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2021-23337",
+          "severity": "HIGH",
+          "score": 7.2,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2021-23440",
+          "severity": "CRITICAL",
+          "score": 9.1,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        },
+        {
+          "id": "CVE-2022-43782",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "4.17.21"
+          ]
+        }
+      ],
+      "cveCount": 8,
+      "highestSeverity": "CRITICAL",
+      "highestCvssScore": 9.8,
+      "recommendedVersion": "4.17.21",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (4.x). CVEs: CVE-2018-3721, CVE-2018-16487, CVE-2019-10744, CVE-2020-8203, CVE-2020-28500, CVE-2021-23337, CVE-2021-23440, CVE-2022-43782. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 4.17.15 → 4.17.21; 1 instance(s) found in lock file",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 6,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "lodash",
+          "from": "4.17.15",
+          "to": "4.17.21"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "node-fetch",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "2.6.1",
+      "filename": "node-fetch-2.6.1.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-0235",
+          "severity": "MEDIUM",
+          "score": 6.1,
+          "fixVersions": [
+            "2.6.7"
+          ]
+        },
+        {
+          "id": "CVE-2022-0158",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "2.6.7"
+          ]
+        },
+        {
+          "id": "CVE-2023-26067",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "2.6.7"
+          ]
+        },
+        {
+          "id": "CVE-2021-23441",
+          "severity": "LOW",
+          "score": 3.1,
+          "fixVersions": [
+            "2.6.7"
+          ]
+        },
+        {
+          "id": "CVE-2022-43783",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "2.6.7"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "MEDIUM",
+      "highestCvssScore": 6.1,
+      "recommendedVersion": "2.6.7",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (2.x). CVEs: CVE-2022-0235, CVE-2022-0158, CVE-2023-26067, CVE-2021-23441, CVE-2022-43783. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 2.6.1 → 2.6.7; 1 instance(s) found in lock file",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 6,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "node-fetch",
+          "from": "2.6.1",
+          "to": "2.6.7"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "minimist",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "1.2.5",
+      "filename": "minimist-1.2.5.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2020-7598",
+          "severity": "MEDIUM",
+          "score": 5.6,
+          "fixVersions": [
+            "1.2.6"
+          ]
+        },
+        {
+          "id": "CVE-2021-44906",
+          "severity": "CRITICAL",
+          "score": 9.8,
+          "fixVersions": [
+            "1.2.6"
+          ]
+        },
+        {
+          "id": "CVE-2021-23442",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "1.2.6"
+          ]
+        },
+        {
+          "id": "CVE-2022-21824",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "1.2.6"
+          ]
+        },
+        {
+          "id": "CVE-2023-30556",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "1.2.6"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "CRITICAL",
+      "highestCvssScore": 9.8,
+      "recommendedVersion": "1.2.6",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (1.x). CVEs: CVE-2020-7598, CVE-2021-44906, CVE-2021-23442, CVE-2022-21824, CVE-2023-30556. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 1.2.5 → 1.2.6; 1 instance(s) found in lock file",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 1,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "minimist",
+          "from": "1.2.5",
+          "to": "1.2.6"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "ansi-regex",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "5.0.0",
+      "filename": "ansi-regex-5.0.0.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2021-3807",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "5.0.1"
+          ]
+        },
+        {
+          "id": "CVE-2022-43784",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "5.0.1"
+          ]
+        },
+        {
+          "id": "CVE-2021-23443",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "5.0.1"
+          ]
+        }
+      ],
+      "cveCount": 3,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "5.0.1",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (5.x). CVEs: CVE-2021-3807, CVE-2022-43784, CVE-2021-23443. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 5.0.0 → 5.0.1; 1 instance(s) found in lock file",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 1,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "ansi-regex",
+          "from": "5.0.0",
+          "to": "5.0.1"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "semver",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "5.7.1",
+      "filename": "semver-5.7.1.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-25883",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "5.7.2"
+          ]
+        },
+        {
+          "id": "CVE-2022-43785",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "5.7.2"
+          ]
+        },
+        {
+          "id": "CVE-2021-23444",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "5.7.2"
+          ]
+        },
+        {
+          "id": "CVE-2023-44270",
+          "severity": "MEDIUM",
+          "score": 5.9,
+          "fixVersions": [
+            "5.7.2"
+          ]
+        }
+      ],
+      "cveCount": 4,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "5.7.2",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (5.x). CVEs: CVE-2022-25883, CVE-2022-43785, CVE-2021-23444, CVE-2023-44270. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 5.7.1 → 5.7.2; 1 instance(s) found in lock file",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 1,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "semver",
+          "from": "5.7.1",
+          "to": "5.7.2"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "axios",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "0.21.1",
+      "filename": "axios-0.21.1.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2021-3749",
+          "severity": "MEDIUM",
+          "score": 6.5,
+          "fixVersions": [
+            "0.21.4"
+          ]
+        },
+        {
+          "id": "CVE-2022-1214",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "0.21.4"
+          ]
+        },
+        {
+          "id": "CVE-2023-45857",
+          "severity": "MEDIUM",
+          "score": 6.5,
+          "fixVersions": [
+            "0.21.4"
+          ]
+        },
+        {
+          "id": "CVE-2022-43786",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "0.21.4"
+          ]
+        },
+        {
+          "id": "CVE-2023-30535",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "0.21.4"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "0.21.4",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (0.x). CVEs: CVE-2021-3749, CVE-2022-1214, CVE-2023-45857, CVE-2022-43786, CVE-2023-30535. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 0.21.1 → 0.21.4; 1 instance(s) found in lock file",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 3,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "axios",
+          "from": "0.21.1",
+          "to": "0.21.4"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "terser",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "5.14.1",
+      "filename": "terser-5.14.1.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-25858",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "5.15.0"
+          ]
+        },
+        {
+          "id": "CVE-2022-43787",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "5.15.0"
+          ]
+        },
+        {
+          "id": "CVE-2021-23445",
+          "severity": "LOW",
+          "score": 3.1,
+          "fixVersions": [
+            "5.15.0"
+          ]
+        }
+      ],
+      "cveCount": 3,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "5.15.0",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (5.x). CVEs: CVE-2022-25858, CVE-2022-43787, CVE-2021-23445. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 5.14.1 → 5.15.0; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 101,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "terser",
+          "from": "5.14.1",
+          "to": "5.15.0"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "json-schema",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "0.2.3",
+      "filename": "json-schema-0.2.3.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2021-3918",
+          "severity": "CRITICAL",
+          "score": 9.8,
+          "fixVersions": [
+            "0.4.0"
+          ]
+        },
+        {
+          "id": "CVE-2022-43793",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "0.4.0"
+          ]
+        }
+      ],
+      "cveCount": 2,
+      "highestSeverity": "CRITICAL",
+      "highestCvssScore": 9.8,
+      "recommendedVersion": "0.4.0",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (0.x). CVEs: CVE-2021-3918, CVE-2022-43793. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 0.2.3 → 0.4.0; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 203,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "json-schema",
+          "from": "0.2.3",
+          "to": "0.4.0"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "nth-check",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "2.0.0",
+      "filename": "nth-check-2.0.0.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2021-3803",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "2.0.1"
+          ]
+        },
+        {
+          "id": "CVE-2022-43794",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "2.0.1"
+          ]
+        }
+      ],
+      "cveCount": 2,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "2.0.1",
+      "upgradeType": "SAFE",
+      "phase": "A",
+      "justification": "Same-major patch upgrade (2.x). CVEs: CVE-2021-3803, CVE-2022-43794. Override is safe and reversible.",
+      "evidence": "Same-major upgrade: 2.0.0 → 2.0.1; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+      "alternative": "",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 1,
+        "decisionLabel": "SAFE_ALIGNED",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "nth-check",
+          "from": "2.0.0",
+          "to": "2.0.1"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "SAFE_ALIGNED"
+    },
+    {
+      "libraryName": "qs",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "6.5.2",
+      "filename": "qs-6.5.2.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2014-7191",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2017-7989",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2022-24999",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2022-43788",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2023-27903",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "6.9.7",
+      "upgradeType": "SAFE",
+      "phase": "B",
+      "justification": "Multiple qs versions present (6.5.2, 6.7.0). Highest fix (6.9.7) chosen. Verify no consumers rely on an older API.",
+      "evidence": "Same-major upgrade: 6.5.2 → 6.9.7; 2 instance(s) found in lock file",
+      "alternative": "Check if a parent package upgrade eliminates the need for this override",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 405,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "qs",
+          "from": "6.5.2",
+          "to": "6.9.7"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "CONTROLLED_OVERRIDE"
+    },
+    {
+      "libraryName": "qs",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "6.7.0",
+      "filename": "qs-6.7.0.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2014-7191",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2017-7989",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2022-24999",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2022-43788",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        },
+        {
+          "id": "CVE-2023-27903",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "6.9.7"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "6.9.7",
+      "upgradeType": "SAFE",
+      "phase": "B",
+      "justification": "Multiple qs versions present (6.5.2, 6.7.0). Highest fix (6.9.7) chosen. Verify no consumers rely on an older API.",
+      "evidence": "Same-major upgrade: 6.7.0 → 6.9.7; 2 instance(s) found in lock file",
+      "alternative": "Check if a parent package upgrade eliminates the need for this override",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 207,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "qs",
+          "from": "6.7.0",
+          "to": "6.9.7"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "CONTROLLED_OVERRIDE"
+    },
+    {
+      "libraryName": "got",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "11.8.2",
+      "filename": "got-11.8.2.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-33987",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        },
+        {
+          "id": "CVE-2022-43789",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        },
+        {
+          "id": "CVE-2021-23446",
+          "severity": "LOW",
+          "score": 3.1,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        },
+        {
+          "id": "CVE-2023-30536",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        }
+      ],
+      "cveCount": 4,
+      "highestSeverity": "MEDIUM",
+      "highestCvssScore": 5.3,
+      "recommendedVersion": "11.8.5",
+      "upgradeType": "SAFE",
+      "phase": "B",
+      "justification": "Multiple got versions present (11.8.2, 11.8.3). Highest fix (11.8.5) chosen. Verify no consumers rely on an older API.",
+      "evidence": "Same-major upgrade: 11.8.2 → 11.8.5; 2 instance(s) found in lock file",
+      "alternative": "Check if a parent package upgrade eliminates the need for this override",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 3,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "got",
+          "from": "11.8.2",
+          "to": "11.8.5"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "CONTROLLED_OVERRIDE"
+    },
+    {
+      "libraryName": "got",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "11.8.3",
+      "filename": "got-11.8.3.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-33987",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        },
+        {
+          "id": "CVE-2022-43789",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        },
+        {
+          "id": "CVE-2021-23446",
+          "severity": "LOW",
+          "score": 3.1,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        },
+        {
+          "id": "CVE-2023-30536",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "11.8.5"
+          ]
+        }
+      ],
+      "cveCount": 4,
+      "highestSeverity": "MEDIUM",
+      "highestCvssScore": 5.3,
+      "recommendedVersion": "11.8.5",
+      "upgradeType": "SAFE",
+      "phase": "B",
+      "justification": "Multiple got versions present (11.8.2, 11.8.3). Highest fix (11.8.5) chosen. Verify no consumers rely on an older API.",
+      "evidence": "Same-major upgrade: 11.8.3 → 11.8.5; 2 instance(s) found in lock file",
+      "alternative": "Check if a parent package upgrade eliminates the need for this override",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 2,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "got",
+          "from": "11.8.3",
+          "to": "11.8.5"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "CONTROLLED_OVERRIDE"
+    },
+    {
+      "libraryName": "json5",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "1.0.1",
+      "filename": "json5-1.0.1.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-46175",
+          "severity": "HIGH",
+          "score": 7.1,
+          "fixVersions": [
+            "2.2.2"
+          ]
+        },
+        {
+          "id": "CVE-2022-43790",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "2.2.2"
+          ]
+        },
+        {
+          "id": "CVE-2023-25166",
+          "severity": "HIGH",
+          "score": 7,
+          "fixVersions": [
+            "2.2.2"
+          ]
+        },
+        {
+          "id": "CVE-2021-23447",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "2.2.2"
+          ]
+        },
+        {
+          "id": "CVE-2023-30537",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "2.2.2"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "2.2.2",
+      "upgradeType": "MAJOR_BUMP",
+      "phase": "C",
+      "justification": "Major version jump 1 → 2 for json5. No same-major fix available. Verify API compatibility before applying. CVEs: CVE-2022-46175, CVE-2022-43790, CVE-2023-25166, CVE-2021-23447, CVE-2023-30537.",
+      "rootParents": [
+        {
+          "name": "moment",
+          "range": "^2.29.4",
+          "isDev": false
+        }
+      ],
+      "depChain": [
+        "moment",
+        "json5"
+      ],
+      "evidence": "Major version change required: 1.0.1 → 2.2.2; 1 instance(s) found in lock file",
+      "alternative": "Upgrade parent package(s) moment to a version that ships json5 >= 2.2.2",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 10201,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "json5",
+          "from": "1.0.1",
+          "to": "2.2.2"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "MANUAL_SECURITY_REVIEW"
+    },
+    {
+      "libraryName": "glob-parent",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "5.1.2",
+      "filename": "glob-parent-5.1.2.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2020-28469",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "6.0.1"
+          ]
+        },
+        {
+          "id": "CVE-2022-43791",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "6.0.1"
+          ]
+        },
+        {
+          "id": "CVE-2021-23448",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "6.0.1"
+          ]
+        },
+        {
+          "id": "CVE-2023-30538",
+          "severity": "LOW",
+          "score": 3.1,
+          "fixVersions": [
+            "6.0.1"
+          ]
+        }
+      ],
+      "cveCount": 4,
+      "highestSeverity": "HIGH",
+      "highestCvssScore": 7.5,
+      "recommendedVersion": "6.0.1",
+      "upgradeType": "MAJOR_BUMP",
+      "phase": "C",
+      "justification": "Major version jump 5 → 6 for glob-parent. No same-major fix available. Verify API compatibility before applying. CVEs: CVE-2020-28469, CVE-2022-43791, CVE-2021-23448, CVE-2023-30538.",
+      "rootParents": [
+        {
+          "name": "webpack",
+          "range": "^5.88.1",
+          "isDev": true
+        }
+      ],
+      "depChain": [
+        "webpack",
+        "glob-parent"
+      ],
+      "evidence": "Major version change required: 5.1.2 → 6.0.1; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+      "alternative": "Upgrade parent package(s) webpack to a version that ships glob-parent >= 6.0.1",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 10101,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "glob-parent",
+          "from": "5.1.2",
+          "to": "6.0.1"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "MANUAL_SECURITY_REVIEW"
+    },
+    {
+      "libraryName": "loader-utils",
+      "groupId": null,
+      "libraryType": "NODE_PACKAGED_MODULE",
+      "currentVersion": "1.4.0",
+      "filename": "loader-utils-1.4.0.tgz",
+      "dependencyFile": "package-lock.json",
+      "cves": [
+        {
+          "id": "CVE-2022-37601",
+          "severity": "CRITICAL",
+          "score": 9.8,
+          "fixVersions": [
+            "2.0.4"
+          ]
+        },
+        {
+          "id": "CVE-2022-37603",
+          "severity": "HIGH",
+          "score": 7.5,
+          "fixVersions": [
+            "2.0.4"
+          ]
+        },
+        {
+          "id": "CVE-2022-37616",
+          "severity": "CRITICAL",
+          "score": 9.8,
+          "fixVersions": [
+            "2.0.4"
+          ]
+        },
+        {
+          "id": "CVE-2022-43792",
+          "severity": "MEDIUM",
+          "score": 5.3,
+          "fixVersions": [
+            "2.0.4"
+          ]
+        },
+        {
+          "id": "CVE-2023-30539",
+          "severity": "MEDIUM",
+          "score": 4.3,
+          "fixVersions": [
+            "2.0.4"
+          ]
+        }
+      ],
+      "cveCount": 5,
+      "highestSeverity": "CRITICAL",
+      "highestCvssScore": 9.8,
+      "recommendedVersion": "2.0.4",
+      "upgradeType": "MAJOR_BUMP",
+      "phase": "C",
+      "justification": "Major version jump 1 → 2 for loader-utils. No same-major fix available. Verify API compatibility before applying. CVEs: CVE-2022-37601, CVE-2022-37603, CVE-2022-37616, CVE-2022-43792, CVE-2023-30539.",
+      "rootParents": [
+        {
+          "name": "babel-loader",
+          "range": "^9.1.3",
+          "isDev": true
+        }
+      ],
+      "depChain": [
+        "babel-loader",
+        "loader-utils"
+      ],
+      "evidence": "Major version change required: 1.4.0 → 2.0.4; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+      "alternative": "Upgrade parent package(s) babel-loader to a version that ships loader-utils >= 2.0.4",
+      "recommendedPath": {
+        "type": "DIRECT_OVERRIDE",
+        "confidence": "INFERRED",
+        "budgetTier": 6,
+        "budgetLabel": "single-override",
+        "semverDist": 10404,
+        "decisionLabel": "CONTROLLED_OVERRIDE",
+        "peerConflicts": [],
+        "securityDelta": null,
+        "detail": {
+          "name": "loader-utils",
+          "from": "1.4.0",
+          "to": "2.0.4"
+        }
+      },
+      "alternativePaths": [],
+      "decisionLabel": "MANUAL_SECURITY_REVIEW"
+    }
+  ],
+  "exposureResults": [
+    {
+      "item": {
+        "libraryName": "lodash",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "4.17.15",
+        "filename": "lodash-4.17.15.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2018-3721",
+            "severity": "HIGH",
+            "score": 6.1,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2018-16487",
+            "severity": "CRITICAL",
+            "score": 9.8,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2019-10744",
+            "severity": "CRITICAL",
+            "score": 9.1,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2020-8203",
+            "severity": "HIGH",
+            "score": 7.4,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2020-28500",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2021-23337",
+            "severity": "HIGH",
+            "score": 7.2,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2021-23440",
+            "severity": "CRITICAL",
+            "score": 9.1,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          },
+          {
+            "id": "CVE-2022-43782",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "4.17.21"
+            ]
+          }
+        ],
+        "cveCount": 8,
+        "highestSeverity": "CRITICAL",
+        "highestCvssScore": 9.8,
+        "recommendedVersion": "4.17.21",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (4.x). CVEs: CVE-2018-3721, CVE-2018-16487, CVE-2019-10744, CVE-2020-8203, CVE-2020-28500, CVE-2021-23337, CVE-2021-23440, CVE-2022-43782. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 4.17.15 → 4.17.21; 1 instance(s) found in lock file",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 6,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "lodash",
+            "from": "4.17.15",
+            "to": "4.17.21"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "node-fetch",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "2.6.1",
+        "filename": "node-fetch-2.6.1.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-0235",
+            "severity": "MEDIUM",
+            "score": 6.1,
+            "fixVersions": [
+              "2.6.7"
+            ]
+          },
+          {
+            "id": "CVE-2022-0158",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "2.6.7"
+            ]
+          },
+          {
+            "id": "CVE-2023-26067",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "2.6.7"
+            ]
+          },
+          {
+            "id": "CVE-2021-23441",
+            "severity": "LOW",
+            "score": 3.1,
+            "fixVersions": [
+              "2.6.7"
+            ]
+          },
+          {
+            "id": "CVE-2022-43783",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "2.6.7"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "MEDIUM",
+        "highestCvssScore": 6.1,
+        "recommendedVersion": "2.6.7",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (2.x). CVEs: CVE-2022-0235, CVE-2022-0158, CVE-2023-26067, CVE-2021-23441, CVE-2022-43783. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 2.6.1 → 2.6.7; 1 instance(s) found in lock file",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 6,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "node-fetch",
+            "from": "2.6.1",
+            "to": "2.6.7"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "minimist",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "1.2.5",
+        "filename": "minimist-1.2.5.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2020-7598",
+            "severity": "MEDIUM",
+            "score": 5.6,
+            "fixVersions": [
+              "1.2.6"
+            ]
+          },
+          {
+            "id": "CVE-2021-44906",
+            "severity": "CRITICAL",
+            "score": 9.8,
+            "fixVersions": [
+              "1.2.6"
+            ]
+          },
+          {
+            "id": "CVE-2021-23442",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "1.2.6"
+            ]
+          },
+          {
+            "id": "CVE-2022-21824",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "1.2.6"
+            ]
+          },
+          {
+            "id": "CVE-2023-30556",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "1.2.6"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "CRITICAL",
+        "highestCvssScore": 9.8,
+        "recommendedVersion": "1.2.6",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (1.x). CVEs: CVE-2020-7598, CVE-2021-44906, CVE-2021-23442, CVE-2022-21824, CVE-2023-30556. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 1.2.5 → 1.2.6; 1 instance(s) found in lock file",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 1,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "minimist",
+            "from": "1.2.5",
+            "to": "1.2.6"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "ansi-regex",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "5.0.0",
+        "filename": "ansi-regex-5.0.0.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2021-3807",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "5.0.1"
+            ]
+          },
+          {
+            "id": "CVE-2022-43784",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "5.0.1"
+            ]
+          },
+          {
+            "id": "CVE-2021-23443",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "5.0.1"
+            ]
+          }
+        ],
+        "cveCount": 3,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "5.0.1",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (5.x). CVEs: CVE-2021-3807, CVE-2022-43784, CVE-2021-23443. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 5.0.0 → 5.0.1; 1 instance(s) found in lock file",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 1,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "ansi-regex",
+            "from": "5.0.0",
+            "to": "5.0.1"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "semver",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "5.7.1",
+        "filename": "semver-5.7.1.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-25883",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "5.7.2"
+            ]
+          },
+          {
+            "id": "CVE-2022-43785",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "5.7.2"
+            ]
+          },
+          {
+            "id": "CVE-2021-23444",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "5.7.2"
+            ]
+          },
+          {
+            "id": "CVE-2023-44270",
+            "severity": "MEDIUM",
+            "score": 5.9,
+            "fixVersions": [
+              "5.7.2"
+            ]
+          }
+        ],
+        "cveCount": 4,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "5.7.2",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (5.x). CVEs: CVE-2022-25883, CVE-2022-43785, CVE-2021-23444, CVE-2023-44270. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 5.7.1 → 5.7.2; 1 instance(s) found in lock file",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 1,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "semver",
+            "from": "5.7.1",
+            "to": "5.7.2"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "axios",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "0.21.1",
+        "filename": "axios-0.21.1.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2021-3749",
+            "severity": "MEDIUM",
+            "score": 6.5,
+            "fixVersions": [
+              "0.21.4"
+            ]
+          },
+          {
+            "id": "CVE-2022-1214",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "0.21.4"
+            ]
+          },
+          {
+            "id": "CVE-2023-45857",
+            "severity": "MEDIUM",
+            "score": 6.5,
+            "fixVersions": [
+              "0.21.4"
+            ]
+          },
+          {
+            "id": "CVE-2022-43786",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "0.21.4"
+            ]
+          },
+          {
+            "id": "CVE-2023-30535",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "0.21.4"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "0.21.4",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (0.x). CVEs: CVE-2021-3749, CVE-2022-1214, CVE-2023-45857, CVE-2022-43786, CVE-2023-30535. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 0.21.1 → 0.21.4; 1 instance(s) found in lock file",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 3,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "axios",
+            "from": "0.21.1",
+            "to": "0.21.4"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "terser",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "5.14.1",
+        "filename": "terser-5.14.1.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-25858",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "5.15.0"
+            ]
+          },
+          {
+            "id": "CVE-2022-43787",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "5.15.0"
+            ]
+          },
+          {
+            "id": "CVE-2021-23445",
+            "severity": "LOW",
+            "score": 3.1,
+            "fixVersions": [
+              "5.15.0"
+            ]
+          }
+        ],
+        "cveCount": 3,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "5.15.0",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (5.x). CVEs: CVE-2022-25858, CVE-2022-43787, CVE-2021-23445. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 5.14.1 → 5.15.0; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 101,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "terser",
+            "from": "5.14.1",
+            "to": "5.15.0"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "BUILD_TIME_EXECUTED",
+        "confidence": 0.75,
+        "evidenceSources": [
+          "lock-file: all entries dev=true",
+          "package-name: matches build-tool pattern"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "json-schema",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "0.2.3",
+        "filename": "json-schema-0.2.3.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2021-3918",
+            "severity": "CRITICAL",
+            "score": 9.8,
+            "fixVersions": [
+              "0.4.0"
+            ]
+          },
+          {
+            "id": "CVE-2022-43793",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "0.4.0"
+            ]
+          }
+        ],
+        "cveCount": 2,
+        "highestSeverity": "CRITICAL",
+        "highestCvssScore": 9.8,
+        "recommendedVersion": "0.4.0",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (0.x). CVEs: CVE-2021-3918, CVE-2022-43793. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 0.2.3 → 0.4.0; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 203,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "json-schema",
+            "from": "0.2.3",
+            "to": "0.4.0"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "LOCAL_TOOLING_ONLY",
+        "confidence": 0.6,
+        "evidenceSources": [
+          "lock-file: all entries dev=true"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "nth-check",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "2.0.0",
+        "filename": "nth-check-2.0.0.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2021-3803",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "2.0.1"
+            ]
+          },
+          {
+            "id": "CVE-2022-43794",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "2.0.1"
+            ]
+          }
+        ],
+        "cveCount": 2,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "2.0.1",
+        "upgradeType": "SAFE",
+        "phase": "A",
+        "justification": "Same-major patch upgrade (2.x). CVEs: CVE-2021-3803, CVE-2022-43794. Override is safe and reversible.",
+        "evidence": "Same-major upgrade: 2.0.0 → 2.0.1; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+        "alternative": "",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 1,
+          "decisionLabel": "SAFE_ALIGNED",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "nth-check",
+            "from": "2.0.0",
+            "to": "2.0.1"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "SAFE_ALIGNED"
+      },
+      "exposureResult": {
+        "classification": "LOCAL_TOOLING_ONLY",
+        "confidence": 0.6,
+        "evidenceSources": [
+          "lock-file: all entries dev=true"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "qs",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "6.5.2",
+        "filename": "qs-6.5.2.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2014-7191",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2017-7989",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2022-24999",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2022-43788",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2023-27903",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "6.9.7",
+        "upgradeType": "SAFE",
+        "phase": "B",
+        "justification": "Multiple qs versions present (6.5.2, 6.7.0). Highest fix (6.9.7) chosen. Verify no consumers rely on an older API.",
+        "evidence": "Same-major upgrade: 6.5.2 → 6.9.7; 2 instance(s) found in lock file",
+        "alternative": "Check if a parent package upgrade eliminates the need for this override",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 405,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "qs",
+            "from": "6.5.2",
+            "to": "6.9.7"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "CONTROLLED_OVERRIDE"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "qs",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "6.7.0",
+        "filename": "qs-6.7.0.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2014-7191",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2017-7989",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2022-24999",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2022-43788",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          },
+          {
+            "id": "CVE-2023-27903",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "6.9.7"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "6.9.7",
+        "upgradeType": "SAFE",
+        "phase": "B",
+        "justification": "Multiple qs versions present (6.5.2, 6.7.0). Highest fix (6.9.7) chosen. Verify no consumers rely on an older API.",
+        "evidence": "Same-major upgrade: 6.7.0 → 6.9.7; 2 instance(s) found in lock file",
+        "alternative": "Check if a parent package upgrade eliminates the need for this override",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 207,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "qs",
+            "from": "6.7.0",
+            "to": "6.9.7"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "CONTROLLED_OVERRIDE"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "got",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "11.8.2",
+        "filename": "got-11.8.2.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-33987",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          },
+          {
+            "id": "CVE-2022-43789",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          },
+          {
+            "id": "CVE-2021-23446",
+            "severity": "LOW",
+            "score": 3.1,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          },
+          {
+            "id": "CVE-2023-30536",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          }
+        ],
+        "cveCount": 4,
+        "highestSeverity": "MEDIUM",
+        "highestCvssScore": 5.3,
+        "recommendedVersion": "11.8.5",
+        "upgradeType": "SAFE",
+        "phase": "B",
+        "justification": "Multiple got versions present (11.8.2, 11.8.3). Highest fix (11.8.5) chosen. Verify no consumers rely on an older API.",
+        "evidence": "Same-major upgrade: 11.8.2 → 11.8.5; 2 instance(s) found in lock file",
+        "alternative": "Check if a parent package upgrade eliminates the need for this override",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 3,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "got",
+            "from": "11.8.2",
+            "to": "11.8.5"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "CONTROLLED_OVERRIDE"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "got",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "11.8.3",
+        "filename": "got-11.8.3.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-33987",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          },
+          {
+            "id": "CVE-2022-43789",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          },
+          {
+            "id": "CVE-2021-23446",
+            "severity": "LOW",
+            "score": 3.1,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          },
+          {
+            "id": "CVE-2023-30536",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "11.8.5"
+            ]
+          }
+        ],
+        "cveCount": 4,
+        "highestSeverity": "MEDIUM",
+        "highestCvssScore": 5.3,
+        "recommendedVersion": "11.8.5",
+        "upgradeType": "SAFE",
+        "phase": "B",
+        "justification": "Multiple got versions present (11.8.2, 11.8.3). Highest fix (11.8.5) chosen. Verify no consumers rely on an older API.",
+        "evidence": "Same-major upgrade: 11.8.3 → 11.8.5; 2 instance(s) found in lock file",
+        "alternative": "Check if a parent package upgrade eliminates the need for this override",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 2,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "got",
+            "from": "11.8.3",
+            "to": "11.8.5"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "CONTROLLED_OVERRIDE"
+      },
+      "exposureResult": {
+        "classification": "RUNTIME_REACHABLE",
+        "confidence": 0.85,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "dep-chain: direct dependency"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "json5",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "1.0.1",
+        "filename": "json5-1.0.1.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-46175",
+            "severity": "HIGH",
+            "score": 7.1,
+            "fixVersions": [
+              "2.2.2"
+            ]
+          },
+          {
+            "id": "CVE-2022-43790",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "2.2.2"
+            ]
+          },
+          {
+            "id": "CVE-2023-25166",
+            "severity": "HIGH",
+            "score": 7,
+            "fixVersions": [
+              "2.2.2"
+            ]
+          },
+          {
+            "id": "CVE-2021-23447",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "2.2.2"
+            ]
+          },
+          {
+            "id": "CVE-2023-30537",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "2.2.2"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "2.2.2",
+        "upgradeType": "MAJOR_BUMP",
+        "phase": "C",
+        "justification": "Major version jump 1 → 2 for json5. No same-major fix available. Verify API compatibility before applying. CVEs: CVE-2022-46175, CVE-2022-43790, CVE-2023-25166, CVE-2021-23447, CVE-2023-30537.",
+        "rootParents": [
+          {
+            "name": "moment",
+            "range": "^2.29.4",
+            "isDev": false
+          }
+        ],
+        "depChain": [
+          "moment",
+          "json5"
+        ],
+        "evidence": "Major version change required: 1.0.1 → 2.2.2; 1 instance(s) found in lock file",
+        "alternative": "Upgrade parent package(s) moment to a version that ships json5 >= 2.2.2",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 10201,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "json5",
+            "from": "1.0.1",
+            "to": "2.2.2"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "MANUAL_SECURITY_REVIEW"
+      },
+      "exposureResult": {
+        "classification": "PRODUCTION_BUNDLED",
+        "confidence": 0.75,
+        "evidenceSources": [
+          "lock-file: non-dev entry",
+          "root-parent: isDev=false",
+          "dep-chain: transitive (depth 2)"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "glob-parent",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "5.1.2",
+        "filename": "glob-parent-5.1.2.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2020-28469",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "6.0.1"
+            ]
+          },
+          {
+            "id": "CVE-2022-43791",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "6.0.1"
+            ]
+          },
+          {
+            "id": "CVE-2021-23448",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "6.0.1"
+            ]
+          },
+          {
+            "id": "CVE-2023-30538",
+            "severity": "LOW",
+            "score": 3.1,
+            "fixVersions": [
+              "6.0.1"
+            ]
+          }
+        ],
+        "cveCount": 4,
+        "highestSeverity": "HIGH",
+        "highestCvssScore": 7.5,
+        "recommendedVersion": "6.0.1",
+        "upgradeType": "MAJOR_BUMP",
+        "phase": "C",
+        "justification": "Major version jump 5 → 6 for glob-parent. No same-major fix available. Verify API compatibility before applying. CVEs: CVE-2020-28469, CVE-2022-43791, CVE-2021-23448, CVE-2023-30538.",
+        "rootParents": [
+          {
+            "name": "webpack",
+            "range": "^5.88.1",
+            "isDev": true
+          }
+        ],
+        "depChain": [
+          "webpack",
+          "glob-parent"
+        ],
+        "evidence": "Major version change required: 5.1.2 → 6.0.1; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+        "alternative": "Upgrade parent package(s) webpack to a version that ships glob-parent >= 6.0.1",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 10101,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "glob-parent",
+            "from": "5.1.2",
+            "to": "6.0.1"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "MANUAL_SECURITY_REVIEW"
+      },
+      "exposureResult": {
+        "classification": "LOCAL_TOOLING_ONLY",
+        "confidence": 0.6,
+        "evidenceSources": [
+          "lock-file: all entries dev=true",
+          "root-parents: all isDev=true"
+        ]
+      }
+    },
+    {
+      "item": {
+        "libraryName": "loader-utils",
+        "groupId": null,
+        "libraryType": "NODE_PACKAGED_MODULE",
+        "currentVersion": "1.4.0",
+        "filename": "loader-utils-1.4.0.tgz",
+        "dependencyFile": "package-lock.json",
+        "cves": [
+          {
+            "id": "CVE-2022-37601",
+            "severity": "CRITICAL",
+            "score": 9.8,
+            "fixVersions": [
+              "2.0.4"
+            ]
+          },
+          {
+            "id": "CVE-2022-37603",
+            "severity": "HIGH",
+            "score": 7.5,
+            "fixVersions": [
+              "2.0.4"
+            ]
+          },
+          {
+            "id": "CVE-2022-37616",
+            "severity": "CRITICAL",
+            "score": 9.8,
+            "fixVersions": [
+              "2.0.4"
+            ]
+          },
+          {
+            "id": "CVE-2022-43792",
+            "severity": "MEDIUM",
+            "score": 5.3,
+            "fixVersions": [
+              "2.0.4"
+            ]
+          },
+          {
+            "id": "CVE-2023-30539",
+            "severity": "MEDIUM",
+            "score": 4.3,
+            "fixVersions": [
+              "2.0.4"
+            ]
+          }
+        ],
+        "cveCount": 5,
+        "highestSeverity": "CRITICAL",
+        "highestCvssScore": 9.8,
+        "recommendedVersion": "2.0.4",
+        "upgradeType": "MAJOR_BUMP",
+        "phase": "C",
+        "justification": "Major version jump 1 → 2 for loader-utils. No same-major fix available. Verify API compatibility before applying. CVEs: CVE-2022-37601, CVE-2022-37603, CVE-2022-37616, CVE-2022-43792, CVE-2023-30539.",
+        "rootParents": [
+          {
+            "name": "babel-loader",
+            "range": "^9.1.3",
+            "isDev": true
+          }
+        ],
+        "depChain": [
+          "babel-loader",
+          "loader-utils"
+        ],
+        "evidence": "Major version change required: 1.4.0 → 2.0.4; 1 instance(s) found in lock file; All lock-file entries marked dev:true",
+        "alternative": "Upgrade parent package(s) babel-loader to a version that ships loader-utils >= 2.0.4",
+        "recommendedPath": {
+          "type": "DIRECT_OVERRIDE",
+          "confidence": "INFERRED",
+          "budgetTier": 6,
+          "budgetLabel": "single-override",
+          "semverDist": 10404,
+          "decisionLabel": "CONTROLLED_OVERRIDE",
+          "peerConflicts": [],
+          "securityDelta": null,
+          "detail": {
+            "name": "loader-utils",
+            "from": "1.4.0",
+            "to": "2.0.4"
+          }
+        },
+        "alternativePaths": [],
+        "decisionLabel": "MANUAL_SECURITY_REVIEW"
+      },
+      "exposureResult": {
+        "classification": "LOCAL_TOOLING_ONLY",
+        "confidence": 0.6,
+        "evidenceSources": [
+          "lock-file: all entries dev=true",
+          "root-parents: all isDev=true"
+        ]
+      }
+    }
+  ]
+}
