@@ -3,7 +3,7 @@
 Quick-load document for any new session. Read this before touching any file.
 **Rule: update this file after every session that adds, removes, or renames a file or function.**
 
-Last updated: 2026-08-21 (Phase 5.5 M2.4+M2.5 — evidence-model.js, outcome taxonomy, SARIF/VEX export)
+Last updated: 2026-08-21 (Phase 5.5 M2.1–M2.5 — verifier, rescan-adapter, evidence-gate, evidence-model)
 
 ---
 
@@ -90,6 +90,9 @@ lockfile update + verification
 | `graph-diff.js` | `captureGraph(lockFilePath)` → `Map<name, string[]>\|null`, `diffGraphs(before, after)` → `{added, removed, changed, unchangedCount}`, `formatDiff(diff, meta?)` → `string` | Whole-graph before/after diff (Item 14). captureGraph snapshots all resolved versions from a lockfile; diffGraphs diffs two snapshots; formatDiff produces markdown. Wired into writeOutputNpm: graph-diff.md written after every successful install. |
 | `safe-exec.js` | `safeSpawn(exe, args, opts)`, `resolveExecutable(name)`, `validatePackageName(name)`, `validateVersion(ver)`, `validatePath(p)`, `buildSafeEnv()`, `ALLOWED_EXECUTABLES` | Centralized safe process executor (M1.1). No shell; allowlisted executables; validates user-derived inputs; structured result. |
 | `evidence-model.js` | `SCHEMA_VERSION`, `OUTCOMES`, `EXPOSURE`, `createEvidence(item, opts)` → `EvidenceBundle`, `mergeVerificationResult(bundle, verResult)`, `mergeRescanResult(bundle, rescanResult)`, `mergeExposureClassification(bundle, exposureResult)`, `toSarif(bundles, opts)`, `toCycloneDxVex(bundles, opts)` | **M2.4+M2.5** Canonical versioned evidence schema. Outcome taxonomy (10 values). Exposure stubs (9 values, populated by D1A). SARIF 2.1.0 + CycloneDX 1.5 VEX export. Immutable merge helpers for verification (M2.1) and rescan (M2.2) results. |
+| `verifier.js` | `runVerification(commands, projectDir, opts)` → `{ passed, commands, commandResults, durationMs, failureReason, ranAt }` | **M2.1** Build/test verification runner. Accepts string or `{cmd, args, required}` command specs. Uses `safeSpawn` (no shell). Fail-fast (default) or run-all mode. Advisory (`required:false`) commands don't block. Feeds into `mergeVerificationResult`. |
+| `rescan-adapter.js` | `RESCAN_STATUS`, `classifyRescanOutcome(phasedItem, afterEntries, opts)`, `classifyPlanRescanOutcomes(phasedPlan, afterEntries, opts)` | **M2.2** Post-remediation rescan classifier. Compares before/after CVE sets from LibraryEntry[]. Returns RESOLVED_AND_RESCANNED / RESOLVED_NOT_RESCANNED / INSTALL_VERIFIED_ONLY / VERIFICATION_FAILED. Feeds into `mergeRescanResult`. |
+| `evidence-gate.js` | `GATE_DECISION`, `evaluateBundleGate(bundle, policy)`, `applyEvidenceGate(phasedPlan, bundles, policy)` → `{ phasedPlan, gateReport }` | **M2.3** Fail-closed safety gate. Verification failure → BLOCKED. Rescan CVEs remaining → BLOCKED. Required evidence missing → DOWNGRADED (A→B). Phase B/C pass through. Never mutates originals. |
 | `report.js` | `generateReport(phasedPlan, opts)` → `string` | Full markdown remediation report |
 | `portfolio-report.js` | `generatePortfolioReport(portfolio, opts)` → `string`, `writePortfolioReport(portfolio, outDir, opts)` → `path` | Portfolio-level markdown report across multiple repos |
 | `pr-description.js` | `generatePRDescription(phasedPlan, reportMeta)` → `string` | PR description markdown |
@@ -289,9 +292,12 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/portfolio-runner.test.js` | `loadConfig`, `analyzeRepo`, `runPortfolio` — full mock suite |
 | `tests/core/portfolio-report.test.js` | `generatePortfolioReport`, `writePortfolioReport` |
 | `tests/core/evidence-model.test.js` | `createEvidence`, merge helpers, SARIF/VEX export, outcome taxonomy, exposure stubs — 47 tests |
+| `tests/core/verifier.test.js` | `runVerification` — string/object commands, fail-fast, advisory, timeout, allowlist, safeSpawn mock — 20 tests |
+| `tests/core/rescan-adapter.test.js` | `classifyRescanOutcome`, `classifyPlanRescanOutcomes` — null/empty/partial/full rescan scenarios — 19 tests |
+| `tests/core/evidence-gate.test.js` | `evaluateBundleGate`, `applyEvidenceGate` — ALLOWED/DOWNGRADED/BLOCKED, phase mutation, no-mutation guarantee — 16 tests |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **436/436 pass**
+Baseline: **491/491 pass**
 
 ---
 
@@ -313,8 +319,11 @@ Baseline: **436/436 pass**
 | Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
 | **Phase 5.5 M1** — `orchestrator.js`; extension gap; credential warnings; threat model; CI; 389 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.5 M2.4+M2.5** — `evidence-model.js`: canonical evidence schema, outcome taxonomy, SARIF/VEX export; 47 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M2.1** — `verifier.js`: build/test runner via safe-exec; 20 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M2.2** — `rescan-adapter.js`: post-remediation rescan classifier; 19 tests | ✅ DONE 2026-08-21 |
+| **Phase 5.5 M2.3** — `evidence-gate.js`: fail-closed Phase A gate; 16 tests | ✅ DONE 2026-08-21 |
 
-**Next:** Phase 5.5 M2.1 (build/test verifier) + M2.2 (rescan adapter) + M2.3 (fail-closed gate). **436/436 tests; A:5 B:0 C:3 baseline.**
+**Next:** M2.6 (benchmark corpus with reproducible metrics) + D1A (exposure classification). **491/491 tests; A:5 B:0 C:3 baseline.**
 
 ---
 

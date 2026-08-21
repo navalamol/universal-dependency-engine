@@ -4,6 +4,21 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Phase 5.5 M2.1–M2.3: Verifier, rescan adapter, fail-closed gate
+
+**Before:** M2.4+M2.5 done (436 tests). No build/test verification, no rescan adapter, no Phase A gate.
+
+**Changes:**
+- `src/core/verifier.js` (new) — `runVerification(commands, projectDir, opts)`: accepts string or `{cmd, args, required}` specs; uses `safeSpawn` only (no shell); fail-fast default; advisory commands (`required:false`) don't block; validates exe against ALLOWED_EXECUTABLES before safeSpawn; captures stdout/stderr (2 KB truncated). Feeds directly into `mergeVerificationResult`.
+- `src/core/rescan-adapter.js` (new) — `RESCAN_STATUS` (4 values), `classifyRescanOutcome`, `classifyPlanRescanOutcomes`: compares before-item CVE set against after-scan LibraryEntry[] filtered to the same package name (CVEs on other packages are ignored). Null after-entries → RESOLVED_NOT_RESCANNED; empty CVE targets → INSTALL_VERIFIED_ONLY; any remaining CVE → VERIFICATION_FAILED.
+- `src/core/evidence-gate.js` (new) — `GATE_DECISION` (ALLOWED/DOWNGRADED/BLOCKED), `evaluateBundleGate`, `applyEvidenceGate`: hard block when verification.passed=false or rescan.status=VERIFICATION_FAILED; downgrade A→B when required evidence not run; Phase B/C pass through. Gate annotation via `gateBlocked`/`gateReason` fields; phase field mutated to 'B' on DOWNGRADED; never mutates originals.
+- Key design decision: gate logic checks `verification.passed` and `rescan.status` directly (not `bundle.outcome`) so failure reasons are propagated specifically in `gateReason`. Phase B/C items are never gated — only Phase A items are subject to fail-closed logic.
+- 55 new tests across 3 files; 491/491 total passing; A:5 B:0 C:3 baseline confirmed.
+
+**Next:** M2.6 (benchmark corpus) + D1A (exposure classification)
+
+---
+
 ## 2026-08-21 — Phase 5.5 M2.4+M2.5: Canonical evidence model + outcome taxonomy
 
 **Before:** M1 complete (389 tests). No machine-readable evidence schema; human-readable strings only in confidence.js.
