@@ -92,3 +92,67 @@ test('report still renders correctly with no Phase A items', () => {
   // Phase A count in summary is 0
   expect(report).toContain('| ✅ Phase A');
 });
+
+// ─── 5B.2 enhanced report features ────────────────────────────────────────────
+
+test('exposure summary table appears when exposureResults provided', () => {
+  const plan = [makeItem('lodash', 'A'), makeItem('jest', 'C', { upgradeType: 'NO_FIX' })];
+  const exposureResults = [
+    { item: { libraryName: 'lodash' }, exposureResult: { classification: 'RUNTIME_REACHABLE' } },
+    { item: { libraryName: 'jest' },   exposureResult: { classification: 'TEST_ONLY' } },
+  ];
+  const report = generateReport(plan, { ...BASE_OPTS, exposureResults });
+  expect(report).toContain('Exposure Classification');
+  expect(report).toContain('RUNTIME_REACHABLE');
+  expect(report).toContain('TEST_ONLY');
+});
+
+test('fp note shown when dev/test-only libraries exist', () => {
+  const plan = [makeItem('jest', 'C', { upgradeType: 'NO_FIX' })];
+  const exposureResults = [
+    { item: { libraryName: 'jest' }, exposureResult: { classification: 'TEST_ONLY' } },
+  ];
+  const report = generateReport(plan, { ...BASE_OPTS, exposureResults });
+  expect(report).toContain('dev/test-only');
+});
+
+test('exposure summary absent when no exposureResults', () => {
+  const plan = [makeItem('lodash', 'A')];
+  const report = generateReport(plan, BASE_OPTS);
+  expect(report).not.toContain('Exposure Classification');
+});
+
+test('Phase B parent upgrade paths shown when rootParents present', () => {
+  const plan = [makeItem('loader-utils', 'B', {
+    rootParents: [{ name: 'webpack', range: '^4.0.0', isDev: false }],
+  })];
+  const report = generateReport(plan, BASE_OPTS);
+  expect(report).toContain('Parent upgrade paths');
+  expect(report).toContain('webpack');
+  expect(report).toContain('loader-utils');
+});
+
+test('Phase B parent upgrade paths absent when no rootParents', () => {
+  const plan = [makeItem('loader-utils', 'B', { rootParents: [] })];
+  const report = generateReport(plan, BASE_OPTS);
+  expect(report).not.toContain('Parent upgrade paths');
+});
+
+test('Phase C shows top migration alternative when alternatives present', () => {
+  const plan = [makeItem('jest', 'C', {
+    upgradeType: 'NO_FIX',
+    recommendedVersion: null,
+    alternatives: [{ name: 'vitest', effort: 'medium' }],
+  })];
+  const report = generateReport(plan, BASE_OPTS);
+  expect(report).toContain('Top migration alternative');
+  expect(report).toContain('vitest');
+  expect(report).toContain('medium');
+});
+
+test('evidence footer always present', () => {
+  const plan = [makeItem('lodash', 'A')];
+  const report = generateReport(plan, BASE_OPTS);
+  expect(report).toContain('remediation-evidence.sarif');
+  expect(report).toContain('remediation.vex.json');
+});

@@ -7,6 +7,10 @@ const ICON = {
   A: '✅', B: '⚠️', C: '❌',
 };
 
+const DEV_EXPOSURE_CLASSES = new Set([
+  'TEST_ONLY', 'LOCAL_TOOLING_ONLY', 'CI_EXECUTED', 'BUILD_TIME_EXECUTED',
+]);
+
 function sevIcon(s) { return ICON[(s || '').toUpperCase()] || '⚪'; }
 
 /**
@@ -18,6 +22,7 @@ function generateReport(phasedPlan, options = {}) {
     reportDate = new Date().toISOString().split('T')[0],
     verifyVersions = false,
     ecosystem  = 'npm',
+    exposureResults = [],
   } = options;
 
   const phaseA = phasedPlan.filter(r => r.phase === 'A');
@@ -43,6 +48,23 @@ function generateReport(phasedPlan, options = {}) {
     }
   }
 
+  // ── Exposure summary ───────────────────────────────────────────────────────
+  const exposureMap = new Map();
+  for (const { item, exposureResult } of (exposureResults || [])) {
+    if (item && item.libraryName) exposureMap.set(item.libraryName, exposureResult);
+  }
+
+  const expTiers = {};
+  for (const [, exp] of exposureMap) {
+    const cls = (exp && exp.classification) || 'UNKNOWN_EXPOSURE';
+    expTiers[cls] = (expTiers[cls] || 0) + 1;
+  }
+
+  const fpCount = phasedPlan.filter(r => {
+    const exp = exposureMap.get(r.libraryName);
+    return exp && DEV_EXPOSURE_CLASSES.has(exp.classification);
+  }).length;
+
   const lines = [
     `# Mend Vulnerability Remediation Report`,
     ``,
@@ -61,6 +83,32 @@ function generateReport(phasedPlan, options = {}) {
     `| **Total** | | **${phasedPlan.length}** | **${totalCves}** | |`,
     ``,
   ];
+
+  // ── Exposure summary table (when D1A data present) ─────────────────────────
+  if (exposureMap.size > 0) {
+    lines.push(`## Exposure Classification`);
+    lines.push(``);
+    lines.push(`| Tier | Libraries | Notes |`);
+    lines.push(`|------|-----------|-------|`);
+    const tierOrder = [
+      ['RUNTIME_REACHABLE',    'Production-reachable; highest priority'],
+      ['PRODUCTION_BUNDLED',   'Bundled into production artifact'],
+      ['TEST_ONLY',            'Dev/test only; not deployed to production'],
+      ['BUILD_TIME_EXECUTED',  'Executes at build time only'],
+      ['CI_EXECUTED',          'Executes in CI only'],
+      ['LOCAL_TOOLING_ONLY',   'Developer tooling; not deployed'],
+      ['UNKNOWN_EXPOSURE',     'Insufficient data to classify'],
+    ];
+    for (const [cls, note] of tierOrder) {
+      const count = expTiers[cls] || 0;
+      if (count > 0) lines.push(`| ${cls} | ${count} | ${note} |`);
+    }
+    if (fpCount > 0) {
+      lines.push(``);
+      lines.push(`> **${fpCount} librar${fpCount === 1 ? 'y is' : 'ies are'} classified as dev/test-only** — these findings may be deprioritised as they are not production-reachable.`);
+    }
+    lines.push(``);
+  }
 
   // ── Phase A ────────────────────────────────────────────────────────────────
   if (phaseA.length > 0) {
@@ -146,6 +194,20 @@ function generateReport(phasedPlan, options = {}) {
       lines.push(`| \`${r.libraryName}\` | ${r.currentVersion} → **${r.recommendedVersion}** | ${dlabel} | ${cves} | ${sevIcon(r.highestSeverity)} ${r.highestSeverity} | ${r.justification} |`);
     }
     lines.push(``);
+
+    // Parent upgrade paths for Phase B items
+    const bWithParents = phaseB.filter(r => r.rootParents && r.rootParents.length > 0);
+    if (bWithParents.length > 0) {
+      lines.push(`**Parent upgrade paths** (upgrading these closes the Phase B CVEs without overrides):`);
+      lines.push(``);
+      for (const r of bWithParents) {
+        const parents = r.rootParents.map(p => `\`${p.name}\` (${p.range})`).join(', ');
+        const cveIds  = (r.cves || []).map(c => c.id).slice(0, 4).join(', ');
+        const more    = (r.cves || []).length > 4 ? ` +${(r.cves || []).length - 4} more` : '';
+        lines.push(`- Upgrading ${parents} closes \`${r.libraryName}\` — ${cveIds}${more}`);
+      }
+      lines.push(``);
+    }
   }
 
   // ── Phase C ────────────────────────────────────────────────────────────────
@@ -175,6 +237,11 @@ function generateReport(phasedPlan, options = {}) {
         const parentList = r.rootParents.map(p => `\`${p.name}\` (${p.range}${p.isDev ? ', dev' : ''})`).join(', ');
         lines.push(`| Parent upgrade path | Consider upgrading ${parentList} to a version that ships a patched \`${r.libraryName}\` |`);
       }
+      if (r.alternatives && r.alternatives.length > 0) {
+        const top = r.alternatives[0];
+        const effort = top.effort || 'unknown';
+        lines.push(`| Top migration alternative | \`${top.name || top}\` — effort: ${effort} |`);
+      }
       lines.push(``);
     }
   }
@@ -194,6 +261,8 @@ function generateReport(phasedPlan, options = {}) {
   }
 
   lines.push(``);
+  lines.push(`---`);
+  lines.push(`*Evidence trail: Full SARIF at \`remediation-evidence.sarif\`, VEX at \`remediation.vex.json\`*`);
 
   return lines.join('\n');
 }

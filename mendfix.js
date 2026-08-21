@@ -514,7 +514,8 @@ async function runDemoCommand(rawArgs) {
   const PKG_JSON   = path.join(DEMO_DIR, 'npm', 'package.json');
   const OUT_DIR    = path.join(process.cwd(), 'demo-output');
 
-  const reportArg = rawArgs.find(a => !a.startsWith('--'));
+  const reportArg  = rawArgs.find(a => !a.startsWith('--'));
+  const doCompare  = rawArgs.includes('--compare');
   const REPORTS_DIR = path.join(DEMO_DIR, 'reports');
   const DEFAULT_REPORT = path.join(REPORTS_DIR, 'mend-report.json');
 
@@ -577,7 +578,28 @@ async function runDemoCommand(rawArgs) {
 
   const outPath = path.join(OUT_DIR, 'demo-analysis.json');
   fs.writeFileSync(outPath, JSON.stringify({ phasedPlan, exposureResults }, null, 2));
-  console.log(`  Output written to: ${path.relative(process.cwd(), outPath)}\n`);
+  console.log(`  Output written to: ${path.relative(process.cwd(), outPath)}`);
+
+  if (doCompare) {
+    const { buildComparisonReport, renderComparisonReport } = require('./src/core/comparison-report');
+    const compReport = buildComparisonReport(entries, phasedPlan, exposureResults, {
+      project:    'demo-corpus',
+      reportDate: new Date().toISOString().split('T')[0],
+    });
+    const mdPath = path.join(OUT_DIR, 'comparison-report.md');
+    fs.writeFileSync(mdPath, renderComparisonReport(compReport));
+    console.log(`  Comparison report: ${path.relative(process.cwd(), mdPath)}`);
+    console.log('');
+    console.log('  ── Before/After Comparison ────────────────────────────────');
+    console.log(`  Scanner found      : ${compReport.scanner.totalCves} CVEs across ${compReport.scanner.totalLibraries} libraries`);
+    console.log(`  Engine auto-closes : ${compReport.engine.autoCloseable} CVEs (Phase A + B)`);
+    console.log(`  Needs manual action: ${compReport.engine.requiresAction} CVEs (Phase C)`);
+    if (compReport.engine.notProductionReachable > 0) {
+      console.log(`  Dev/test-only      : ${compReport.engine.notProductionReachable} libraries (not prod-reachable)`);
+    }
+    console.log('  ───────────────────────────────────────────────────────────');
+  }
+  console.log('');
 }
 
 // ---------------------------------------------------------------------------

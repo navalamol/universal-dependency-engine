@@ -4,6 +4,19 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Batch 5B: Comparison report + enhanced remediation report
+
+**Before:** 828/828 tests. No comparison report. report.js had no exposure summary, no parent paths, no migration alternatives, no evidence footer.
+**Changes:**
+- Created `src/core/comparison-report.js`: `buildComparisonReport(scannerEntries, phasedPlan, exposureResults, opts?)` → ComparisonReport; `renderComparisonReport(report)` → markdown. Computes scanner baseline vs engine outcomes (autoCloseable, requiresAction, notProductionReachable), phase breakdown, Phase B parent upgrade path summaries, Phase C migration alternatives, one-paragraph narrative.
+- Enhanced `src/core/report.js`: exposure classification table (all 7 tiers), dev/test-only false-positive note, Phase B parent upgrade paths section, Phase C top migration alternative row, evidence footer (`remediation-evidence.sarif`, `remediation.vex.json`). New `exposureResults` option wired in.
+- Added `--compare` flag to `mendfix demo` in `mendfix.js`: writes `demo-output/comparison-report.md` and prints before/after delta to console.
+- Created `tests/unit/comparison-report.test.js` (21 tests) and appended 8 tests to `tests/core/report.test.js` (5B.2 enhanced features).
+- 853/853 tests pass; A:5 B:0 C:3 baseline confirmed.
+**Next:** Batch 6 — VS Code extension rebuild as 4-panel thin client (Scan / Analyze / Apply / Evidence) over canonical orchestrator API.
+
+---
+
 ## 2026-08-21 — Batch 5A: Demo corpus + mendfix demo command
 
 **Before:** 810/810 tests. No demo corpus. No `mendfix demo` subcommand.
