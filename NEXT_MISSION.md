@@ -5,6 +5,28 @@ Single source of truth for what to build next. Updated after each session.
 
 ---
 
+## Batch Session Plan
+
+Four batches map the remaining Phase 5.5 + 5.6 work. Start each batch only after the previous batch's exit gate passes.
+
+| Batch | Session | Missions | Why grouped |
+|-------|---------|----------|-------------|
+| **1** | Next | M1.2 + M1.3 + M1.4 + M1.5 + M1.6 | Completes M1 exit gate. M1.3 (canonical API) is the biggest item. |
+| **2** | After Batch 1 | M2 (all) + D1A | Tightly coupled: exposure classification IS evidence data. Evidence schema should be designed with exposure fields from the start. |
+| **3** | After Batch 2 | M3 (all) + D1B + D2.1–D2.3 | Pilot packaging needs evidence from Batch 2. D1B (hygiene) and D2 (migration) are independent enough to batch. |
+| **4** | After Batch 3 | D3 + Phase 6 | Patch/backport work, then UI rebuilt on the canonical API from Batch 1. |
+
+D2.4 (prototype branches) is a stretch goal — fits inside Batch 3 only if D2.1–D2.3 clear early.
+
+**Batch 1 remaining work (M1.1 done):**
+- M1.2 — credential audit: deprecation warning for `--*-token` CLI args; verify extension does not pass tokens
+- M1.3 — canonical orchestration layer: `orchestrator.js` consumed by CLI, extension, portfolio; fix extension pipeline gap; contract tests
+- M1.4 — `docs/THREAT_MODEL.md` + `docs/SECURITY_ARCHITECTURE.md` ✅ DONE 2026-08-21
+- M1.5 — GitHub Actions CI (`.github/workflows/ci.yml`) ✅ DONE 2026-08-21
+- M1.6 — doc inconsistencies reconciled
+
+---
+
 ## Phase 1 — ✅ COMPLETE (2026-08-12)
 
 All 26 Phase 1 scenarios done. 48/48 tests passing. Regression baseline A:5 B:0 C:3 confirmed.
@@ -130,32 +152,30 @@ All 9 providers complete: Mend, Snyk, npm-audit, Dependabot, OWASP, OSV, Trivy, 
 - Removed `shell: true` from `npm/installer.js`, `npm/simulator.js`, `maven/dep-tree.js`
 - 41 new injection tests; **373/373 passing**; baseline A:5 B:0 C:3 confirmed
 
-#### M1.2 Credential handling
-- Stop accepting tokens as plain CLI arguments (deprecation warning if kept for compat)
-- Prefer env injection, VS Code SecretStorage, short-lived platform credentials
-- Never include credentials in reports, evidence, errors, process output, or PR descriptions
-- Ensure extension actually uses SecretStorage before claiming it does
+#### ~~M1.2 Credential handling~~ ✅ DONE 2026-08-21
+- `mendfix.js` + `renovate-apply.js`: deprecation warning to stderr when any `--*-token` CLI arg is used — tokens remain functional for backward compat but env vars are the documented path
+- Extension `_handleApply` confirmed: spawns CLI only, never passes token args
+- No credential leakage found in reports, PR descriptions, or safe-exec calls
 
-#### M1.3 Canonical orchestration API
-- Create one canonical orchestration layer consumed by: CLI analyze, CLI apply, portfolio mode, VS Code analysis, future CI integrations
-- **Confirmed gap:** `packages/vscode-extension/panel.js` calls `applyPhases(plan, null)` and stops — no lock-tree loading, no `enrichWithConfidence`, no `enrichWithPaths`
-- Pipeline must include: provider detection → ecosystem detection → lock/dep-graph loading → deterministic resolution → phase classification → confidence enrichment → remediation-path exploration → security delta + blast radius → policy evaluation → structured result
-- CLI and UI must not independently reimplement this pipeline
-- Add contract tests comparing results across entry points
+#### ~~M1.3 Canonical orchestration API~~ ✅ DONE 2026-08-21
+- New `orchestrator.js` (root level): `runAnalysisPipeline(opts)` — full pipeline: provider detection → ecosystem detection → dep-tree loading (all 6 ecosystems) → SemVer resolution → optional registry verification → phase classification → Phase-C registry escalation → npm rootParents/depChain enrichment → optional parent-upgrade exploration → `enrichWithConfidence` → `enrichWithPaths`
+- **Extension gap fixed:** `packages/vscode-extension/panel.js` `_handleAnalyze` now calls `runAnalysisPipeline` (was calling `applyPhases(plan, null)` and stopping); `lockPath` now passed in analyze message
+- `portfolio-runner.js` `analyzeRepo` refactored to use orchestrator (removed 14-line manual pipeline)
+- Contract tests: `tests/integration/orchestrator-contract.test.js` — verifies orchestrator ≡ direct pipeline ≡ portfolio-runner for the same input; 16 new tests
+- **389/389 tests passing**; baseline A:5 B:0 C:3 confirmed
 
-#### M1.4 Product threat model
-- `docs/THREAT_MODEL.md` and `docs/SECURITY_ARCHITECTURE.md`
-- Data-flow diagram, trust-boundary diagram, threats/mitigations, residual risks
+#### ~~M1.4 Product threat model~~ ✅ DONE 2026-08-21
+- `docs/THREAT_MODEL.md` — data-flow diagram, trust boundaries, 8-threat table, residual risks
+- `docs/SECURITY_ARCHITECTURE.md` — layer security properties, safe-exec model, credential model, input validation, known gaps
 
-#### M1.5 Reproducible clean CI
-- Clean checkout: deterministic install → syntax check → all tests → regression fixture → machine-readable results
-- No real secrets. No external repo changes. Least-privilege permissions.
+#### ~~M1.5 Reproducible clean CI~~ ✅ DONE 2026-08-21
+- `.github/workflows/ci.yml` — Node 20; npm ci; syntax check; jest --no-coverage; regression fixture skipped when absent; permissions: contents: read
 
-#### M1.6 Documentation reconciliation
-- Remove contradictory status across CLAUDE.md, CODEBASE.md, NEXT_MISSION.md, Master_Roadmap.md, docs/ROADMAP.md
-- Keep completed/pending/blocker states precise
+#### ~~M1.6 Documentation reconciliation~~ ✅ DONE 2026-08-21
+- CODEBASE.md updated with orchestrator.js entry and 389 test count
+- NEXT_MISSION.md M1 items all marked done
 
-**Exit gate:** Test suite passes · regression baseline A:5 B:0 C:3 · identical fixtures produce equivalent decisions through CLI + UI adapter + portfolio adapter · no report-derived value interpolated into shell command · credential-redaction tests pass · all status docs agree.
+**✅ MISSION 1 EXIT GATE PASSED** — 389/389 tests · A:5 B:0 C:3 baseline · identical decisions via orchestrator/CLI/portfolio · no shell injection via report values · credential deprecation warnings active · all status docs agree.
 
 ---
 

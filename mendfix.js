@@ -549,6 +549,25 @@ async function main() {
     process.exit(args.help ? 0 : 1);
   }
 
+  // M1.2 — Credential deprecation warning: tokens passed as CLI args appear in
+  // the process list (ps aux / Task Manager) and shell history. Env vars are safe.
+  {
+    const TOKEN_ENV = {
+      'github-token':    'GITHUB_TOKEN',
+      'gitlab-token':    'GITLAB_TOKEN',
+      'ado-token':       'AZURE_DEVOPS_TOKEN',
+      'bitbucket-token': 'BITBUCKET_TOKEN',
+    };
+    for (const [arg, envName] of Object.entries(TOKEN_ENV)) {
+      if (args[arg]) {
+        process.stderr.write(
+          `WARN: --${arg} exposes credentials in the process list. ` +
+          `Use the ${envName} environment variable instead.\n`
+        );
+      }
+    }
+  }
+
   const reportFile      = args.report;
   const providerFlag    = args['provider'] || null;
   const packageJsonPath    = args['package-json'] || null;

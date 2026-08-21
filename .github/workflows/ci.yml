@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, 'feature/**', 'fix/**' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Node 20)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check
+        run: |
+          node --check mendfix.js
+          node --check mend-fix.js
+          node --check portfolio-runner.js
+          node --check src/core/safe-exec.js
+          node --check src/core/semver-engine.js
+          node --check src/core/phases.js
+
+      - name: Run tests
+        run: npx jest --no-coverage --forceExit
+
+      - name: Regression test (if fixture present)
+        run: |
+          if [ -f input/reports/GH_ui-platform_dev-vulnerability-report.json ]; then
+            echo "Running regression fixture..."
+            node mendfix.js analyze \
+              --report input/reports/GH_ui-platform_dev-vulnerability-report.json
+          else
+            echo "Regression fixture not present in CI — skipping."
+          fi

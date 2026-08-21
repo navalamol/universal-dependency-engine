@@ -552,6 +552,14 @@ async function processRepo(repoConfig, org, args, runDate) {
 async function main(argv) {
   const args = parseArgs(argv !== undefined ? argv : process.argv.slice(2));
 
+  // M1.2 — Credential deprecation warning
+  if (args.githubToken && !process.env.GITHUB_TOKEN) {
+    process.stderr.write(
+      'WARN: --github-token exposes credentials in the process list. ' +
+      'Use the GITHUB_TOKEN environment variable instead.\n'
+    );
+  }
+
   if (!args.config) {
     console.error('Error: --config <repos.json> is required');
     printUsage();

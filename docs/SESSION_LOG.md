@@ -41,6 +41,25 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Phase 5.5 M1.2–M1.6: M1 complete
+
+**Before:** M1.1 done (safe-exec). M1.2–M1.6 pending. VS Code extension `_handleAnalyze` skipping lock-tree, enrichWithConfidence, enrichWithPaths. No canonical pipeline; each entry point reimplemented analysis independently.
+
+**Changes:**
+- `orchestrator.js` (new, root) — `runAnalysisPipeline(opts)`: full 9-step canonical pipeline (parse → detect ecosystem → load dep tree for all 6 ecosystems → semver → optional registry verify → phases → Phase-C escalation → npm chain enrichment + parent exploration → confidence → paths). Returns `{entries, ecosystem, provider, phasedPlan, depTree, registryAdjustments}`.
+- `packages/vscode-extension/panel.js` — `_handleAnalyze` rewritten to call `runAnalysisPipeline` (was `applyPhases(plan, null)` with no dep-tree, no enrichment). `lockPath` now passed in the `analyze` webview message. Extension gap fully closed.
+- `portfolio-runner.js` `analyzeRepo` — replaced 14-line manual pipeline with `runAnalysisPipeline` call. Also now benefits from Phase-C registry escalation that was missing before.
+- `mendfix.js` — M1.2: deprecation warning to stderr when `--github-token`, `--gitlab-token`, `--ado-token`, or `--bitbucket-token` CLI args are used. Env vars remain the documented credential path.
+- `renovate-apply.js` — same deprecation warning for `--github-token`.
+- `tests/integration/orchestrator-contract.test.js` (new) — 16 contract tests: orchestrator ≡ direct pipeline; orchestrator ≡ portfolio-runner; regression baseline A:5 B:0 C:3 via orchestrator.
+- `docs/THREAT_MODEL.md`, `docs/SECURITY_ARCHITECTURE.md` (new) — data-flow diagram, trust boundaries, 8-threat table, safe-exec model, credential model, known gaps.
+- `.github/workflows/ci.yml` (new) — Node 20; npm ci; syntax check; jest; regression fixture skipped if absent; permissions: contents: read.
+- `CODEBASE.md`, `NEXT_MISSION.md` — M1 items marked done; orchestrator entry added; test count updated to 389.
+
+**Next:** Phase 5.5 Mission 2 — Verified remediation evidence (M2.1–M2.6): configurable build/test verification, post-remediation rescan adapter, fail-closed safety gate, canonical evidence model.
+
+---
+
 ## 2026-08-13 — Phase 6 planning: UI Layer delivery decision
 
 **Before:** No UI plan existed; all interaction was CLI-only.

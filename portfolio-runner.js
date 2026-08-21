@@ -3,22 +3,9 @@
 const fs   = require('fs');
 const path = require('path');
 
-const { detectProvider, getParser }          = require('./src/providers/index');
-const { buildResolutionPlan }                = require('./src/core/semver-engine');
-const { applyPhases }                        = require('./src/core/phases');
-const { enrichWithConfidence }               = require('./src/core/confidence');
-const { enrichWithPaths }                    = require('./src/core/remediation-paths');
-const { detectEcosystem }                    = require('./src/ecosystems/index');
-const { parseLockFile, getRootDeps }         = require('./src/ecosystems/npm/lock-parser');
-const { verifyPlanVersions: verifyNpm }      = require('./src/ecosystems/npm/registry');
-const { verifyPlanVersions: verifyMaven }    = require('./src/ecosystems/maven/registry');
-const { verifyPlanVersions: verifyPython }   = require('./src/ecosystems/python/registry');
-const { verifyPlanVersions: verifyGo }       = require('./src/ecosystems/go/registry');
-const { verifyPlanVersions: verifyDotnet }   = require('./src/ecosystems/dotnet/registry');
-const { verifyPlanVersions: verifyRust }     = require('./src/ecosystems/rust/registry');
+const { runAnalysisPipeline } = require('./orchestrator');
 
-const REGISTRY_VERIFIERS = { npm: verifyNpm, maven: verifyMaven, python: verifyPython, go: verifyGo, dotnet: verifyDotnet, rust: verifyRust };
-const SEVERITY_ORDER      = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE'];
+const SEVERITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE'];
 
 // ---------------------------------------------------------------------------
 // Config loader + validator
@@ -69,37 +56,18 @@ async function analyzeRepo(repoEntry, globalOpts = {}) {
   };
 
   try {
-    const provider = repoEntry.provider || detectProvider(repoEntry.report);
-    result.provider = provider;
-    const entries = getParser(provider).parseReport(repoEntry.report);
+    const { entries, ecosystem, provider, phasedPlan } = await runAnalysisPipeline({
+      reportPath:       repoEntry.report,
+      providerOverride: repoEntry.provider || null,
+      ecosystemOverride: repoEntry.ecosystem || null,
+      verifyVersions,
+      lockFilePath: repoEntry.lockFile || null,
+    });
+
+    result.provider       = provider;
+    result.ecosystem      = ecosystem;
     result.totalLibraries = entries.length;
     result.totalCves      = entries.reduce((n, e) => n + e.cves.length, 0);
-
-    const ecosystem = detectEcosystem(entries, repoEntry.ecosystem || null);
-    result.ecosystem = ecosystem;
-
-    // Lock file (npm only)
-    let depTree  = null;
-    let rootDeps = null;
-    if (ecosystem === 'npm' && repoEntry.lockFile && fs.existsSync(repoEntry.lockFile)) {
-      depTree  = parseLockFile(repoEntry.lockFile);
-      rootDeps = getRootDeps(repoEntry.lockFile);
-    }
-
-    // SemVer resolution
-    let plan = buildResolutionPlan(entries);
-
-    // Optional registry verification
-    if (verifyVersions) {
-      const verifyFn = REGISTRY_VERIFIERS[ecosystem];
-      if (verifyFn) plan = await verifyFn(plan);
-    }
-
-    // Phase classification + enrichment
-    let phasedPlan = applyPhases(plan, depTree, rootDeps);
-    phasedPlan     = enrichWithConfidence(phasedPlan, depTree);
-    phasedPlan     = enrichWithPaths(phasedPlan, entries);
-
     result.phaseA = phasedPlan.filter(r => r.phase === 'A');
     result.phaseB = phasedPlan.filter(r => r.phase === 'B');
     result.phaseC = phasedPlan.filter(r => r.phase === 'C');

@@ -5,12 +5,9 @@ const vscode  = require('vscode');
 const path    = require('path');
 const { spawn } = require('child_process');
 
-// Paths to core engine modules (relative to this extension file)
-const PROVIDERS_PATH   = path.join(__dirname, '../../src/providers/index.js');
-const SEMVER_PATH      = path.join(__dirname, '../../src/core/semver-engine.js');
-const PHASES_PATH      = path.join(__dirname, '../../src/core/phases.js');
-const REGISTRY_PATH    = path.join(__dirname, '../../src/ecosystems/npm/registry.js');
-const ENGINE_CLI_PATH  = path.join(__dirname, '../../mendfix.js');
+// Canonical pipeline — single source of truth for analysis decisions
+const ORCHESTRATOR_PATH = path.join(__dirname, '../../orchestrator.js');
+const ENGINE_CLI_PATH   = path.join(__dirname, '../../mendfix.js');
 
 class MendFixViewProvider {
   static viewType = 'mendfix.panel';
@@ -48,7 +45,7 @@ class MendFixViewProvider {
           await this._handleBrowseFile('lockFile', ['package-lock.json'], 'Select package-lock.json');
           break;
         case 'analyze':
-          await this._handleAnalyze(msg.reportPath, msg.verifyVersions);
+          await this._handleAnalyze(msg);
           break;
         case 'apply':
           await this._handleApply(msg);
@@ -119,32 +116,22 @@ class MendFixViewProvider {
     }
   }
 
-  async _handleAnalyze(reportPath, verifyVersions) {
+  async _handleAnalyze(msg) {
+    const { reportPath, verifyVersions, lockPath } = msg;
     this._view.webview.postMessage({ type: 'thinking' });
 
     try {
-      // Direct require of engine core — no child_process
-      const { detectProvider, getParser } = require(PROVIDERS_PATH);
-      const { buildResolutionPlan }        = require(SEMVER_PATH);
-      const { applyPhases }                = require(PHASES_PATH);
+      const { runAnalysisPipeline } = require(ORCHESTRATOR_PATH);
+      const { phasedPlan } = await runAnalysisPipeline({
+        reportPath,
+        verifyVersions: !!verifyVersions,
+        lockFilePath: lockPath || null,
+      });
 
-      const provider = detectProvider(reportPath);
-      const parser   = getParser(provider);
-      const entries  = parser.parseReport(reportPath);
-      let plan       = buildResolutionPlan(entries);
-
-      // Registry verification is a separate post-build step (mirrors mendfix.js line 713)
-      if (verifyVersions) {
-        const { verifyPlanVersions } = require(REGISTRY_PATH);
-        plan = await verifyPlanVersions(plan);
-      }
-
-      const phasedItems = applyPhases(plan, null);
-
-      const phaseA = phasedItems.filter(i => i.phase === 'A');
-      const phaseB = phasedItems.filter(i => i.phase === 'B');
-      const phaseC = phasedItems.filter(i => i.phase === 'C');
-      const totalCVEs = phasedItems.reduce((s, i) => s + (i.cveCount || 0), 0);
+      const phaseA    = phasedPlan.filter(i => i.phase === 'A');
+      const phaseB    = phasedPlan.filter(i => i.phase === 'B');
+      const phaseC    = phasedPlan.filter(i => i.phase === 'C');
+      const totalCVEs = phasedPlan.reduce((s, i) => s + (i.cveCount || 0), 0);
 
       const toRow = (i) => ({
         name:            i.libraryName,
@@ -159,7 +146,7 @@ class MendFixViewProvider {
       this._view.webview.postMessage({
         type: 'result',
         data: {
-          totalLibraries: phasedItems.length,
+          totalLibraries: phasedPlan.length,
           totalCVEs,
           phaseA: phaseA.map(toRow),
           phaseB: phaseB.map(toRow),
@@ -670,9 +657,10 @@ class MendFixViewProvider {
     analyzeBtn.addEventListener('click', () => {
       if (!selectedPath) return;
       vscode.postMessage({
-        type: 'analyze',
+        type:           'analyze',
         reportPath:     selectedPath,
         verifyVersions: document.getElementById('verifyVersions').checked,
+        lockPath:       lockPath || null,
       });
     });
     settingsLink.addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));

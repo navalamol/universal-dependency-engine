@@ -55,7 +55,8 @@ lockfile update + verification
 |------|---------|
 | `mendfix.js` | Main CLI. `parseArgs()` at line 42. `main()` at line 251. Apply block at line ~462. Commit block at ~503. |
 | `renovate-apply.js` | Renovate-focused apply workflow. `main(argv)` exported. Also runs standalone. |
-| `portfolio-runner.js` | Portfolio orchestrator (Phase 5). `loadConfig(configPath)`, `analyzeRepo(repoEntry, opts)`, `runPortfolio(configPath, opts)`. Imports from both providers and ecosystems — not in src/core/. |
+| `orchestrator.js` | **Canonical analysis pipeline (M1.3).** `runAnalysisPipeline(opts)` → `{entries, ecosystem, provider, phasedPlan, depTree, registryAdjustments}`. Single source of truth consumed by CLI, extension, and portfolio mode. |
+| `portfolio-runner.js` | Portfolio orchestrator (Phase 5). `loadConfig(configPath)`, `analyzeRepo(repoEntry, opts)`, `runPortfolio(configPath, opts)`. Uses `runAnalysisPipeline` internally. |
 | `mend-fix.js` | Backward-compat shim. Do not modify. |
 
 ### src/providers/
@@ -288,7 +289,7 @@ DISCARDED_NO_FIX | RENOVATE_INSUFFICIENT | NOT_IN_MEND_REPORT | MONOREPO_GROUP_U
 | `tests/core/portfolio-report.test.js` | `generatePortfolioReport`, `writePortfolioReport` |
 
 Run all: `npx jest --no-coverage`  
-Baseline: **332/332 pass**
+Baseline: **389/389 pass**
 
 ---
 
@@ -311,7 +312,7 @@ Baseline: **332/332 pass**
 | Phase 4 CLI wiring — `--open-pr`, `--platform`, per-platform flags, `pr-poster.js` dispatcher, 49 tests | ✅ DONE 2026-08-12 |
 | Phase 5 — Multi-repo portfolio mode: `portfolio-runner.js`, `portfolio-report.js`, `mendfix portfolio` subcommand, 45 new tests | ✅ DONE 2026-08-12 |
 
-**Next:** Phase 5.5 M1 (in progress) — M1.1 secure process execution is done (`src/core/safe-exec.js`; critical shell-injection risks in rust/python installers+simulators fixed; `shell: true` removed from npm/mvn; 41 new tests; 373/373 passing). Remaining M1 tasks: M1.2 credential handling; M1.3 canonical orchestration API (fix VS Code extension pipeline gap — `packages/vscode-extension/panel.js` calls `applyPhases(plan, null)` without lock-tree, `enrichWithConfidence`, or `enrichWithPaths`); M1.4 threat model docs; M1.5 CI; M1.6 doc reconciliation.
+**Next:** Phase 5.5 Mission 2 — Verified remediation evidence. M1 is complete: `orchestrator.js` canonical pipeline; extension gap fixed; credential warnings; threat model docs; CI; 389/389 tests; A:5 B:0 C:3 baseline.
 
 ---
 
