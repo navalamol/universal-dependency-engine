@@ -4,6 +4,23 @@ Minimal change history for future Claude sessions. Only decisions and context th
 
 ---
 
+## 2026-08-21 — Strategic replan: demo-first batches 5A → 7
+
+**Before:** Batch 4 done (810/810). Original plan had Phase 6 UI next.
+**Changes:**
+- NEXT_MISSION.md completely replanned: demo corpus before UI (batches 5A → 7)
+- CODEBASE.md "Next" line updated to point at Batch 5A
+- Key insight: UI with weak fixture numbers loses executive demos; corpus numbers must be real before UI is built
+- Batch 5A: `fixtures/demo-corpus/` (npm + Maven) + 4-scanner fixture reports + `mendfix demo` subcommand
+- Batch 5B: `src/core/comparison-report.js` (before/after delta table) + enhanced remediation report
+- Batch 6: VS Code extension rebuilt as 4-panel thin client (Scan / Analyze / Apply / Evidence)
+- Batch 7: HTML/PDF export, portfolio KPI panel, SARIF import story, all-scanner CI coverage
+- "Wow" moment defined: 60–80 CVE input → 50+ auto-closed (Phase A/B) → migration plans for rest → exposure-classified test-only findings separated out
+- No code changes this session — planning only
+**Next:** Batch 5A — demo corpus + `mendfix demo` command
+
+---
+
 ## 2026-08-21 — Batch 4: D3 Patch/Backport + evidence-model extensions
 
 **Before:** Batch 3 done (698/698). D3 patch/backport unstarted.

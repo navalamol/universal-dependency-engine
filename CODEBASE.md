@@ -374,7 +374,7 @@ Baseline: **810/810 pass**
 | **Phase 5.6 D3.5** — `src/core/license-gate.js`: SPDX-aware license classifier; permissive/copyleft/blocked policy; LICENSE_BLOCKED outcome integration; 20 tests | ✅ DONE 2026-08-21 |
 | **Phase 5.6 D3.6** — `src/core/disclosure-prep.js`: responsible disclosure draft builder; requiresApproval/autoSend invariants; markdown+JSON per-package output; never sends externally; 18 tests | ✅ DONE 2026-08-21 |
 
-**Next:** Phase 6 — UI layer (VS Code extension as thin client over canonical API). **810/810 tests; A:5 B:0 C:3 baseline.**
+**Next:** Batch 5A — Demo corpus (`fixtures/demo-corpus/`) + `mendfix demo` subcommand. Real 60–80 CVE fixture set (npm + Maven) + 4-scanner reports (Mend/Snyk/Dependabot/OSV). All three phases must fire; D1A exposure must fire; all scanners must produce equivalent phase distributions. **810/810 tests; A:5 B:0 C:3 baseline.**
 
 ---
 

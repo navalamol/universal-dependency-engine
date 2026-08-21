@@ -1,29 +1,256 @@
 # Next Mission
 
 Single source of truth for what to build next. Updated after each session.
-**Last updated:** 2026-08-21
+**Last updated:** 2026-08-21 (post-Batch-4 strategic replan)
 
 ---
 
 ## Batch Session Plan
 
-Four batches map the remaining Phase 5.5 + 5.6 work. Start each batch only after the previous batch's exit gate passes.
+### Original batches 1–4: ✅ ALL COMPLETE (2026-08-21)
 
-| Batch | Session | Missions | Why grouped |
-|-------|---------|----------|-------------|
-| **1** | Next | M1.2 + M1.3 + M1.4 + M1.5 + M1.6 | Completes M1 exit gate. M1.3 (canonical API) is the biggest item. |
-| **2** | After Batch 1 | M2 (all) + D1A | Tightly coupled: exposure classification IS evidence data. Evidence schema should be designed with exposure fields from the start. |
-| **3** | After Batch 2 | M3 (all) + D1B + D2.1–D2.3 | Pilot packaging needs evidence from Batch 2. D1B (hygiene) and D2 (migration) are independent enough to batch. |
-| **4** | After Batch 3 | D3 + Phase 6 | Patch/backport work, then UI rebuilt on the canonical API from Batch 1. |
+| Batch | Missions | Status |
+|-------|----------|--------|
+| **1** | M1.2 + M1.3 + M1.4 + M1.5 + M1.6 | ✅ DONE |
+| **2** | M2 (all) + D1A | ✅ DONE |
+| **3** | M3 (all) + D1B + D2.1–D2.3 | ✅ DONE |
+| **4** | D3 (patch/backport) | ✅ DONE — 810/810 tests |
 
-D2.4 (prototype branches) is a stretch goal — fits inside Batch 3 only if D2.1–D2.3 clear early.
+---
 
-**Batch 1 remaining work (M1.1 done):**
-- M1.2 — credential audit: deprecation warning for `--*-token` CLI args; verify extension does not pass tokens
-- M1.3 — canonical orchestration layer: `orchestrator.js` consumed by CLI, extension, portfolio; fix extension pipeline gap; contract tests
-- M1.4 — `docs/THREAT_MODEL.md` + `docs/SECURITY_ARCHITECTURE.md` ✅ DONE 2026-08-21
-- M1.5 — GitHub Actions CI (`.github/workflows/ci.yml`) ✅ DONE 2026-08-21
-- M1.6 — doc inconsistencies reconciled
+### Strategic replan — Demo-first approach
+
+**The problem with proceeding straight to Phase 6 UI:**
+The engine is complete and correct, but the value is invisible. A UI showing 8 toy CVEs loses the room in 30 seconds. The product needs a **proof-of-value moment** where the numbers are undeniable before the UI is built.
+
+**The "wow" moment we are building toward:**
+> A report walks in with 60–80 CVEs. Other tools (Snyk, Dependabot, Mend) suggest "upgrade these 18–20 direct deps" — many of which are major bumps with no safe path. Our tool auto-applies fixes for 50+ CVEs in one npm install (Phase A/B parent upgrades), produces migration plans with effort estimates for the remaining 15–20, and classifies 8–10 as test-only / not production-reachable. All with a full evidence trail per finding — SARIF, VEX, audit log, KPI report.
+
+**Why the engine already does this** — but needs the demo corpus to prove it:
+- Phase A: safe same-major overrides, auto-applied
+- Phase B: parent upgrade paths that transitively close multiple CVEs per upgrade
+- Phase C: migration plans with alternative package scoring and effort estimates
+- D1A: exposure classification separates test-only from production-reachable findings
+- Evidence model: every decision is auditable (SARIF + VEX export)
+- The transitive-graph advantage: most scanners flag direct deps; we model the full lock tree and find parent upgrades that fix 10–15 CVEs with one version bump
+
+---
+
+### New batches 5A → 7: Demo corpus → Comparison narrative → UI
+
+Start each batch only after the previous one's exit gate passes.
+
+| Batch | Work | What it unlocks | ← CURRENT |
+|-------|------|-----------------|-----------|
+| **5A** | Demo corpus + `mendfix demo` command | Real numbers for everything downstream | **← NEXT** |
+| **5B** | Comparison report module + enhanced output | The "before/after" narrative for the demo | After 5A |
+| **6** | VS Code extension rebuild (4 demo panels) | One-click management demo | After 5B |
+| **7** | Polish: PDF export, portfolio KPI view, SARIF import story | Enterprise procurement readiness | After 6 |
+
+---
+
+## Batch 5A — Demo Corpus + `mendfix demo` command ← CURRENT NEXT BATCH
+
+**Objective:** Build the synthetic but realistic multi-ecosystem fixture set that makes all engine output credible and impressive. Everything in batches 5B–7 depends on the numbers this corpus produces.
+
+### 5A.1 — Demo corpus: vulnerable project fixtures
+
+**Location:** `fixtures/demo-corpus/`
+
+Build one realistic project per ecosystem (start with npm, add Maven second):
+
+**npm corpus — `fixtures/demo-corpus/npm/`**
+- `package.json` — 15–20 direct dependencies; names match real packages; versions pinned to vulnerable ranges
+- `package-lock.json` — fully resolved lock tree, 3 levels deep; vulnerable packages appear only as transitives (not in direct deps), so surface scanners miss them
+- Design rules for the lock tree:
+  - 4–5 "parent upgrade paths": upgrading one direct dep transitively bumps 8–12 vulnerable transitives to safe versions
+  - 3–4 "Phase A only" entries: vulnerable transitive has a safe patch, parent already allows it — pure override
+  - 2–3 "Phase C / MAJOR_BUMP" entries: no safe path without breaking change, needing migration plan
+  - 5–6 "test-only chain" entries: vulnerable package only reachable via devDependencies chain — D1A classifies as TEST_ONLY or LOCAL_TOOLING_ONLY
+  - 2–3 "probable false positive" entries: package version in lock file already includes the fix (probableFalsePositive flag)
+- Target: 60–80 total CVEs across the tree; 10–12 distinct vulnerable packages; multiple CVEs per package is fine
+
+**Multi-scanner fixture set — `fixtures/demo-corpus/reports/`**
+- `mend-report.json` — Mend JSON format pointing at the npm corpus
+- `snyk-report.json` — Snyk JSON format, same vulnerabilities
+- `dependabot-report.json` — GitHub Dependabot alerts JSON format
+- `osv-report.json` — OSV scanner format
+- All four reports cover the SAME set of CVEs so the demo can say "works with every scanner you already have"
+- Each report should reflect what the scanner actually surfaces — direct-dep scanners will only show a subset; our engine finds the full transitive picture
+
+**Maven corpus — `fixtures/demo-corpus/maven/`** (second priority, after npm)
+- `pom.xml` — 10–12 direct dependencies
+- Target: 20–30 CVEs, mix of Phase A patches and Phase C major bumps
+
+### 5A.2 — `mendfix demo` subcommand
+
+**File:** `mendfix.js` — new `demo` subcommand
+
+Behaviour:
+1. Copies demo corpus to a temp working directory
+2. Runs `runAnalysisPipeline` against the Mend report + npm corpus (default) or `--scanner snyk|dependabot|osv` flag to switch reports
+3. Generates all output files to `./demo-output/`
+4. Prints a summary banner showing: CVE count → Phase A auto-fixed → Phase B parent upgrades → Phase C plans → exposure breakdown
+5. Optionally opens the VS Code extension panel if `--ui` flag is passed (wired in Batch 6)
+6. Exit 0 always (demo mode never fails)
+
+The banner should look roughly like:
+```
+╔══════════════════════════════════════════════════════════════╗
+║  mend-autofixer  Demo Run — Mend report · npm ecosystem      ║
+╠══════════════════════════════════════════════════════════════╣
+║  Input:  72 CVEs across 11 packages                          ║
+║  ────────────────────────────────────────────────────────── ║
+║  ✅ Phase A  — 5 packages auto-fixed  (covers 41 CVEs)       ║
+║  ⚠️  Phase B  — 3 packages via parent upgrade (18 CVEs)      ║
+║  ❌ Phase C  — 3 packages need migration plan  (13 CVEs)     ║
+║  ────────────────────────────────────────────────────────── ║
+║  🔍 Exposure: 6 findings are test-only (not prod-reachable)  ║
+║  📄 Output → ./demo-output/                                  ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+**Exit gate for Batch 5A:**
+- `mendfix demo` runs to completion with zero errors
+- Phase A count ≥ 4, Phase B count ≥ 2, Phase C count ≥ 2 (proves all three paths trigger)
+- D1A exposure classifier fires on ≥ 4 findings
+- All 4 scanner reports produce equivalent phase distributions (same CVEs, same decisions)
+- `npx jest --no-coverage` still passes (no regressions)
+
+---
+
+## Batch 5B — Comparison Report Module + Enhanced Output
+
+**Objective:** Add the "before/after" narrative that makes the engine's advantage quantifiable and presentable.
+
+### 5B.1 — `src/core/comparison-report.js`
+
+Produces a side-by-side comparison between what a naive scanner surfaces and what the engine delivers.
+
+Key function: `buildComparisonReport(scannerEntries, phasedPlan, exposureResults, opts?)`
+
+Output shape:
+```
+{
+  scannerSuggestions: { directUpgrades: N, majorBumps: N, noFix: N },
+  engineOutcomes: {
+    autoFixed: N,          // Phase A
+    parentUpgrade: N,      // Phase B
+    migrationPlan: N,      // Phase C
+    testOnlyDismissed: N,  // D1A TEST_ONLY / LOCAL_TOOLING_ONLY
+    falsePositives: N,     // probableFalsePositive
+  },
+  cveDelta: {
+    totalInput: N,
+    closedAutomatically: N,
+    closedViaParentUpgrade: N,
+    requiresAction: N,
+    notProductionReachable: N,
+  },
+  narrative: string,   // human-readable one-paragraph summary
+}
+```
+
+Written to `./demo-output/comparison-report.md` as a table. This is slide 2 of the management demo.
+
+### 5B.2 — Enhanced remediation report
+
+Extend `src/core/report.js` to include in every run (not just demo):
+- Exposure summary table at the top (how many findings per exposure tier)
+- Phase distribution with CVE counts (not just library counts)
+- False-positive count with reason
+- For Phase B items: show the parent upgrade path explicitly ("upgrading `webpack` 4→5 closes `loader-utils` CVE-2022-37601 + 3 others")
+- For Phase C items: show the top-ranked migration alternative + effort estimate
+- Footer: evidence trail note — "Full SARIF at `remediation-evidence.sarif`, VEX at `remediation.vex.json`"
+
+### 5B.3 — `mendfix demo --compare` flag
+
+Extends the demo banner to show the comparison against what a naive scanner (direct-dep-only) would suggest vs what the engine produces. The delta is the value proposition.
+
+**Exit gate for Batch 5B:**
+- `comparison-report.md` generated and numbers are non-fabricated (derived from actual pipeline output)
+- Enhanced report contains exposure summary + Phase B parent upgrade explanations + Phase C migration summaries
+- `npx jest --no-coverage` passes
+
+---
+
+## Batch 6 — VS Code Extension Rebuild (Demo-Ready, 4 Panels)
+
+**Objective:** Thin client over canonical API. Demo-ready in 4 panels. No new logic in the extension — all decisions happen in `orchestrator.js`.
+
+**Prerequisite:** Batch 5A must pass its exit gate (real numbers needed for panels to be impressive).
+
+### Panel 1 — Scan (Input)
+- File picker for vulnerability report (accepts all 9 scanner formats)
+- Auto-detects format via `detectProvider`
+- Shows: scanner name, CVE count, raw library list
+- "Analyze" button enabled once report is loaded
+
+### Panel 2 — Analyze (Engine Output)
+- Calls `runAnalysisPipeline` via the extension's existing IPC bridge
+- Shows: Phase A/B/C breakdown table with CVE counts
+- Shows: exposure classification pie (runtime reachable / test-only / unknown)
+- Shows: comparison report delta ("scanner suggested X, we found Y additional fixes")
+- "Apply Phase A" button; "Export SARIF/VEX" button; "View Evidence" button per finding
+
+### Panel 3 — Apply (Changes)
+- Phase A only (Phase B/C require human review — governed workflow)
+- Shows before/after graph diff (captureGraph output)
+- Shows: packages changed, CVEs closed, time elapsed
+- Rollback button (calls restoreFiles)
+- Confirmation gate: "Apply N overrides closing M CVEs? Yes / No"
+
+### Panel 4 — Evidence (Audit Trail)
+- Per-finding evidence bundle viewer: CVEs, phase, outcome, exposure, verification status
+- Download SARIF button
+- Download VEX button
+- Download KPI report button
+- Audit trail viewer (append-only NDJSON log)
+
+**What NOT to build in Batch 6:**
+- No new business logic — extension is a view, engine is the brain
+- No TypeScript, no bundler, no React — plain HTML/JS/CSS in the webview
+- No direct network calls from the extension — everything goes through CLI/orchestrator
+- No portfolio view yet (Batch 7)
+
+**Exit gate for Batch 6:**
+- All 4 panels render without errors against the demo corpus
+- `mendfix demo --ui` opens the extension and auto-loads the demo-output
+- Phase A apply works end-to-end from the panel (writes overrides, runs install, shows graph diff)
+- SARIF and VEX export buttons produce valid files
+- Extension pipeline gap confirmed closed (M1.3 already fixed; regression test in panel integration)
+
+---
+
+## Batch 7 — Enterprise Polish
+
+**Objective:** Close the remaining gaps for enterprise procurement conversations.
+
+### 7.1 — PDF / HTML export
+- `mendfix report --format html` generates a self-contained HTML report (no external deps)
+- Suitable for emailing to security team or attaching to a JIRA ticket
+- Includes: comparison table, evidence per finding, KPI summary, exposure breakdown
+
+### 7.2 — Portfolio KPI view in extension
+- Extend Panel 2 to show multi-repo portfolio view when a `portfolio.json` config is present
+- Aggregate CVE count, Phase A/B/C distribution, exposure breakdown across all repos
+- This is the "org-wide dashboard" slide for executive demos
+
+### 7.3 — SARIF import story (docs + demo script)
+- Document the SARIF import path for: GitHub Code Scanning, Azure DevOps, Jira, Defect Dojo
+- Demo script: "Run mendfix, import SARIF to GitHub Code Scanning, all findings appear with evidence"
+- No new code needed — SARIF export already works; this is positioning and docs
+
+### 7.4 — `mendfix demo --scanner <name>` full coverage
+- Ensure demo works identically across all 4 scanner fixtures (Mend / Snyk / Dependabot / OSV)
+- CI test that runs `mendfix demo --scanner <each>` and asserts phase counts are equivalent
+- This proves the "works with every scanner you already have" claim with evidence
+
+**Exit gate for Batch 7:**
+- HTML report opens in browser with all sections populated
+- Portfolio KPI panel shows aggregate numbers across ≥ 2 repos
+- CI passes with all 4 scanner variants
+- `npx jest --no-coverage` passes
 
 ---
 
@@ -253,20 +480,6 @@ Implement only after D2.1–D2.3 pass exit gate. Where policy permits: isolated 
 
 ---
 
-## Phase 6 — Focused UI Layer (after 5.5 + 5.6 D1/D2)
-
-Build on canonical orchestration API (M1.3) and exposure classification (D1A). The VS Code extension panel.js gap (calling applyPhases without lock-tree, confidence, or path enrichment) is resolved by M1.3.
-
-Priorities:
-1. VS Code extension rebuilt as thin client over canonical API
-2. Read-only evidence and analysis view
-3. Governed apply/approval workflow
-4. Portfolio/pilot KPI view with exposure breakdown
-
-Tauri and Chrome extension deferred until paid-pilot evidence shows demand.
-
----
-
 ## What NOT to do
 
 - No TypeScript, build steps, or frameworks — ever
@@ -274,12 +487,22 @@ Tauri and Chrome extension deferred until paid-pilot evidence shows demand.
 - No `@^major` selectors in overrides output
 - No MAJOR_BUMP auto-applied — always Phase C
 - Phase C must never become auto-apply merely because an LLM recommends a fix
-- No fabricated pilot, benchmark or remediation-success results
+- No fabricated pilot, benchmark or remediation-success results — all numbers derived from real fixture runs
 - Do not build Tauri, Electron or Chrome extensions in these phases
 - The VS Code extension must remain a thin client over the canonical engine
+- Do not build demo corpus numbers by hand — they must be produced by running the actual pipeline against real fixture files
+- Do not skip Batch 5A to go straight to UI — the UI needs real numbers to be impressive
 
 ---
 
-## Product context (one paragraph)
+## The one-sentence pitch
 
-This is Phase 5.5 of a 9-phase Dependency Intelligence OS (see `Master_Roadmap.md`). The provider/core/ecosystem separation built in Phases 1–5 is permanent infrastructure. Phase 5.5 adds the enterprise trust layer: security hardening, canonical orchestration API, verified evidence model, and pilot delivery. Phase 5.6 adds deep remediation intelligence (exposure classification, migration navigator, patch/backport). The deterministic engine is and remains the MOAT. AI assists only after deterministic resolution, verification, and human approval are in place.
+> "Every other scanner tells you what's vulnerable. We tell you what to fix, fix most of it automatically, and give you an auditable evidence trail for everything it couldn't fix — in the time it takes the security team to read the first report."
+
+This only lands if the demo corpus makes the numbers real. That is why Batch 5A comes before the UI.
+
+---
+
+## Product context
+
+This is the demo-ready phase of a 9-phase Dependency Intelligence OS (see `Master_Roadmap.md`). Phases 1–5 built the universal provider/core/ecosystem infrastructure. Phase 5.5 added enterprise trust (security hardening, canonical orchestration, verified evidence, pilot delivery). Phase 5.6 added deep remediation intelligence (exposure classification, migration navigator, patch/backport). The engine is complete and correct. Batches 5A–7 make its value visible and undeniable. The deterministic engine is and remains the MOAT — AI assists only after deterministic resolution, verification, and human approval are in place.
